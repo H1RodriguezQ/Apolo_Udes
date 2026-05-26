@@ -1,0 +1,71 @@
+name: apolo_udes
+description: Sistema de Gestión de Ceremonia de Grado - Universidad de Santander UDES
+publish_to: 'none'
+version: 2.4.1+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Localización (DatePicker en español)
+  flutter_localizations:
+    sdk: flutter
+
+  # Base de datos SQLite
+  sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.3
+  path: ^1.9.0
+
+  # UI & Charts
+  fl_chart: ^0.68.0
+  flutter_animate: ^4.5.0
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # State Management
+  provider: ^6.1.2
+
+  # QR Code
+  mobile_scanner: ^5.1.0
+  qr_flutter: ^4.1.0
+
+  # Permisos
+  permission_handler: ^11.3.1
+
+  # Excel
+  excel: ^4.0.6
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  share_plus: ^10.1.4
+
+  # Utilities
+  intl: 0.20.2
+  shared_preferences: ^2.2.3
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+  # Correo SMTP
+  mailer: ^6.1.0
+
+  # HTTP
+  http: ^1.2.0
+
+  # Firebase
+  firebase_core: ^4.9.0
+  cloud_firestore: ^6.4.1
+  firebase_storage: ^13.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

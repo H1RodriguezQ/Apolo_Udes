@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmación de Asistencia - UDES</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, #0F2347 0%, #1A3A6B 60%, #1E4D8C 100%); padding: 28px 20px; text-align: center; }
+    .header h1 { color: #fff; font-size: 24px; font-weight: 800; }
+    .header p { color: #B8CCE8; font-size: 13px; margin-top: 4px; }
+    .banner { background: linear-gradient(90deg, #C9A84C, #F0D060, #C9A84C); padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #3D2B00; letter-spacing: 2px; }
+    .container { max-width: 480px; margin: 32px auto; padding: 0 16px; flex: 1; }
+    .card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin-bottom: 20px; text-align: center; }
+    .loading { padding: 40px; color: #718096; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1A3A6B; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .invitado-nombre { color: #0F2347; font-size: 22px; font-weight: 800; margin: 8px 0; }
+    .graduando { color: #718096; font-size: 13px; margin-bottom: 20px; }
+    .evento-info { background: #f8f9fb; border-radius: 10px; padding: 16px; margin: 16px 0; text-align: left; }
+    .evento-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: #2d3748; font-size: 14px; }
+    .evento-row:last-child { margin-bottom: 0; }
+    .pregunta { font-size: 16px; font-weight: 600; color: #0F2347; margin: 24px 0 16px; }
+    .botones { display: flex; gap: 12px; }
+    .btn-confirmar {
+      flex: 1; padding: 16px;
+      background: linear-gradient(135deg, #276749, #38A169);
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .btn-rechazar {
+      flex: 1; padding: 16px;
+      background: #fff; color: #e53e3e;
+      border: 2px solid #e53e3e; border-radius: 10px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .btn-confirmar:hover { opacity: 0.9; }
+    .btn-rechazar:hover { background: #FFF5F5; }
+    .success { background: #F0FFF4; border: 1px solid #9AE6B4; border-radius: 12px; padding: 32px; text-align: center; display: none; }
+    .success h2 { color: #276749; font-size: 20px; margin-bottom: 8px; }
+    .success p { color: #2F855A; font-size: 14px; }
+    .rechazado { background: #FFF5F5; border: 1px solid #FEB2B2; border-radius: 12px; padding: 32px; text-align: center; display: none; }
+    .rechazado h2 { color: #C53030; font-size: 20px; margin-bottom: 8px; }
+    .rechazado p { color: #9B2C2C; font-size: 14px; }
+    .footer { text-align: center; padding: 24px; color: #718096; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎓 Apolo UDES</h1>
+  <p>Sistema de Gestión de Ceremonia de Grado</p>
+</div>
+<div class="banner">✦ CONFIRMACIÓN DE ASISTENCIA ✦</div>
+
+<div class="container">
+
+  <div class="card" id="loading">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando invitación...</p>
+    </div>
+  </div>
+
+  <div class="card" id="contenido" style="display:none;">
+    <p style="color:#718096;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Invitación para</p>
+    <div class="invitado-nombre" id="nombre-invitado"></div>
+    <div class="graduando" id="graduando-info"></div>
+
+    <div class="evento-info">
+      <div class="evento-row">📅 <span id="fecha-evento">Fecha por confirmar</span></div>
+      <div class="evento-row">🕐 <span id="hora-evento"></span></div>
+      <div class="evento-row">📍 Auditorio Mayor, Campus Lagos del Cacique</div>
+      <div class="evento-row">🎟️ Válido para 1 persona</div>
+    </div>
+
+    <div class="pregunta">¿Confirmas tu asistencia a la ceremonia?</div>
+
+    <div class="botones">
+      <button class="btn-confirmar" onclick="confirmar()">✅ Sí, asistiré</button>
+      <button class="btn-rechazar" onclick="rechazar()">❌ No podré asistir</button>
+    </div>
+  </div>
+
+  <div class="success" id="success">
+    <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+    <h2>¡Asistencia confirmada!</h2>
+    <p>Tu asistencia ha sido registrada. Presenta tu código QR el día del evento.</p>
+  </div>
+
+  <div class="rechazado" id="rechazado">
+    <div style="font-size:48px;margin-bottom:12px;">😔</div>
+    <h2>Asistencia rechazada</h2>
+    <p>Hemos registrado que no podrás asistir. Si cambias de opinión, contacta a la universidad.</p>
+  </div>
+
+  <div class="card" id="error-card" style="display:none;">
+    <div style="font-size:32px;margin-bottom:8px;">❌</div>
+    <h3 style="color:#e53e3e;">Enlace inválido</h3>
+    <p style="color:#718096;font-size:14px;margin-top:8px;">Este enlace no es válido o ya fue procesado.</p>
+  </div>
+
+</div>
+
+<div class="footer">
+  Universidad de Santander – UDES | Bucaramanga, Santander<br>
+  Acreditada Alta Calidad por el Ministerio de Educación Nacional | SNIES 2832
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { getFirestore, doc, getDoc, updateDoc }
+    from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMcbZf2eIQrwt9mFeuui8MjD1RxynNQcQ",
+    authDomain: "apolo-udes.firebaseapp.com",
+    projectId: "apolo-udes",
+    storageBucket: "apolo-udes.firebasestorage.app",
+    messagingSenderId: "588093325085",
+    appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const params = new URLSearchParams(window.location.search);
+  const invitadoId = params.get('id');
+  const respuesta = params.get('r'); // 'si' | 'no'
+
+  window.db = db;
+  window.invitadoId = invitadoId;
+  window.updateDoc = updateDoc;
+  window.doc = doc;
+
+  if (!invitadoId) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-card').style.display = 'block';
+  } else {
+    const ref = doc(db, 'invitados', invitadoId);
+    getDoc(ref).then(async snap => {
+      document.getElementById('loading').style.display = 'none';
+
+      if (!snap.exists()) {
+        document.getElementById('error-card').style.display = 'block';
+        return;
+      }
+
+      const inv = snap.data();
+
+      // Si ya respondió
+      if (inv.confirmacion === 'confirmado') {
+        document.getElementById('success').style.display = 'block';
+        return;
+      }
+      if (inv.confirmacion === 'rechazado') {
+        document.getElementById('rechazado').style.display = 'block';
+        return;
+      }
+
+      // Carga info del graduando
+      const gradRef = doc(db, 'graduandos', inv.graduandoId);
+      const gradSnap = await getDoc(gradRef);
+      const grad = gradSnap.exists() ? gradSnap.data() : {};
+
+      // Carga config del evento
+      const confRef = doc(db, 'configuracion', 'evento');
+      const confSnap = await getDoc(confRef);
+      const conf = confSnap.exists() ? confSnap.data() : {};
+
+      document.getElementById('nombre-invitado').textContent = inv.nombreInvitado;
+      document.getElementById('graduando-info').textContent =
+        'Invitado de ' + (grad.nombreCompleto || '') + ' · ' + (grad.programa || '');
+
+      if (conf.fechaCeremonia) {
+        const fecha = conf.fechaCeremonia.toDate();
+        const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('fecha-evento').textContent =
+          fecha.toLocaleDateString('es-CO', opciones);
+      }
+
+      const horas = conf.horasPorFacultad || {};
+      const hora = horas[grad.facultad] || grad.horaCeremonia || '';
+      document.getElementById('hora-evento').textContent = hora;
+
+      document.getElementById('contenido').style.display = 'block';
+
+      // Si viene la respuesta en la URL, procesa automáticamente
+      if (respuesta === 'si') window.confirmar();
+      else if (respuesta === 'no') window.rechazar();
+
+    }).catch(() => {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-card').style.display = 'block';
+    });
+  }
+</script>
+
+<script>
+  async function confirmar() {
+    document.getElementById('contenido').style.display = 'none';
+    try {
+      await window.updateDoc(window.doc(window.db, 'invitados', window.invitadoId), {
+        confirmacion: 'confirmado',
+        fechaConfirmacion: new Date()
+      });
+      document.getElementById('success').style.display = 'block';
+    } catch (e) {
+      alert('Error al confirmar. Intenta de nuevo.');
+      document.getElementById('contenido').style.display = 'block';
+    }
+  }
+
+  async function rechazar() {
+    document.getElementById('contenido').style.display = 'none';
+    try {
+      await window.updateDoc(window.doc(window.db, 'invitados', window.invitadoId), {
+        confirmacion: 'rechazado',
+        fechaConfirmacion: new Date()
+      });
+      document.getElementById('rechazado').style.display = 'block';
+    } catch (e) {
+      alert('Error al procesar. Intenta de nuevo.');
+      document.getElementById('contenido').style.display = 'block';
+    }
+  }
+</script>
+
+</body>
+</html>

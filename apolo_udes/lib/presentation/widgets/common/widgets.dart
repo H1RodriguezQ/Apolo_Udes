@@ -1,0 +1,340 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/models.dart';
+
+// ---- Metric Card ----
+class MetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final String? subtitle;
+
+  const MetricCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const Spacer(),
+                if (subtitle != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.successLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        color: AppColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(title, style: AppTextStyles.label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Status Badge ----
+class StatusBadge extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+
+  const StatusBadge({
+    super.key,
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  factory StatusBadge.fromEstadoGraduando(EstadoGraduando estado) {
+    switch (estado) {
+      case EstadoGraduando.activo:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.successLight,
+          textColor: AppColors.success,
+        );
+      case EstadoGraduando.pendiente:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.warningLight,
+          textColor: AppColors.warning,
+        );
+      case EstadoGraduando.inactivo:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.errorLight,
+          textColor: AppColors.error,
+        );
+    }
+  }
+
+  factory StatusBadge.fromEstadoInvitacion(EstadoInvitacion estado) {
+    switch (estado) {
+      case EstadoInvitacion.confirmada:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.successLight,
+          textColor: AppColors.success,
+        );
+      case EstadoInvitacion.pendiente:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.warningLight,
+          textColor: AppColors.warning,
+        );
+      case EstadoInvitacion.enviada:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.infoLight,
+          textColor: AppColors.info,
+        );
+      case EstadoInvitacion.rechazada:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.errorLight,
+          textColor: AppColors.error,
+        );
+    }
+  }
+
+  factory StatusBadge.fromEstadoConfirmacion(EstadoConfirmacion estado) {
+    switch (estado) {
+      case EstadoConfirmacion.confirmado:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.successLight,
+          textColor: AppColors.success,
+        );
+      case EstadoConfirmacion.pendiente:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.warningLight,
+          textColor: AppColors.warning,
+        );
+      case EstadoConfirmacion.rechazado:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.errorLight,
+          textColor: AppColors.error,
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Section Header ----
+class SectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: AppTextStyles.h2),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(subtitle!, style: AppTextStyles.label),
+            ],
+          ],
+        ),
+        const Spacer(),
+        if (action != null) action!,
+      ],
+    );
+  }
+}
+
+// ---- Empty State ----
+class EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: AppColors.textHint),
+          const SizedBox(height: 16),
+          Text(title, style: AppTextStyles.h3),
+          const SizedBox(height: 8),
+          Text(subtitle, style: AppTextStyles.label, textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+}
+
+// ---- Avatar ----
+class UserAvatar extends StatelessWidget {
+  final String name;
+  final double size;
+  final Color? backgroundColor;
+
+  const UserAvatar({
+    super.key,
+    required this.name,
+    this.size = 36,
+    this.backgroundColor,
+  });
+
+  String get _initials {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  Color get _bgColor {
+    if (backgroundColor != null) return backgroundColor!;
+    final colors = [
+      const Color(0xFF2563EB),
+      const Color(0xFF10B981),
+      const Color(0xFFF59E0B),
+      const Color(0xFFEF4444),
+      const Color(0xFF8B5CF6),
+    ];
+    return colors[name.length % colors.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: _bgColor,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          _initials,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * 0.35,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---- Confirm Dialog ----
+Future<bool?> showConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String content,
+  String confirmLabel = 'Confirmar',
+  String cancelLabel = 'Cancelar',
+  bool isDangerous = false,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(title, style: AppTextStyles.h3),
+      content: Text(content, style: AppTextStyles.body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(cancelLabel),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isDangerous ? AppColors.error : AppColors.primaryLight,
+          ),
+          child: Text(confirmLabel),
+        ),
+      ],
+    ),
+  );
+}

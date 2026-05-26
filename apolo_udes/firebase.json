@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "apolo-udes",
+          "appId": "1:588093325085:android:8baf34591b020213032bf4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "apolo-udes",
+          "configurations": {
+            "android": "1:588093325085:android:8baf34591b020213032bf4",
+            "ios": "1:588093325085:ios:05aa401924d9b6a9032bf4",
+            "macos": "1:588093325085:ios:05aa401924d9b6a9032bf4",
+            "web": "1:588093325085:web:d4ebd8d59be913f4032bf4",
+            "windows": "1:588093325085:web:065791fbef655c61032bf4"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "web_invitados",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

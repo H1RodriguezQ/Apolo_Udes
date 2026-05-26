@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "588093325085",
+    "project_id": "apolo-udes",
+    "storage_bucket": "apolo-udes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:588093325085:android:8baf34591b020213032bf4",
+        "android_client_info": {
+          "package_name": "com.example.apolo_udes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbAssVi2iw4Jvo5mRlz-hA5VSZtbUD1Vg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

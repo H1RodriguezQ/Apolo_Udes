@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registrar Invitados - UDES</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, #0F2347 0%, #1A3A6B 60%, #1E4D8C 100%); padding: 28px 20px; text-align: center; }
+    .header h1 { color: #fff; font-size: 24px; font-weight: 800; }
+    .header p { color: #B8CCE8; font-size: 13px; margin-top: 4px; }
+    .banner { background: linear-gradient(90deg, #C9A84C, #F0D060, #C9A84C); padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #3D2B00; letter-spacing: 2px; }
+    .container { max-width: 520px; margin: 32px auto; padding: 0 16px; flex: 1; }
+    .card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .loading { padding: 40px; color: #718096; text-align: center; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1A3A6B; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .graduando-nombre { color: #0F2347; font-size: 20px; font-weight: 800; margin: 8px 0 4px; }
+    .graduando-prog { color: #718096; font-size: 13px; }
+    .section-title { font-size: 16px; font-weight: 700; color: #0F2347; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+    .invitado-card { background: #f8f9fb; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #e2e8f0; }
+    .invitado-num { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; color: #2d3748; background: #fff; outline: none; transition: border 0.2s; }
+    input:focus, select:focus { border-color: #1A3A6B; box-shadow: 0 0 0 3px rgba(26,58,107,0.08); }
+    .btn-enviar { width: 100%; padding: 16px; background: linear-gradient(135deg, #0F2347, #1E4D8C); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .btn-enviar:hover { opacity: 0.9; }
+    .btn-enviar:disabled { opacity: 0.6; cursor: not-allowed; }
+    .success { background: #F0FFF4; border: 1px solid #9AE6B4; border-radius: 12px; padding: 32px; text-align: center; display: none; }
+    .success h2 { color: #276749; font-size: 20px; margin-bottom: 8px; }
+    .success p { color: #2F855A; font-size: 14px; line-height: 1.6; }
+    .error-card { background: #fff; border-radius: 16px; padding: 28px; text-align: center; display: none; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .aviso { background: #FFF8E1; border: 1px solid #F0D060; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+    .aviso p { color: #7B5800; font-size: 13px; }
+    .cupo-badge { display: inline-block; background: #EBF8FF; color: #2B6CB0; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 8px; }
+    .footer { text-align: center; padding: 24px; color: #718096; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎓 Apolo UDES</h1>
+  <p>Sistema de Gestión de Ceremonia de Grado</p>
+</div>
+<div class="banner">✦ REGISTRO DE INVITADOS ✦</div>
+
+<div class="container">
+
+  <div class="card" id="loading">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando información...</p>
+    </div>
+  </div>
+
+  <div id="formulario" style="display:none;">
+    <div class="card" style="text-align:center;margin-bottom:16px;">
+      <p style="color:#718096;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Graduando</p>
+      <div class="graduando-nombre" id="grad-nombre"></div>
+      <div class="graduando-prog" id="grad-prog"></div>
+      <div class="cupo-badge" id="cupo-badge"></div>
+    </div>
+
+    <div class="aviso">
+      <p>⚠️ Cada invitado recibirá un correo con su código QR de acceso. El ingreso es personal e intransferible.</p>
+    </div>
+
+    <div id="invitados-container"></div>
+
+    <button class="btn-enviar" id="btn-enviar" onclick="enviarInvitados()">
+      Enviar invitaciones →
+    </button>
+  </div>
+
+  <div class="success" id="success">
+    <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+    <h2>¡Invitados registrados!</h2>
+    <p>Cada invitado recibirá un correo con su código QR de acceso a la ceremonia.</p>
+  </div>
+
+  <div class="error-card" id="error-card">
+    <div style="font-size:32px;margin-bottom:8px;">❌</div>
+    <h3 style="color:#e53e3e;">Enlace inválido</h3>
+    <p style="color:#718096;font-size:14px;margin-top:8px;">Este enlace no es válido. Verifica el correo recibido.</p>
+  </div>
+
+</div>
+
+<div class="footer">
+  Universidad de Santander – UDES | Bucaramanga, Santander<br>
+  Acreditada Alta Calidad por el Ministerio de Educación Nacional | SNIES 2832
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp }
+    from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMcbZf2eIQrwt9mFeuui8MjD1RxynNQcQ",
+    authDomain: "apolo-udes.firebaseapp.com",
+    projectId: "apolo-udes",
+    storageBucket: "apolo-udes.firebasestorage.app",
+    messagingSenderId: "588093325085",
+    appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const params = new URLSearchParams(window.location.search);
+  const graduandoId = params.get('id');
+
+  window.db = db;
+  window.graduandoId = graduandoId;
+  window.addDoc = addDoc;
+  window.collection = collection;
+  window.serverTimestamp = serverTimestamp;
+
+  if (!graduandoId) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-card').style.display = 'block';
+  } else {
+    // Carga datos del graduando
+    const gradRef = doc(db, 'graduandos', graduandoId);
+    getDoc(gradRef).then(async snap => {
+      document.getElementById('loading').style.display = 'none';
+
+      if (!snap.exists()) {
+        document.getElementById('error-card').style.display = 'block';
+        return;
+      }
+
+      const grad = snap.data();
+      window.graduandoData = grad;
+
+      // Carga configuración del evento
+      const confRef = doc(db, 'configuracion', 'evento');
+      const confSnap = await getDoc(confRef);
+      const conf = confSnap.exists() ? confSnap.data() : {};
+      const maxInvitados = conf.maxInvitadosPorGraduando || 2;
+      window.maxInvitados = maxInvitados;
+
+      document.getElementById('grad-nombre').textContent = grad.nombreCompleto || '';
+      document.getElementById('grad-prog').textContent = (grad.programa || '') + ' · ' + (grad.facultad || '');
+      document.getElementById('cupo-badge').textContent = `Puedes registrar hasta ${maxInvitados} invitado${maxInvitados > 1 ? 's' : ''}`;
+
+      // Genera formularios de invitados
+      const container = document.getElementById('invitados-container');
+      for (let i = 1; i <= maxInvitados; i++) {
+        const isFirst = i === 1;
+        container.innerHTML += `
+          <div class="card invitado-card">
+            <div class="invitado-num">Invitado ${i} ${isFirst ? '(Principal)' : '(Adicional)'}</div>
+            <div class="form-group">
+              <label>Nombre completo *</label>
+              <input type="text" id="nombre-${i}" placeholder="Ej: María García" required />
+            </div>
+            <div class="form-group">
+              <label>Correo electrónico *</label>
+              <input type="email" id="correo-${i}" placeholder="correo@ejemplo.com" required />
+            </div>
+            <div class="form-group">
+              <label>Número de documento *</label>
+              <input type="text" id="documento-${i}" placeholder="Cédula o pasaporte" required />
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('formulario').style.display = 'block';
+
+    }).catch((e) => {
+      console.error(e);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-card').style.display = 'block';
+    });
+  }
+</script>
+
+<script>
+  async function enviarInvitados() {
+    const btn = document.getElementById('btn-enviar');
+    const max = window.maxInvitados || 2;
+    const grad = window.graduandoData || {};
+    const graduandoId = window.graduandoId;
+    const db = window.db;
+
+    // Validar al menos el primero
+    const nombre1 = document.getElementById('nombre-1')?.value.trim();
+    const correo1 = document.getElementById('correo-1')?.value.trim();
+    const doc1 = document.getElementById('documento-1')?.value.trim();
+
+    if (!nombre1 || !correo1 || !doc1) {
+      alert('Por favor completa los datos del Invitado 1.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Registrando...';
+
+    try {
+      const tipos = ['principal', 'secundaria', 'secundaria', 'secundaria'];
+
+      for (let i = 1; i <= max; i++) {
+        const nombre = document.getElementById(`nombre-${i}`)?.value.trim();
+        const correo = document.getElementById(`correo-${i}`)?.value.trim();
+        const documento = document.getElementById(`documento-${i}`)?.value.trim();
+
+        if (!nombre || !correo || !documento) continue;
+
+        const id = 'INV' + Date.now() + i;
+        await window.addDoc(window.collection(db, 'invitados'), {
+          id: id,
+          graduandoId: graduandoId,
+          graduandoNombre: grad.nombreCompleto || '',
+          nombreInvitado: nombre,
+          correoInvitado: correo,
+          documento: documento,
+          tipo: tipos[i - 1] || 'secundaria',
+          estado: 'pendiente',
+          codigoQr: 'QR-' + id,
+          fechaRegistro: window.serverTimestamp(),
+        });
+      }
+
+      document.getElementById('formulario').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+
+    } catch (e) {
+      console.error(e);
+      alert('Error al registrar. Intenta de nuevo.');
+      btn.disabled = false;
+      btn.textContent = 'Enviar invitaciones →';
+    }
+  }
+</script>
+
+</body>
+</html>
