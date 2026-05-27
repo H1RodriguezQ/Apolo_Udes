@@ -111,9 +111,10 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final registros = provider.registrosAcceso;
+    final isMobile = MediaQuery.of(context).size.width < 800;
 
     return Padding(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isMobile ? 16 : 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -123,7 +124,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: Row(
+            child: isMobile
+                ? _buildMobileLayout(registros)
+                : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Panel izquierdo: escáner ──
@@ -295,6 +298,88 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(List<RegistroAcceso> registros) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(width: double.infinity, height: 220, child: _buildCameraArea()),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _toggleCamara,
+                        icon: Icon(_camaraActiva ? Icons.videocam_off_rounded : Icons.qr_code_scanner_rounded, size: 18),
+                        label: Text(_camaraActiva ? 'Detener' : 'Activar cámara'),
+                        style: ElevatedButton.styleFrom(backgroundColor: _camaraActiva ? AppColors.error : AppColors.primaryLight),
+                      ),
+                    ),
+                    if (_camaraActiva) ...[
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: _toggleLinterna,
+                        icon: Icon(_linternaActiva ? Icons.flash_off_rounded : Icons.flash_on_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: _linternaActiva ? AppColors.warning : AppColors.surfaceVariant,
+                          foregroundColor: _linternaActiva ? Colors.white : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ]),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _codigoController,
+                    decoration: const InputDecoration(hintText: 'Documento o código QR', prefixIcon: Icon(Icons.badge_outlined)),
+                    onSubmitted: (_) => _verificarManual(),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _procesando ? null : _verificarManual,
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      label: const Text('Verificar'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Text('Registro en tiempo real', style: AppTextStyles.h4),
+                    const SizedBox(width: 8),
+                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                    const SizedBox(width: 4),
+                    Text('${registros.length} accesos', style: AppTextStyles.bodySmall),
+                  ]),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  registros.isEmpty
+                      ? const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('Sin registros aún', style: AppTextStyles.bodySmall)))
+                      : Column(children: registros.take(10).map((r) => _RegistroTile(registro: r)).toList()),
+                ],
+              ),
             ),
           ),
         ],

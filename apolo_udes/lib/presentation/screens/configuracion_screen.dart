@@ -18,24 +18,75 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
   bool _guardando = false;
   bool _cargando = true;
   final _aforoCtrl = TextEditingController();
+  final _lugarCtrl = TextEditingController();
+  final _direccionCtrl = TextEditingController();
+  final _ciudadCtrl = TextEditingController();
 
-  final Map<String, String> _horasPorFacultad = {
-    'Ciencias de la Salud': '08:00 AM',
-    'Ciencias Económicas y Administrativas': '10:00 AM',
-    'Ingenierías': '02:00 PM',
-    'Ciencias Jurídicas y Sociales': '04:00 PM',
-    'Ciencias Naturales': '04:00 PM',
-  };
+  // Facultades reales de UDES
+  final List<String> _facultades = [
+    'Ciencias Médicas y de la Salud',
+    'Ingenierías y Tecnologías',
+    'Ciencias Económicas, Administrativas y Contables',
+    'Ciencias Exactas, Naturales y Agropecuarias',
+    'Ciencias Sociales, Humanidades y Educación',
+  ];
+
+  final Map<String, String> _horasPorFacultad = {};
 
   @override
   void initState() {
     super.initState();
+    _inicializarHoras();
     _cargarConfiguracion();
+  }
+
+
+
+  void _inicializarHoras() {
+    // Generar horas cada 30 minutos desde 8:30 AM hasta 6:00 PM
+    final List<String> horasDisponibles = _generarHorarios();
+    
+    // Asignar una hora diferente a cada facultad
+    for (int i = 0; i < _facultades.length; i++) {
+      if (i < horasDisponibles.length) {
+        _horasPorFacultad[_facultades[i]] = horasDisponibles[i];
+      } else {
+        _horasPorFacultad[_facultades[i]] = horasDisponibles.last;
+      }
+    }
+  }
+
+  List<String> _generarHorarios() {
+    final List<String> horarios = [];
+    // Comenzar desde 8:30 AM
+    int hora = 8;
+    int minuto = 30;
+
+    while (hora < 18 || (hora == 18 && minuto == 0)) {
+      final hourFormatted = hora > 12 ? hora - 12 : (hora == 0 ? 12 : hora);
+      final periodo = hora >= 12 ? 'PM' : 'AM';
+      final horarioFormato =
+          '${hourFormatted.toString().padLeft(2, '0')}:${minuto.toString().padLeft(2, '0')} $periodo';
+      horarios.add(horarioFormato);
+
+      minuto += 30;
+      if (minuto >= 60) {
+        minuto = 0;
+        hora++;
+      }
+
+      if (hora > 18) break;
+    }
+
+    return horarios;
   }
 
   @override
   void dispose() {
     _aforoCtrl.dispose();
+    _lugarCtrl.dispose();
+    _direccionCtrl.dispose();
+    _ciudadCtrl.dispose();
     super.dispose();
   }
 
@@ -48,14 +99,29 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
 
       if (doc.exists) {
         final data = doc.data()!;
+
         if (data['fechaCeremonia'] != null) {
           final ts = data['fechaCeremonia'] as Timestamp;
           setState(() => _fechaCeremonia = ts.toDate());
         }
+
+        if (data['lugar'] != null) {
+          _lugarCtrl.text = data['lugar'] as String;
+        }
+
+        if (data['direccion'] != null) {
+          _direccionCtrl.text = data['direccion'] as String;
+        }
+
+        if (data['ciudad'] != null) {
+          _ciudadCtrl.text = data['ciudad'] as String;
+        }
+
         if (data['horasPorFacultad'] != null) {
           final horas = Map<String, String>.from(data['horasPorFacultad']);
           setState(() => _horasPorFacultad.addAll(horas));
         }
+
         if (data['aforoDisponible'] != null) {
           final aforo = data['aforoDisponible'] as int;
           _aforoCtrl.text = aforo.toString();
@@ -63,9 +129,14 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
             context.read<AppProvider>().setAforoDisponible(aforo);
           }
         }
+      } else {
+        // Valores por defecto
+        _lugarCtrl.text = 'Auditorio Mayor, Campus Lagos del Cacique';
+        _direccionCtrl.text = 'Calle 70 No. 55-210';
+        _ciudadCtrl.text = 'Bucaramanga, Santander';
+        _aforoCtrl.text = '500';
       }
 
-      // Si no hay valor en Firestore, usar el del provider
       if (_aforoCtrl.text.isEmpty && mounted) {
         _aforoCtrl.text =
             context.read<AppProvider>().aforoDisponible.toString();
@@ -92,6 +163,36 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       return;
     }
 
+    if (_lugarCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa el lugar del evento'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_direccionCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa la dirección del evento'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_ciudadCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa la ciudad del evento'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     final aforoValor = int.tryParse(_aforoCtrl.text.trim());
     if (aforoValor == null || aforoValor <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,11 +211,11 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
           .doc('evento')
           .set({
         'fechaCeremonia': Timestamp.fromDate(_fechaCeremonia!),
+        'lugar': _lugarCtrl.text.trim(),
+        'direccion': _direccionCtrl.text.trim(),
+        'ciudad': _ciudadCtrl.text.trim(),
         'horasPorFacultad': _horasPorFacultad,
         'aforoDisponible': aforoValor,
-        'lugar': AppConstants.eventoLugar,
-        'direccion': AppConstants.eventoDireccion,
-        'ciudad': AppConstants.eventoCiudad,
         'actualizadoPor':
             context.read<AppProvider>().usuarioActual?.correo ?? 'admin',
         'actualizadoEn': FieldValue.serverTimestamp(),
@@ -170,7 +271,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                     Text('Configuración del Evento', style: AppTextStyles.h1),
                     SizedBox(height: 4),
                     Text(
-                      'Fecha, hora, aforo y lugar de la ceremonia de grado',
+                      'Fecha, hora, aforo, lugar y facultades',
                       style: TextStyle(
                           color: AppColors.textSecondary, fontSize: 14),
                     ),
@@ -191,9 +292,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
           if (_cargando)
             const Center(child: CircularProgressIndicator())
           else
@@ -231,7 +330,8 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                   color: _fechaCeremonia != null
-                                      ? AppColors.primaryLight.withValues(alpha: 0.05)
+                                      ? AppColors.primaryLight
+                                          .withValues(alpha: 0.05)
                                       : AppColors.surface,
                                 ),
                                 child: Row(
@@ -270,7 +370,54 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
 
+                    // ── Lugar del Evento (Editable) ──
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('📍 Lugar del Evento',
+                                style: AppTextStyles.h3),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Nombre del lugar donde se realizará la ceremonia',
+                              style: TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _lugarCtrl,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.location_on_rounded),
+                                hintText: 'Ej: Auditorio Mayor',
+                                helperText: 'Nombre del lugar',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _direccionCtrl,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.map_rounded),
+                                hintText: 'Ej: Calle 70 No. 55-210',
+                                helperText: 'Dirección completa',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _ciudadCtrl,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.location_city_rounded),
+                                hintText: 'Ej: Bucaramanga, Santander',
+                                helperText: 'Ciudad, Departamento',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 16),
 
                     // ── Aforo ──
@@ -308,7 +455,6 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
                     // ── Horas por facultad ──
@@ -376,74 +522,12 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Lugar (fijo) ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('📍 Lugar del Evento',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 16),
-                            _infoRow(Icons.location_on_rounded,
-                                AppConstants.eventoLugar),
-                            const SizedBox(height: 8),
-                            _infoRow(Icons.map_rounded,
-                                AppConstants.eventoDireccion),
-                            const SizedBox(height: 8),
-                            _infoRow(Icons.location_city_rounded,
-                                AppConstants.eventoCiudad),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryLight.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                    color: AppColors.primaryLight
-                                        .withValues(alpha: 0.2)),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.info_outline_rounded,
-                                      size: 16, color: AppColors.primaryLight),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'El lugar es fijo y no puede modificarse desde la app.',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.primaryLight),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
         ],
       ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
-        Text(text,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-      ],
     );
   }
 }

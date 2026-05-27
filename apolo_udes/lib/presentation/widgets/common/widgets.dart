@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 
-// ---- Metric Card ----
+// ---- Metric Card (Optimizado para pantallas estrechas) ----
 class MetricCard extends StatelessWidget {
   final String title;
   final String value;
@@ -21,57 +21,74 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Detectamos si la pantalla es muy angosta (como un celular en modo vertical)
+    final bool isSmallScreen = MediaQuery.of(context).size.width < 360;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 20), // Padding dinámico
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: color, size: 22),
+                  child: Icon(icon, color: color, size: 20),
                 ),
                 const Spacer(),
                 if (subtitle != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.successLight,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        color: AppColors.success,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                  Flexible( // Evita que un subtítulo largo rompa el Row
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                letterSpacing: -1,
+            // Ajuste Responsivo para números muy grandes (FittedBox evita el overflow)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 28, // Bajado ligeramente de 30 para mejor ajuste
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
               ),
             ),
             const SizedBox(height: 4),
-            Text(title, style: AppTextStyles.label),
+            Text(
+              title, 
+              style: AppTextStyles.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis, // Si el título es largo, añade '...'
+            ),
           ],
         ),
       ),
@@ -179,7 +196,7 @@ class StatusBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: textColor,
-          fontSize: 12,
+          fontSize: 11, // Bajado sutilmente de 12 para pantallas pequeñas
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -187,7 +204,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-// ---- Section Header ----
+// ---- Section Header (Anti-desbordamiento en Celulares) ----
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -202,20 +219,58 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Verificamos si la pantalla es de tamaño móvil
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
+    // Si es móvil y hay un botón de acción, envolvemos en una columna para que no se corte
+    if (isMobile && action != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.h2),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(subtitle!, style: AppTextStyles.label),
+          ],
+          const SizedBox(height: 12),
+          // El botón de acción se sitúa abajo ocupando el espacio necesario
+          Align(
+            alignment: Alignment.centerLeft,
+            child: action!,
+          ),
+        ],
+      );
+    }
+
+    // Diseño original optimizado con Flexible para Tablets/Web
     return Row(
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: AppTextStyles.h2),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(subtitle!, style: AppTextStyles.label),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title, 
+                style: AppTextStyles.h2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!, 
+                  style: AppTextStyles.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-        const Spacer(),
-        if (action != null) action!,
+        if (action != null) ...[
+          const SizedBox(width: 16),
+          action!,
+        ],
       ],
     );
   }
@@ -237,15 +292,26 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: AppColors.textHint),
-          const SizedBox(height: 16),
-          Text(title, style: AppTextStyles.h3),
-          const SizedBox(height: 8),
-          Text(subtitle, style: AppTextStyles.label, textAlign: TextAlign.center),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: AppColors.textHint),
+            const SizedBox(height: 16),
+            Text(
+              title, 
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle, 
+              style: AppTextStyles.label, 
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

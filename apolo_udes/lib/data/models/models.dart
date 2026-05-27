@@ -10,6 +10,8 @@ enum EstadoInvitacion { confirmada, pendiente, enviada, rechazada }
 
 enum EstadoConfirmacion { confirmado, pendiente, rechazado }
 
+enum EstadoDirectivo { confirmado, pendiente, rechazado }
+
 enum TipoInvitacion { principal, secundaria }
 
 enum RolUsuario { administrador, operador }
@@ -56,6 +58,19 @@ extension EstadoConfirmacionExt on EstadoConfirmacion {
       case EstadoConfirmacion.pendiente:
         return 'Pendiente';
       case EstadoConfirmacion.rechazado:
+        return 'Rechazado';
+    }
+  }
+}
+
+extension EstadoDirectivoExt on EstadoDirectivo {
+  String get label {
+    switch (this) {
+      case EstadoDirectivo.confirmado:
+        return 'Confirmado';
+      case EstadoDirectivo.pendiente:
+        return 'Pendiente';
+      case EstadoDirectivo.rechazado:
         return 'Rechazado';
     }
   }
@@ -185,6 +200,50 @@ class Confirmacion {
   });
 }
 
+class Directivo {
+  final String id;
+  final String nombre;
+  final String cargo; // Rector, Vicerrector, Decano, etc.
+  final String correo;
+  final String? facultad; // Null si es rectorado, facultad si es decano
+  final String? telefono;
+  final EstadoDirectivo estado;
+  final DateTime? fechaConfirmacion;
+
+  Directivo({
+    required this.id,
+    required this.nombre,
+    required this.cargo,
+    required this.correo,
+    this.facultad,
+    this.telefono,
+    required this.estado,
+    this.fechaConfirmacion,
+  });
+
+  Directivo copyWith({
+    String? id,
+    String? nombre,
+    String? cargo,
+    String? correo,
+    String? facultad,
+    String? telefono,
+    EstadoDirectivo? estado,
+    DateTime? fechaConfirmacion,
+  }) {
+    return Directivo(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      cargo: cargo ?? this.cargo,
+      correo: correo ?? this.correo,
+      facultad: facultad ?? this.facultad,
+      telefono: telefono ?? this.telefono,
+      estado: estado ?? this.estado,
+      fechaConfirmacion: fechaConfirmacion ?? this.fechaConfirmacion,
+    );
+  }
+}
+
 class RegistroAcceso {
   final String id;
   final String nombre;
@@ -225,7 +284,7 @@ class Usuario {
   final String id;
   final String nombre;
   final String correo;
-  final String password; // ← campo agregado
+  final String password;
   final RolUsuario rol;
   final EstadoUsuario estado;
   final DateTime ultimoAcceso;

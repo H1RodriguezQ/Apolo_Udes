@@ -15,6 +15,7 @@ class AppSidebar extends StatelessWidget {
     _SidebarItem(label: 'Control de Acceso', icon: Icons.qr_code_scanner_rounded, adminOnly: false),
     _SidebarItem(label: 'Notificaciones', icon: Icons.notifications_rounded, adminOnly: false),
     _SidebarItem(label: 'Usuarios', icon: Icons.people_rounded, adminOnly: true),
+    _SidebarItem(label: 'Directivos', icon: Icons.person_outline_rounded, adminOnly: false),
     _SidebarItem(label: 'Configuración', icon: Icons.settings_rounded, adminOnly: true),
   ];
 

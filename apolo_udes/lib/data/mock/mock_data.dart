@@ -1,8 +1,82 @@
 import '../models/models.dart';
 
 class MockData {
-  // ---- Graduandos (datos de ejemplo, se reemplazan con Firestore) ----
+  // ---- Graduandos se cargan SOLO de Firestore ----
   static List<Graduando> graduandos = [];
+
+  // ---- Directivos ----
+  static List<Directivo> directivos = [
+    Directivo(
+      id: 'DIR001',
+      nombre: 'Dr. Jaime Ramírez Gómez',
+      cargo: 'Rector General',
+      correo: 'j.ramirez@udes.edu.co',
+      facultad: null,
+      telefono: '3001111111',
+      estado: EstadoDirectivo.pendiente,
+      fechaConfirmacion: null,
+    ),
+    Directivo(
+      id: 'DIR002',
+      nombre: 'Dra. Sandra Martínez López',
+      cargo: 'Vicerrectora Académica',
+      correo: 's.martinez@udes.edu.co',
+      facultad: null,
+      telefono: '3002222222',
+      estado: EstadoDirectivo.pendiente,
+      fechaConfirmacion: null,
+    ),
+    Directivo(
+      id: 'DIR003',
+      nombre: 'Ing. Roberto Soto Silva',
+      cargo: 'Vicerrector de Administración',
+      correo: 'r.soto@udes.edu.co',
+      facultad: null,
+      telefono: '3003333333',
+      estado: EstadoDirectivo.pendiente,
+      fechaConfirmacion: null,
+    ),
+    Directivo(
+      id: 'DIR004',
+      nombre: 'Dr. Carlos Mendez Ruiz',
+      cargo: 'Decano',
+      correo: 'c.mendez@udes.edu.co',
+      facultad: 'Ingenierías y Tecnologías',
+      telefono: '3004444444',
+      estado: EstadoDirectivo.confirmado,
+      fechaConfirmacion: DateTime(2026, 5, 20),
+    ),
+    Directivo(
+      id: 'DIR005',
+      nombre: 'Dra. María Rodríguez Torres',
+      cargo: 'Decana',
+      correo: 'm.rodriguez@udes.edu.co',
+      facultad: 'Ciencias Médicas y de la Salud',
+      telefono: '3005555555',
+      estado: EstadoDirectivo.pendiente,
+      fechaConfirmacion: null,
+    ),
+    Directivo(
+      id: 'DIR006',
+      nombre: 'Ing. Fernando García Pérez',
+      cargo: 'Decano',
+      correo: 'f.garcia@udes.edu.co',
+      facultad: 'Ciencias Económicas, Administrativas y Contables',
+      telefono: '3006666666',
+      estado: EstadoDirectivo.rechazado,
+      fechaConfirmacion: DateTime(2026, 5, 21),
+    ),
+    Directivo(
+      id: 'DIR007',
+      nombre: 'Dra. Luz Elena Sánchez Vega',
+      cargo: 'Decana',
+      correo: 'l.sanchez@udes.edu.co',
+      facultad: 'Ciencias Sociales, Humanidades y Educación',
+      telefono: '3007777777',
+      estado: EstadoDirectivo.pendiente,
+      fechaConfirmacion: null,
+    ),
+  ];
 
   // ---- Invitaciones y confirmaciones vienen de Firestore ----
   static List<Invitacion> invitaciones = [];

@@ -48,6 +48,7 @@ class AppProvider extends ChangeNotifier {
   List<Graduando> _graduandos = List.from(MockData.graduandos);
   List<Invitacion> _invitaciones = [];
   List<Confirmacion> _confirmaciones = [];
+  List<Directivo> _directivos = [];
   final List<RegistroAcceso> _registrosAcceso = List.from(MockData.registrosAcceso);
   final List<CampanaNotificacion> _notificaciones = List.from(MockData.notificaciones);
   List<Usuario> _usuarios = List.from(MockData.usuarios);
@@ -56,6 +57,7 @@ class AppProvider extends ChangeNotifier {
   List<Graduando> get graduandos => _graduandos;
   List<Invitacion> get invitaciones => _invitaciones;
   List<Confirmacion> get confirmaciones => _confirmaciones;
+  List<Directivo> get directivos => _directivos;
   List<RegistroAcceso> get registrosAcceso => _registrosAcceso;
   List<CampanaNotificacion> get notificaciones => _notificaciones;
   List<Usuario> get usuarios => _usuarios;
@@ -65,6 +67,9 @@ class AppProvider extends ChangeNotifier {
   int get totalInvitaciones => _invitaciones.length;
   int get totalConfirmaciones =>
       _confirmaciones.where((c) => c.estado == EstadoConfirmacion.confirmado).length;
+  int get totalDirectivos => _directivos.length;
+  int get directivosConfirmados =>
+      _directivos.where((d) => d.estado == EstadoDirectivo.confirmado).length;
 
   // ── Auth ──
   bool login(String correo, String password, {String role = 'admin'}) {
@@ -100,6 +105,7 @@ class AppProvider extends ChangeNotifier {
     _procesarInvitadosPendientes();
     _escucharInvitacionesFirestore();
     _escucharConfirmacionesFirestore();
+    _escucharDirectivosFirestore();
     return true;
   }
 
@@ -110,9 +116,11 @@ class AppProvider extends ChangeNotifier {
     _invitadosSubscription?.cancel();
     _invitacionesSubscription?.cancel();
     _confirmacionesSubscription?.cancel();
+    _directivosSubscription?.cancel();
     _invitadosSubscription = null;
     _invitacionesSubscription = null;
     _confirmacionesSubscription = null;
+    _directivosSubscription = null;
     _invitadosProcesados.clear();
     _invitaciones = [];
     _confirmaciones = [];
@@ -489,6 +497,125 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Directivos CRUD ──
+  StreamSubscription? _directivosSubscription;
+
+  void _escucharDirectivosFirestore() {
+    if (kIsWeb) return;
+    _directivosSubscription?.cancel();
+    _directivosSubscription = FirebaseFirestore.instance
+        .collection('directivos')
+        .snapshots()
+        .listen((snapshot) {
+      _directivos = snapshot.docs.map((doc) {
+        final data = doc.data();
+        EstadoDirectivo estado = EstadoDirectivo.pendiente;
+        final conf = data['confirmacion'] as String?;
+        if (conf == 'confirmado') estado = EstadoDirectivo.confirmado;
+        if (conf == 'rechazado') estado = EstadoDirectivo.rechazado;
+        return Directivo(
+          id: doc.id,
+          nombre: data['nombre'] as String? ?? '',
+          cargo: data['cargo'] as String? ?? '',
+          correo: data['correo'] as String? ?? '',
+          facultad: data['facultad'] as String?,
+          telefono: data['telefono'] as String?,
+          estado: estado,
+          fechaConfirmacion: null,
+        );
+      }).toList();
+      notifyListeners();
+    }, onError: (e) => debugPrint('Error escuchando directivos: $e'));
+  }
+
+  Future<void> agregarDirectivo(Directivo directivo) async {
+    if (!isAdmin) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('directivos')
+          .doc(directivo.id)
+          .set({
+        'id': directivo.id,
+        'nombre': directivo.nombre,
+        'cargo': directivo.cargo,
+        'correo': directivo.correo,
+        'facultad': directivo.facultad,
+        'telefono': directivo.telefono,
+        'confirmacion': 'pendiente',
+        'fechaRegistro': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error guardando directivo: $e');
+    }
+    _directivos.add(directivo);
+    _agregarActividad('Directivo agregado - ${directivo.nombre}', 'user');
+    notifyListeners();
+
+    if (directivo.correo.isNotEmpty) {
+      try {
+        await EmailService.enviarInvitacionDirectivo(
+          nombre: directivo.nombre,
+          cargo: directivo.cargo,
+          correo: directivo.correo,
+          directivoId: directivo.id,
+          fechaCeremonia: _fechaCeremonia,
+        );
+        debugPrint('✅ Invitación directivo enviada a ${directivo.correo}');
+      } catch (e) {
+        debugPrint('Error enviando correo directivo: $e');
+      }
+    }
+  }
+
+  Future<void> editarDirectivo(Directivo directivo) async {
+    if (!isAdmin) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('directivos')
+          .doc(directivo.id)
+          .update({
+        'nombre': directivo.nombre,
+        'cargo': directivo.cargo,
+        'correo': directivo.correo,
+        'facultad': directivo.facultad,
+        'telefono': directivo.telefono,
+      });
+    } catch (e) {
+      debugPrint('Error editando directivo: $e');
+    }
+    final index = _directivos.indexWhere((d) => d.id == directivo.id);
+    if (index != -1) {
+      _directivos[index] = directivo;
+      _agregarActividad('Directivo actualizado - ${directivo.nombre}', 'user');
+      notifyListeners();
+    }
+  }
+
+  Future<void> eliminarDirectivo(String id) async {
+    if (!isAdmin) return;
+    try {
+      await FirebaseFirestore.instance.collection('directivos').doc(id).delete();
+    } catch (e) {
+      debugPrint('Error eliminando directivo: $e');
+    }
+    _directivos.removeWhere((d) => d.id == id);
+    _agregarActividad('Directivo eliminado', 'delete');
+    notifyListeners();
+  }
+
+  Future<void> limpiarDirectivos() async {
+    if (!isAdmin) return;
+    final cantidad = _directivos.length;
+    for (final d in List.from(_directivos)) {
+      try {
+        await FirebaseFirestore.instance.collection('directivos').doc(d.id).delete();
+      } catch (_) {}
+    }
+    _directivos = [];
+    _agregarActividad('Directivos eliminados ($cantidad registros)', 'delete');
+    notifyListeners();
+  }
+
   // ── Usuarios CRUD ──
   void agregarUsuario(Usuario usuario) {
     if (!isAdmin) return;
@@ -561,8 +688,51 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  void enviarRecordatorios() {
-    _agregarActividad('Envío de recordatorios masivo', 'email');
+  Future<void> enviarRecordatorios() async {
+    if (kIsWeb) return;
+    int enviados = 0;
+
+    // Solo enviar a invitados que tienen correo y estado enviado o confirmado
+    final snapshot = await FirebaseFirestore.instance
+        .collection('invitados')
+        .where('estado', whereIn: ['enviado', 'confirmado'])
+        .get();
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final correo = data['correoInvitado'] as String? ?? '';
+      final nombre = data['nombreInvitado'] as String? ?? '';
+      final codigoQr = data['codigoQr'] as String? ?? '';
+      final qrUrl = data['qrUrl'] as String? ?? '';
+      final graduandoNombre = data['graduandoNombre'] as String? ?? '';
+      final graduandoId = data['graduandoId'] as String? ?? '';
+
+      if (correo.isEmpty) continue;
+
+      // Obtener hora del graduando
+      String hora = '';
+      try {
+        final graduando = _graduandos.firstWhere((g) => g.id == graduandoId);
+        hora = graduando.horaCeremonia;
+      } catch (_) {}
+
+      try {
+        await EmailService.enviarRecordatorio(
+          nombreInvitado: nombre,
+          correoInvitado: correo,
+          codigoQr: codigoQr,
+          fechaCeremonia: _fechaCeremonia,
+          horaCeremonia: hora,
+          graduandoNombre: graduandoNombre,
+          qrUrl: qrUrl,
+        );
+        enviados++;
+      } catch (e) {
+        debugPrint('Error enviando recordatorio a $correo: $e');
+      }
+    }
+
+    _agregarActividad('Recordatorios enviados ($enviados)', 'email');
     notifyListeners();
   }
 }

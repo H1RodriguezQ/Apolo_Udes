@@ -25,50 +25,51 @@ class AppConstants {
     {'label': 'Usuarios', 'icon': 'people', 'route': routeUsuarios},
   ];
 
-  // ── Facultades y programas reales UDES Bucaramanga ──
+  // ── Facultades y programas reales UDES ──
   static const List<String> facultades = [
-    'Ciencias de la Salud',
-    'Ciencias Económicas y Administrativas',
-    'Ingenierías',
-    'Ciencias Jurídicas y Sociales',
-    'Ciencias Naturales',
+    'Ciencias Médicas y de la Salud',
+    'Ingenierías y Tecnologías',
+    'Ciencias Económicas, Administrativas y Contables',
+    'Ciencias Exactas, Naturales y Agropecuarias',
+    'Ciencias Sociales, Políticas y Humanidades',
   ];
 
   static const Map<String, List<String>> programasPorFacultad = {
-    'Ciencias de la Salud': [
-      'Bacteriología y Laboratorio Clínico',
+    'Ciencias Médicas y de la Salud': [
+      'Medicina',
       'Enfermería',
       'Fisioterapia',
       'Fonoaudiología',
+      'Bacteriología y Laboratorio Clínico',
       'Instrumentación Quirúrgica',
-      'Medicina',
-      'Odontología',
-      'Psicología',
+      'Terapia Ocupacional',
     ],
-    'Ciencias Económicas y Administrativas': [
-      'Administración de Empresas',
+    'Ingenierías y Tecnologías': [
+      'Ingeniería Civil',
+      'Ingeniería Industrial',
+      'Ingeniería de Software',
+      'Ingeniería Ambiental',
+      'Ingeniería en Ciencias de la Computación e Inteligencia Artificial',
+      'Ingeniería Agroindustrial',
+      'Ingeniería Petroquímica',
+    ],
+    'Ciencias Económicas, Administrativas y Contables': [
       'Administración de Negocios Internacionales',
       'Administración Financiera',
       'Contaduría Pública',
-      'Economía',
+      'Mercadeo y Publicidad',
     ],
-    'Ingenierías': [
-      'Ingeniería Agroindustrial',
-      'Ingeniería Ambiental',
-      'Ingeniería Civil',
-      'Ingeniería en Ciencias de la Computación e Inteligencia Artificial',
-      'Ingeniería en Energías',
-      'Ingeniería Industrial',
-      'Ingeniería Petroquímica',
-      'Ingeniería en Software',
-    ],
-    'Ciencias Jurídicas y Sociales': [
-      'Antropología',
-      'Comunicación Social y Periodismo',
-      'Derecho',
-    ],
-    'Ciencias Naturales': [
+    'Ciencias Exactas, Naturales y Agropecuarias': [
+      'Medicina Veterinaria',
+      'Microbiología Industrial',
       'Geología',
+    ],
+    'Ciencias Sociales, Políticas y Humanidades': [
+      'Psicología',
+      'Derecho',
+      'Comunicación Social y Periodismo',
+      'Antropología',
+      'Licenciatura en Educación Infantil',
     ],
   };
 
@@ -78,27 +79,33 @@ class AppConstants {
       .toList()
     ..sort();
 
-  // ── Horas de ceremonia (configurables por el admin) ──
+  // ── Horas de ceremonia (08:30 AM a 06:00 PM, cada 30 min) ──
   static const List<String> horasCeremonia = [
-    '07:00 AM',
-    '08:00 AM',
+    '08:30 AM',
     '09:00 AM',
+    '09:30 AM',
     '10:00 AM',
+    '10:30 AM',
     '11:00 AM',
+    '11:30 AM',
     '12:00 PM',
+    '12:30 PM',
     '01:00 PM',
+    '01:30 PM',
     '02:00 PM',
+    '02:30 PM',
     '03:00 PM',
+    '03:30 PM',
     '04:00 PM',
+    '04:30 PM',
     '05:00 PM',
+    '05:30 PM',
     '06:00 PM',
   ];
 
   // ── Configuración de correo (Gmail SMTP) ──
-  // IMPORTANTE: reemplaza emailPassword con tu contraseña de aplicación de Google
-  // Ve a: myaccount.google.com → Seguridad → Contraseñas de aplicaciones
   static const String emailRemitente = 'apolo.udes@gmail.com';
-  static const String emailPassword = 'uaqwqjiwbktuxhky'; //
+  static const String emailPassword = 'uaqwqjiwbktuxhky';
   static const String emailNombre = 'Apolo UDES - Universidad de Santander';
 
   // ── Datos del evento ──
@@ -106,5 +113,5 @@ class AppConstants {
   static const String eventoDireccion = 'Calle 70 No. 55-210, Bucaramanga';
   static const String eventoCiudad = 'Bucaramanga, Santander';
   static const String eventoInstitucion = 'Universidad de Santander - UDES';
-  static const int maxInvitadosPorGraduando = 2;
+  static const int maxInvitadosPorGraduando = 4;
 }

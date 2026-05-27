@@ -23,7 +23,7 @@ class ExcelService {
   /// Permite al usuario seleccionar un archivo Excel y lo parsea
   /// Las columnas esperadas son:
   /// A: Código | B: Documento | C: Nombres | D: Apellidos |
-  /// E: Programa | F: Facultad | G: Teléfono | H: Correo | I: Hora
+  /// E: Programa | F: Facultad | G: Teléfono | H: Correo
   static Future<ExcelImportResult> importarGraduandos() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -42,7 +42,6 @@ class ExcelService {
       final file = result.files.first;
       List<int>? bytes = file.bytes;
 
-      // En Android puede venir el path en lugar de bytes
       if (bytes == null && file.path != null) {
         bytes = await File(file.path!).readAsBytes();
       }
@@ -58,15 +57,12 @@ class ExcelService {
       final graduandos = <Graduando>[];
       final errores = <String>[];
 
-      // Tomar la primera hoja del libro
       final sheetName = excel.tables.keys.first;
       final sheet = excel.tables[sheetName]!;
 
-      // Saltar la primera fila (encabezados)
       for (int i = 1; i < sheet.rows.length; i++) {
         final row = sheet.rows[i];
         try {
-          // Saltar filas vacías
           if (row.every((cell) => cell?.value == null)) continue;
 
           final codigo = _cellAsString(row, 0);
@@ -77,9 +73,8 @@ class ExcelService {
           final facultad = _cellAsString(row, 5);
           final telefono = _cellAsString(row, 6);
           final correo = _cellAsString(row, 7);
-          final hora = _cellAsString(row, 8);
+          // Columna 8 (hora) se ignora — se asigna desde Firestore según facultad
 
-          // Validaciones mínimas
           if (documento.isEmpty || nombres.isEmpty || apellidos.isEmpty) {
             errores.add('Fila ${i + 1}: documento, nombres o apellidos vacíos');
             continue;
@@ -96,7 +91,7 @@ class ExcelService {
               facultad: facultad.isEmpty ? 'Sin facultad' : facultad,
               telefono: telefono,
               correo: correo,
-              horaCeremonia: hora.isEmpty ? '08:00 AM' : hora,
+              horaCeremonia: '08:00 AM', // Se actualiza desde Firestore según facultad
               estado: EstadoGraduando.activo,
             ),
           );
@@ -119,13 +114,12 @@ class ExcelService {
     }
   }
 
-  /// Genera un Excel de plantilla y lo comparte para que el usuario lo descargue
+  /// Genera un Excel de plantilla y lo comparte
   static Future<bool> generarYCompartirPlantilla() async {
     try {
       final excel = Excel.createExcel();
       final sheet = excel['Graduandos'];
 
-      // Encabezados
       final headers = [
         'Codigo Estudiantil',
         'Documento',
@@ -135,7 +129,6 @@ class ExcelService {
         'Facultad',
         'Telefono',
         'Correo',
-        'Hora Ceremonia',
       ];
 
       for (int i = 0; i < headers.length; i++) {
@@ -151,17 +144,16 @@ class ExcelService {
         );
       }
 
-      // Ejemplos
       final ejemplos = [
         ['2019115023', '1098765432', 'Valentina', 'Ramírez Ortiz',
-         'Medicina', 'Ciencias de la Salud', '3001234567',
-         'v.ramirez@udes.edu.co', '08:00 AM'],
+         'Medicina', 'Ciencias Médicas y de la Salud', '3001234567',
+         'v.ramirez@udes.edu.co'],
         ['2018223014', '1097654321', 'Carlos Andrés', 'Pérez González',
-         'Ingeniería de Sistemas', 'Ingenierías y Arquitectura', '3109876543',
-         'c.perez@udes.edu.co', '10:00 AM'],
+         'Ingeniería de Software', 'Ingenierías y Tecnologías', '3109876543',
+         'c.perez@udes.edu.co'],
         ['2019334521', '1096543210', 'Laura Sofía', 'Torres Méndez',
-         'Administración de Empresas', 'Ciencias Económicas y Administrativas',
-         '3154321098', 'l.torres@udes.edu.co', '02:00 PM'],
+         'Contaduría Pública', 'Ciencias Económicas, Administrativas y Contables',
+         '3154321098', 'l.torres@udes.edu.co'],
       ];
 
       for (int row = 0; row < ejemplos.length; row++) {
@@ -173,7 +165,6 @@ class ExcelService {
         }
       }
 
-      // Borrar hoja por defecto
       if (excel.tables.containsKey('Sheet1')) {
         excel.delete('Sheet1');
       }
@@ -181,12 +172,10 @@ class ExcelService {
       final bytes = excel.save();
       if (bytes == null) return false;
 
-      // Guardar en el directorio temporal
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/plantilla_graduandos_apolo_udes.xlsx');
       await file.writeAsBytes(bytes);
 
-      // Compartir
       await Share.shareXFiles(
         [XFile(file.path)],
         subject: 'Plantilla Graduandos - Apolo UDES',
@@ -199,7 +188,6 @@ class ExcelService {
     }
   }
 
-  // ── Helpers ──
   static String _cellAsString(List<Data?> row, int col) {
     if (col >= row.length) return '';
     final cell = row[col];
