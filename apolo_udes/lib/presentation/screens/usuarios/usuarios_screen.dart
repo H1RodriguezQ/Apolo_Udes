@@ -245,7 +245,8 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [Text(isEditing ? 'Editar usuario' : 'Nuevo usuario', style: AppTextStyles.h2), const Spacer(), IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context))]),
               const SizedBox(height: 16),
               _fieldLabel('Nombre completo'),
@@ -278,7 +279,8 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
                 const SizedBox(width: 12),
                 Expanded(child: ElevatedButton(onPressed: _submit, child: Text(isEditing ? 'Guardar' : 'Crear usuario'))),
               ]),
-            ]),
+              ]),
+            ),
           ),
         ),
       ),

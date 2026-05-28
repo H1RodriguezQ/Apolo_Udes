@@ -31,6 +31,18 @@
     ],
     "rewrites": [
       {
+        "source": "/invitados.html",
+        "destination": "/invitados.html"
+      },
+      {
+        "source": "/confirmar.html",
+        "destination": "/confirmar.html"
+      },
+      {
+        "source": "/directivos.html",
+        "destination": "/directivos.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

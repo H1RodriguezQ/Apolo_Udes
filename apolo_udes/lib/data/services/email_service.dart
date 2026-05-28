@@ -3,7 +3,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
 import '../../../core/constants/app_constants.dart';
 import '../models/models.dart';
-
+ 
 class EmailService {
   static Future<bool> enviarInvitacion({
     required Graduando graduando,
@@ -40,7 +40,7 @@ class EmailService {
       return false;
     }
   }
-
+ 
   static Future<bool> enviarRecordatorio({
     required String nombreInvitado,
     required String correoInvitado,
@@ -75,7 +75,7 @@ class EmailService {
       return false;
     }
   }
-
+ 
   static Future<bool> enviarCorreoRegistroInvitados({
     required Graduando graduando,
     String fechaCeremonia = '',
@@ -102,7 +102,7 @@ class EmailService {
       return false;
     }
   }
-
+ 
   static Future<bool> enviarInvitacionDirectivo({
     required String nombre,
     required String cargo,
@@ -139,7 +139,7 @@ class EmailService {
       return false;
     }
   }
-
+ 
   static String _buildCorreoGraduando({
     required Graduando graduando,
     required String urlRegistro,
@@ -154,7 +154,7 @@ class EmailService {
     final fechaHtml = fechaCeremonia.isNotEmpty
         ? '<p style="margin:8px 0 0;color:#0F2347;font-size:15px;font-weight:600;">📅 $fechaCeremonia</p>'
         : '';
-
+ 
     return '''
 <!DOCTYPE html>
 <html lang="es">
@@ -164,13 +164,13 @@ class EmailService {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
         <tr>
-          <td style="background:linear-gradient(135deg,#0F2347 0%,#1A3A6B 60%,#1E4D8C 100%);padding:40px;text-align:center;">
+          <td style="background:#0F2347;padding:40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">¡Felicitaciones!</h1>
             <p style="margin:8px 0 0;color:#B8CCE8;font-size:14px;">Universidad de Santander – UDES</p>
           </td>
         </tr>
         <tr>
-          <td style="background:linear-gradient(90deg,#C9A84C,#F0D060,#C9A84C);padding:10px;text-align:center;">
+          <td style="background:#C9A84C;padding:10px;text-align:center;">
             <p style="margin:0;color:#3D2B00;font-size:12px;font-weight:700;letter-spacing:2px;">✦ CEREMONIA DE GRADUACIÓN ✦</p>
           </td>
         </tr>
@@ -194,7 +194,7 @@ class EmailService {
             </p>
             <div style="text-align:center;margin:32px 0;">
               <a href="$urlRegistro"
-                 style="background:linear-gradient(135deg,#0F2347,#1E4D8C);color:#ffffff;padding:16px 40px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:700;display:inline-block;">
+                 style="background:#0F2347;color:#ffffff;padding:16px 40px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:700;display:inline-block;">
                 Registrar mis invitados →
               </a>
             </div>
@@ -217,7 +217,7 @@ class EmailService {
 </html>
 ''';
   }
-
+ 
   static String _buildEmailHtml({
     required Graduando graduando,
     required String nombreInvitado,
@@ -232,7 +232,7 @@ class EmailService {
     final hora = graduando.horaCeremonia;
     final lugar = AppConstants.eventoLugar;
     final direccion = AppConstants.eventoDireccion;
-
+ 
     final botonesConfirmacion = invitadoId.isNotEmpty ? '''
       <div style="text-align:center;margin-bottom:28px;">
         <p style="margin:0 0 16px;color:#2d3748;font-size:15px;font-weight:600;">¿Confirmas tu asistencia?</p>
@@ -240,7 +240,7 @@ class EmailService {
           <tr>
             <td width="50%" style="padding-right:8px;">
               <a href="https://apolo-udes.web.app/confirmar.html?id=$invitadoId&r=si"
-                 style="display:block;padding:16px 8px;background:linear-gradient(135deg,#276749,#38A169);color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
+                 style="display:block;padding:16px 8px;background:#276749;color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
                 ✅ Sí, asistiré
               </a>
             </td>
@@ -253,7 +253,7 @@ class EmailService {
           </tr>
         </table>
       </div>''' : '';
-
+ 
     return '''
 <!DOCTYPE html>
 <html lang="es">
@@ -263,13 +263,13 @@ class EmailService {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
         <tr>
-          <td style="background:linear-gradient(135deg,#0F2347 0%,#1A3A6B 60%,#1E4D8C 100%);padding:40px;text-align:center;">
+          <td style="background:#0F2347;padding:40px;text-align:center;">
             <p style="margin:0 0 8px;color:#B8CCE8;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Universidad de Santander</p>
             <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:800;">Apolo UDES</h1>
           </td>
         </tr>
         <tr>
-          <td style="background:linear-gradient(90deg,#C9A84C,#F0D060,#C9A84C);padding:12px;text-align:center;">
+          <td style="background:#C9A84C;padding:12px;text-align:center;">
             <p style="margin:0;color:#3D2B00;font-size:13px;font-weight:700;letter-spacing:2px;">✦ Invitación a: Ceremonia de Graduación ✦</p>
           </td>
         </tr>
@@ -338,7 +338,7 @@ class EmailService {
 </html>
 ''';
   }
-
+ 
   static String _buildRecordatorioHtml({
     required String nombreInvitado,
     required String codigoQr,
@@ -354,7 +354,7 @@ class EmailService {
         </div>
         <p style="margin:12px 0 0;color:#718096;font-size:12px;">Código: <strong>$codigoQr</strong></p>
       </div>''' : '<p style="text-align:center;color:#718096;">Código: <strong>$codigoQr</strong></p>';
-
+ 
     return '''
 <!DOCTYPE html>
 <html lang="es">
@@ -364,13 +364,13 @@ class EmailService {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;">
         <tr>
-          <td style="background:linear-gradient(135deg,#0F2347,#1A3A6B);padding:40px;text-align:center;">
+          <td style="background:#0F2347;padding:40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:28px;">Apolo UDES</h1>
             <p style="margin:8px 0 0;color:#B8CCE8;font-size:14px;">Universidad de Santander</p>
           </td>
         </tr>
         <tr>
-          <td style="background:linear-gradient(90deg,#C9A84C,#F0D060,#C9A84C);padding:12px;text-align:center;">
+          <td style="background:#C9A84C;padding:12px;text-align:center;">
             <p style="margin:0;color:#3D2B00;font-size:13px;font-weight:700;">🔔 Recordatorio de Ceremonia</p>
           </td>
         </tr>
@@ -409,7 +409,7 @@ class EmailService {
 </html>
 ''';
   }
-
+ 
   static String _buildDirectivoHtml({
     required String nombre,
     required String cargo,
@@ -421,7 +421,7 @@ class EmailService {
     final lugar = AppConstants.eventoLugar;
     final direccion = AppConstants.eventoDireccion;
     final ciudad = AppConstants.eventoCiudad;
-
+ 
     return '''
 <!DOCTYPE html>
 <html lang="es">
@@ -431,13 +431,13 @@ class EmailService {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;">
         <tr>
-          <td style="background:linear-gradient(135deg,#0F2347,#1A3A6B);padding:40px;text-align:center;">
+          <td style="background:#0F2347;padding:40px;text-align:center;">
             <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:800;">Apolo UDES</h1>
             <p style="margin:8px 0 0;color:#B8CCE8;font-size:14px;">Universidad de Santander</p>
           </td>
         </tr>
         <tr>
-          <td style="background:linear-gradient(90deg,#C9A84C,#F0D060,#C9A84C);padding:12px;text-align:center;">
+          <td style="background:#C9A84C;padding:12px;text-align:center;">
             <p style="margin:0;color:#3D2B00;font-size:13px;font-weight:700;">✦ Invitación Oficial - Ceremonia de Graduación ✦</p>
           </td>
         </tr>
@@ -472,7 +472,7 @@ class EmailService {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td width="50%" style="padding-right:8px;">
-                    <a href="$urlConfirmar" style="display:block;padding:16px;background:linear-gradient(135deg,#276749,#38A169);color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
+                    <a href="$urlConfirmar" style="display:block;padding:16px;background:#276749;color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
                       ✅ Sí, asistiré
                     </a>
                   </td>
@@ -499,3 +499,4 @@ class EmailService {
 ''';
   }
 }
+ 

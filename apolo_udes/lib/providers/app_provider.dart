@@ -35,12 +35,13 @@ class AppProvider extends ChangeNotifier {
   final Set<String> _invitadosProcesados = {};
 
   // ── Aforo editable ──
-  int _aforoDisponible = 145;
-  int get aforoDisponible => _aforoDisponible;
-  void setAforoDisponible(int valor) {
-    _aforoDisponible = valor;
-    notifyListeners();
-  }
+int _aforoTotal = 145;
+int get aforoTotal => _aforoTotal;
+int get aforoDisponible => (_aforoTotal - totalConfirmaciones).clamp(0, _aforoTotal);
+void setAforoDisponible(int valor) {
+  _aforoTotal = valor;
+  notifyListeners();
+}
 
   // ── Fecha ceremonia cargada de Firestore ──
   String _fechaCeremonia = '';
