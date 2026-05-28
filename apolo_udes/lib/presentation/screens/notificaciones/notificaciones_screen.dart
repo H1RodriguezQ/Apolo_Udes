@@ -28,7 +28,7 @@ class NotificacionesScreen extends StatelessWidget {
             children: [
               const Expanded(child: SectionHeader(title: 'Notificaciones', subtitle: 'Gestión de campañas de comunicación')),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => _mostrarNuevaCampana(context, provider),
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Nueva campaña'),
               ),
@@ -36,7 +36,6 @@ class NotificacionesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Metrics
           isMobile
               ? Column(children: [
                   Row(children: [
@@ -61,13 +60,148 @@ class NotificacionesScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           Expanded(
-            child: ListView.separated(
-              itemCount: notificaciones.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) => _CampaignCard(campana: notificaciones[i], isMobile: isMobile),
-            ),
+            child: notificaciones.isEmpty
+                ? const EmptyState(
+                    icon: Icons.campaign_rounded,
+                    title: 'Sin campañas',
+                    subtitle: 'Crea una nueva campaña para enviar notificaciones',
+                  )
+                : ListView.separated(
+                    itemCount: notificaciones.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, i) => _CampaignCard(campana: notificaciones[i], isMobile: isMobile),
+                  ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _mostrarNuevaCampana(BuildContext context, AppProvider provider) {
+    showDialog(
+      context: context,
+      builder: (_) => _NuevaCampanaDialog(provider: provider),
+    );
+  }
+}
+
+class _NuevaCampanaDialog extends StatefulWidget {
+  final AppProvider provider;
+  const _NuevaCampanaDialog({required this.provider});
+
+  @override
+  State<_NuevaCampanaDialog> createState() => _NuevaCampanaDialogState();
+}
+
+class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
+  final _tituloCtrl = TextEditingController();
+  final _mensajeCtrl = TextEditingController();
+  String _destinatarios = 'todos';
+  bool _enviando = false;
+
+  @override
+  void dispose() {
+    _tituloCtrl.dispose();
+    _mensajeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enviar() async {
+    if (_tituloCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un título'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
+    setState(() => _enviando = true);
+
+    try {
+      await widget.provider.enviarCampana(
+        titulo: _tituloCtrl.text.trim(),
+        mensaje: _mensajeCtrl.text.trim(),
+        destinatarios: _destinatarios,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Campaña enviada exitosamente'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Expanded(child: Text('Nueva campaña', style: AppTextStyles.h2)),
+                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+              ]),
+              const SizedBox(height: 16),
+              const Text('Título', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _tituloCtrl,
+                decoration: const InputDecoration(hintText: 'Ej: Recordatorio ceremonia de grado'),
+              ),
+              const SizedBox(height: 14),
+              const Text('Mensaje (opcional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _mensajeCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(hintText: 'Mensaje adicional para los invitados...'),
+              ),
+              const SizedBox(height: 14),
+              const Text('Destinatarios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: _destinatarios,
+                decoration: const InputDecoration(),
+                items: const [
+                  DropdownMenuItem(value: 'todos', child: Text('Todos los invitados')),
+                  DropdownMenuItem(value: 'confirmados', child: Text('Solo confirmados')),
+                  DropdownMenuItem(value: 'pendientes', child: Text('Solo pendientes')),
+                ],
+                onChanged: (v) => setState(() => _destinatarios = v!),
+              ),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _enviando ? null : _enviar,
+                    icon: _enviando
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.send_rounded, size: 16),
+                    label: Text(_enviando ? 'Enviando...' : 'Enviar campaña'),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -129,19 +263,9 @@ class _CampaignCard extends StatelessWidget {
                 Text(campana.descripcion, style: AppTextStyles.bodySmall),
               ])),
             ]),
-            if (campana.fechaEnvio != null || campana.estado == EstadoNotificacion.pendiente) ...[
+            if (campana.fechaEnvio != null) ...[
               const SizedBox(height: 10),
-              Row(children: [
-                if (campana.fechaEnvio != null) Text(DateFormat('dd/MM/yyyy HH:mm').format(campana.fechaEnvio!), style: AppTextStyles.caption),
-                const Spacer(),
-                if (campana.estado == EstadoNotificacion.pendiente)
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.send_rounded, size: 16),
-                    label: const Text('Enviar', style: TextStyle(fontSize: 13)),
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8)),
-                  ),
-              ]),
+              Text(DateFormat('dd/MM/yyyy HH:mm').format(campana.fechaEnvio!), style: AppTextStyles.caption),
             ],
           ],
         ),

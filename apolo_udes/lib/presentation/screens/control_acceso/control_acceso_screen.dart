@@ -16,11 +16,21 @@ class ControlAccesoScreen extends StatefulWidget {
 
 class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   final _codigoController = TextEditingController();
-  final MobileScannerController _scannerController = MobileScannerController(
+  MobileScannerController _scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
     facing: CameraFacing.back,
     torchEnabled: false,
   );
+
+  void _recrearController() {
+    _scannerController.dispose();
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+    setState(() => _linternaActiva = false);
+  }
 
   bool _camaraActiva = false;
   bool _linternaActiva = false;
@@ -96,7 +106,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
       _ultimoResultado = null;
     });
     if (_camaraActiva) {
-      _scannerController.start();
+      _recrearController();
     } else {
       _scannerController.stop();
     }

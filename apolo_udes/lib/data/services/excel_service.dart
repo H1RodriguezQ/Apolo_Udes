@@ -72,11 +72,8 @@ class ExcelService {
           final programa = _cellAsString(row, 4);
           final facultad = _cellAsString(row, 5);
           final telefono = _cellAsString(row, 6);
-          
-          // --- OPTIMIZACIÓN DE COMPATIBILIDAD ---
-          // Limpiamos los espacios y forzamos minúsculas para soportar cualquier dominio (Hotmail, Gmail, etc.)
-          final correoRaw = _cellAsString(row, 7);
-          final correo = correoRaw.trim().toLowerCase();
+          final correo = _cellAsString(row, 7);
+          // Columna 8 (hora) se ignora — se asigna desde Firestore según facultad
 
           if (documento.isEmpty || nombres.isEmpty || apellidos.isEmpty) {
             errores.add('Fila ${i + 1}: documento, nombres o apellidos vacíos');
@@ -147,26 +144,7 @@ class ExcelService {
         );
       }
 
-      final ejemplos = [
-        ['2019115023', '1098765432', 'Valentina', 'Ramírez Ortiz',
-         'Medicina', 'Ciencias Médicas y de la Salud', '3001234567',
-         'v.ramirez@udes.edu.co'],
-        ['2018223014', '1097654321', 'Carlos Andrés', 'Pérez González',
-         'Ingeniería de Software', 'Ingenierías y Tecnologías', '3109876543',
-         'c.perez@udes.edu.co'],
-        ['2019334521', '1096543210', 'Laura Sofía', 'Torres Méndez',
-         'Contaduría Pública', 'Ciencias Económicas, Administrativas y Contables',
-         '3154321098', 'l.torres@udes.edu.co'],
-      ];
-
-      for (int row = 0; row < ejemplos.length; row++) {
-        for (int col = 0; col < ejemplos[row].length; col++) {
-          final cell = sheet.cell(
-            CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row + 1),
-          );
-          cell.value = TextCellValue(ejemplos[row][col]);
-        }
-      }
+      // Sin filas de ejemplo — el usuario llena sus propios datos
 
       if (excel.tables.containsKey('Sheet1')) {
         excel.delete('Sheet1');

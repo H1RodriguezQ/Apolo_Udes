@@ -180,11 +180,12 @@ class _RoleCard extends StatelessWidget {
           Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 24)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(child: Text(label, style: AppTextStyles.h4)),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Text(label, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 4),
               Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)), child: Text('$count', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13))),
             ]),
-            Text(description, style: AppTextStyles.bodySmall),
+            Text(description, style: AppTextStyles.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
           ])),
         ]),
       ),

@@ -35,13 +35,12 @@ class AppProvider extends ChangeNotifier {
   final Set<String> _invitadosProcesados = {};
 
   // ── Aforo editable ──
-int _aforoTotal = 145;
-int get aforoTotal => _aforoTotal;
-int get aforoDisponible => (_aforoTotal - totalConfirmaciones).clamp(0, _aforoTotal);
-void setAforoDisponible(int valor) {
-  _aforoTotal = valor;
-  notifyListeners();
-}
+  int _aforoDisponible = 145;
+  int get aforoDisponible => _aforoDisponible;
+  void setAforoDisponible(int valor) {
+    _aforoDisponible = valor;
+    notifyListeners();
+  }
 
   // ── Fecha ceremonia cargada de Firestore ──
   String _fechaCeremonia = '';
@@ -751,6 +750,59 @@ void setAforoDisponible(int valor) {
     }
 
     _agregarActividad('Recordatorios enviados ($enviados)', 'email');
+    notifyListeners();
+  }
+
+  Future<void> enviarCampana({
+    required String titulo,
+    required String mensaje,
+    required String destinatarios,
+  }) async {
+    if (kIsWeb) return;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('invitados')
+        .get();
+
+    int enviados = 0;
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final confirmacion = data['confirmacion'] as String? ?? '';
+      final correo = data['correoInvitado'] as String? ?? '';
+      final nombre = data['nombreInvitado'] as String? ?? '';
+      final codigoQr = data['codigoQr'] as String? ?? '';
+      final qrUrl = data['qrUrl'] as String? ?? '';
+      final graduandoId = data['graduandoId'] as String? ?? '';
+
+      if (correo.isEmpty) continue;
+      if (destinatarios == 'confirmados' && confirmacion != 'confirmado') continue;
+      if (destinatarios == 'pendientes' && confirmacion == 'confirmado') continue;
+
+      String hora = '';
+      String graduandoNombre = '';
+      try {
+        final graduando = _graduandos.firstWhere((g) => g.id == graduandoId);
+        hora = graduando.horaCeremonia;
+        graduandoNombre = graduando.nombreCompleto;
+      } catch (_) {}
+
+      try {
+        await EmailService.enviarRecordatorio(
+          nombreInvitado: nombre,
+          correoInvitado: correo,
+          codigoQr: codigoQr,
+          fechaCeremonia: _fechaCeremonia,
+          horaCeremonia: hora,
+          graduandoNombre: graduandoNombre,
+          qrUrl: qrUrl,
+        );
+        enviados++;
+      } catch (e) {
+        debugPrint('Error enviando campaña a $correo: $e');
+      }
+    }
+
+    _agregarActividad('Campaña "$titulo" enviada ($enviados destinatarios)', 'email');
     notifyListeners();
   }
 }

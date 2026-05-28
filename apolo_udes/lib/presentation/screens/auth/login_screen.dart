@@ -132,8 +132,7 @@ class _LoginScreenState extends State<LoginScreen>
                           color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.school_rounded,
-                            color: Colors.white, size: 28),
+                        child: Image.asset('assets/images/udes_logo.png', width: 40, height: 40, fit: BoxFit.contain),
                       ),
                       const SizedBox(width: 12),
                       const Column(
@@ -369,8 +368,7 @@ class _LoginScreenState extends State<LoginScreen>
                         border: Border.all(
                             color: Colors.white.withValues(alpha: 0.2)),
                       ),
-                      child: const Icon(Icons.school_rounded,
-                          color: Colors.white, size: 44),
+                      child: Image.asset('assets/images/udes_logo.png', width: 60, height: 60, fit: BoxFit.contain),
                     ),
                     const SizedBox(height: 32),
                     const Text('Apolo UDES',
