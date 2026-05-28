@@ -72,8 +72,11 @@ class ExcelService {
           final programa = _cellAsString(row, 4);
           final facultad = _cellAsString(row, 5);
           final telefono = _cellAsString(row, 6);
-          final correo = _cellAsString(row, 7);
-          // Columna 8 (hora) se ignora — se asigna desde Firestore según facultad
+          
+          // --- OPTIMIZACIÓN DE COMPATIBILIDAD ---
+          // Limpiamos los espacios y forzamos minúsculas para soportar cualquier dominio (Hotmail, Gmail, etc.)
+          final correoRaw = _cellAsString(row, 7);
+          final correo = correoRaw.trim().toLowerCase();
 
           if (documento.isEmpty || nombres.isEmpty || apellidos.isEmpty) {
             errores.add('Fila ${i + 1}: documento, nombres o apellidos vacíos');

@@ -113,5 +113,5 @@ class AppConstants {
   static const String eventoDireccion = 'Calle 70 No. 55-210, Bucaramanga';
   static const String eventoCiudad = 'Bucaramanga, Santander';
   static const String eventoInstitucion = 'Universidad de Santander - UDES';
-  static const int maxInvitadosPorGraduando = 4;
+  static const int maxInvitadosPorGraduando = 2;
 }

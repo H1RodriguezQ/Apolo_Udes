@@ -435,27 +435,44 @@ class AppProvider extends ChangeNotifier {
 
   Future<int> importarGraduandos(List<Graduando> nuevos) async {
     int agregados = 0;
+    final List<Graduando> realmenteNuevos = [];
+
+    // Identificar nuevos ANTES de insertar
+    for (final g in nuevos) {
+      final existe = _graduandos.any(
+        (e) => e.documento == g.documento || e.codigoEstudiantil == g.codigoEstudiantil,
+      );
+      if (!existe) realmenteNuevos.add(g);
+    }
+
     if (!kIsWeb) {
       agregados = await DatabaseService.instance.insertGraduandosBulk(nuevos);
       _graduandos = await DatabaseService.instance.getAllGraduandos();
     } else {
-      for (final g in nuevos) {
-        final existe = _graduandos.any(
-          (e) => e.documento == g.documento || e.codigoEstudiantil == g.codigoEstudiantil,
-        );
-        if (!existe) { _graduandos.add(g); agregados++; }
+      for (final g in realmenteNuevos) {
+        _graduandos.add(g);
+        agregados++;
       }
     }
-    final graduandosNuevos = _graduandos.take(agregados).toList();
-    for (final g in graduandosNuevos) {
+
+    debugPrint('Graduandos nuevos: ${realmenteNuevos.length}');
+
+    for (final g in realmenteNuevos) {
       try {
         await FirestoreService.guardarGraduando(g);
-        if (g.correo.isNotEmpty) _enviarCorreoRegistroInvitados(g);
-      } catch (e) { debugPrint('Error: $e'); }
+        if (g.correo.isNotEmpty) {
+          debugPrint('Enviando correo a: ${g.correo}');
+          await _enviarCorreoRegistroInvitados(g);
+          debugPrint('Correo enviado a: ${g.correo}');
+        }
+      } catch (e) {
+        debugPrint('Error graduando ${g.correo}: $e');
+      }
     }
-    _agregarActividad('Importación Excel - $agregados graduandos agregados', 'user');
+
+    _agregarActividad('Importación Excel - ${realmenteNuevos.length} graduandos agregados', 'user');
     notifyListeners();
-    return nuevos.length - agregados;
+    return nuevos.length - realmenteNuevos.length;
   }
 
   Future<void> limpiarGraduandos() async {
