@@ -67,13 +67,11 @@ class HomeScreen extends StatelessWidget {
     final titles = provider.isAdmin ? _adminTitles : _operadorTitles;
     final safeIndex = selectedIndex.clamp(0, screens.length - 1);
 
-    // Detectamos si la pantalla actual es de tamaño celular (ancho menor a 800px)
-    final bool isMobile = MediaQuery.of(context).size.width < 800;
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final isMobile = screenWidth < 800;
 
     if (isMobile) {
-      // =======================================================
-      // VISTA OPTIMIZADA PARA CELULAR (SAMSUNG GALAXY A54)
-      // =======================================================
       return Scaffold(
         appBar: AppBar(
           title: Text(
@@ -81,14 +79,14 @@ class HomeScreen extends StatelessWidget {
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
+              color: Colors.white,
             ),
           ),
-          backgroundColor: const Color(0xFF0F2547), // Color a juego con tu barra lateral
+          backgroundColor: const Color(0xFF0F2347),
           foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
           elevation: 1,
-          // Flutter agregará el botón "hamburguesa" de manera automática aquí
         ),
-        // Tu barra lateral actual se esconde dentro de este Drawer deslizante
         drawer: const Drawer(
           child: AppSidebar(),
         ),
@@ -101,9 +99,6 @@ class HomeScreen extends StatelessWidget {
         ),
       );
     } else {
-      // =======================================================
-      // VISTA DE TABLET / WEB ORIGINAL (SIN NINGÚN CAMBIO)
-      // =======================================================
       return Scaffold(
         body: Row(
           children: [

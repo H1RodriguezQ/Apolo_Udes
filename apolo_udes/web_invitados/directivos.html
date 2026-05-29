@@ -23,13 +23,17 @@
     .evento-row:last-child { margin-bottom: 0; }
     .pregunta { font-size: 16px; font-weight: 600; color: #0F2347; margin: 24px 0 16px; }
     .botones { display: flex; gap: 12px; }
-    .btn-confirmar { flex: 1; padding: 16px; background: linear-gradient(135deg, #276749, #38A169); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
-    .btn-rechazar { flex: 1; padding: 16px; background: #fff; color: #e53e3e; border: 2px solid #e53e3e; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    .btn-confirmar { flex: 1; padding: 16px; background: linear-gradient(135deg, #276749, #38A169); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .btn-rechazar { flex: 1; padding: 16px; background: #fff; color: #e53e3e; border: 2px solid #e53e3e; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
     .btn-confirmar:hover { opacity: 0.9; }
     .btn-rechazar:hover { background: #FFF5F5; }
+    .btn-confirmar:disabled, .btn-rechazar:disabled { opacity: 0.5; cursor: not-allowed; }
     .success { background: #F0FFF4; border: 1px solid #9AE6B4; border-radius: 12px; padding: 32px; text-align: center; display: none; }
     .success h2 { color: #276749; font-size: 20px; margin-bottom: 8px; }
     .success p { color: #2F855A; font-size: 14px; }
+    .qr-container { background: #fff; border: 1px solid #C6F6D5; border-radius: 12px; padding: 16px; margin: 16px auto 0; max-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .qr-image { width: 100%; height: auto; display: block; border-radius: 6px; }
+    .qr-token { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 700; margin-top: 8px; display: block; letter-spacing: 0.5px; }
     .rechazado { background: #FFF5F5; border: 1px solid #FEB2B2; border-radius: 12px; padding: 32px; text-align: center; display: none; }
     .rechazado h2 { color: #C53030; font-size: 20px; margin-bottom: 8px; }
     .rechazado p { color: #9B2C2C; font-size: 14px; }
@@ -49,7 +53,7 @@
   <div class="card" id="loading">
     <div class="loading">
       <div class="spinner"></div>
-      <p>Cargando invitación...</p>
+      <p id="loading-text">Cargando invitación...</p>
     </div>
   </div>
 
@@ -60,15 +64,15 @@
 
     <div class="evento-info">
       <div class="evento-row">📅 <span id="fecha-evento">Fecha por confirmar</span></div>
-      <div class="evento-row">🕐 <span id="hora-evento"></span></div>
+      <div class="evento-row">🕐 <span id="hora-evento">Por confirmar</span></div>
       <div class="evento-row">📍 Auditorio Mayor, Campus Lagos del Cacique</div>
     </div>
 
     <div class="pregunta">¿Confirmas tu asistencia a la ceremonia de graduación?</div>
 
     <div class="botones">
-      <button class="btn-confirmar" onclick="confirmar()">✅ Sí, asistiré</button>
-      <button class="btn-rechazar" onclick="rechazar()">❌ No podré asistir</button>
+      <button class="btn-confirmar" id="btn-actions-conf" onclick="procesarRespuesta('confirmado')">✅ Sí, asistiré</button>
+      <button class="btn-rechazar" id="btn-actions-rech" onclick="procesarRespuesta('rechazado')">❌ No podré asistir</button>
     </div>
   </div>
 
@@ -76,6 +80,10 @@
     <div style="font-size:48px;margin-bottom:12px;">🎉</div>
     <h2>¡Asistencia confirmada!</h2>
     <p>Tu asistencia ha sido registrada. Te esperamos en la ceremonia.</p>
+    <div class="qr-container">
+      <img id="qr-img" class="qr-image" src="" alt="Código de acceso">
+      <span id="qr-code-text" class="qr-token">Cargando...</span>
+    </div>
   </div>
 
   <div class="rechazado" id="rechazado">
@@ -98,8 +106,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
-  import { getFirestore, doc, getDoc, updateDoc }
-    from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+  import { getFirestore, doc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyDMcbZf2eIQrwt9mFeuui8MjD1RxynNQcQ",
@@ -117,10 +124,53 @@
   const directivoId = params.get('id');
   const respuesta = params.get('r');
 
+  // Guardar referencias en el scope global para los controladores tradicionales inline
   window.db = db;
   window.directivoId = directivoId;
   window.updateDoc = updateDoc;
   window.doc = doc;
+
+  window.mostrarQr = function(valorQr) {
+    const data = valorQr || window.codigoQrValor || directivoId || "UDES-GRADUACION";
+    document.getElementById('qr-img').src = `https://quickchart.io/qr?text=${encodeURIComponent(data)}&size=200&ecLevel=H`;
+    document.getElementById('qr-code-text').textContent = data;
+  };
+
+  window.procesarRespuesta = async function(estado) {
+    const btnConf = document.getElementById('btn-actions-conf');
+    const btnRech = document.getElementById('btn-actions-rech');
+    
+    // Bloquear botones para evitar múltiples clicks accidentales
+    btnConf.disabled = true;
+    btnRech.disabled = true;
+
+    document.getElementById('contenido').style.display = 'none';
+    document.getElementById('loading-text').textContent = 'Guardando respuesta...';
+    document.getElementById('loading').style.display = 'block';
+
+    try {
+      await window.updateDoc(window.doc(window.db, 'directivos', window.directivoId), {
+        confirmacion: estado,
+        fechaConfirmacion: new Date()
+      });
+      
+      document.getElementById('loading').style.display = 'none';
+
+      if (estado === 'confirmado') {
+        window.mostrarQr(window.codigoQrValor);
+        document.getElementById('success').style.display = 'block';
+      } else {
+        document.getElementById('rechazado').style.display = 'block';
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión al procesar la solicitud. Intente nuevamente.');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contenido').style.display = 'block';
+      btnConf.disabled = false;
+      btnRech.disabled = false;
+    }
+  };
 
   if (!directivoId) {
     document.getElementById('loading').style.display = 'none';
@@ -128,24 +178,29 @@
   } else {
     const ref = doc(db, 'directivos', directivoId);
     getDoc(ref).then(async snap => {
-      document.getElementById('loading').style.display = 'none';
-
       if (!snap.exists()) {
+        document.getElementById('loading').style.display = 'none';
         document.getElementById('error-card').style.display = 'block';
         return;
       }
 
       const d = snap.data();
+      // Garantizar fallback si el campo QR no existe en el documento
+      window.codigoQrValor = d.codigoQr || d.codigoQR || d.id || directivoId;
 
       if (d.confirmacion === 'confirmado') {
+        window.mostrarQr(window.codigoQrValor);
+        document.getElementById('loading').style.display = 'none';
         document.getElementById('success').style.display = 'block';
         return;
       }
       if (d.confirmacion === 'rechazado') {
+        document.getElementById('loading').style.display = 'none';
         document.getElementById('rechazado').style.display = 'block';
         return;
       }
 
+      // Traer configuración del evento global
       const confRef = doc(db, 'configuracion', 'evento');
       const confSnap = await getDoc(confRef);
       const conf = confSnap.exists() ? confSnap.data() : {};
@@ -160,48 +215,22 @@
       }
 
       const horas = conf.horasPorFacultad || {};
-      const hora = d.facultad ? (horas[d.facultad] || '') : (conf.horaInauguracion || '');
+      const llaveBusqueda = d.facultad || d.cargo || '';
+      const hora = horas[llaveBusqueda] || conf.horaInauguracion || conf.hora || 'Por confirmar';
       document.getElementById('hora-evento').textContent = hora;
 
+      document.getElementById('loading').style.display = 'none';
       document.getElementById('contenido').style.display = 'block';
 
-      if (respuesta === 'si') window.confirmar();
-      else if (respuesta === 'no') window.rechazar();
+      // Acciones automáticas si vienen desde el enlace directo del correo (?r=si o ?r=no)
+      if (respuesta === 'si') window.procesarRespuesta('confirmado');
+      else if (respuesta === 'no') window.procesarRespuesta('rechazado');
 
-    }).catch(() => {
+    }).catch((err) => {
+      console.error(err);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('error-card').style.display = 'block';
     });
-  }
-</script>
-
-<script>
-  async function confirmar() {
-    document.getElementById('contenido').style.display = 'none';
-    try {
-      await window.updateDoc(window.doc(window.db, 'directivos', window.directivoId), {
-        confirmacion: 'confirmado',
-        fechaConfirmacion: new Date()
-      });
-      document.getElementById('success').style.display = 'block';
-    } catch (e) {
-      alert('Error al confirmar. Intenta de nuevo.');
-      document.getElementById('contenido').style.display = 'block';
-    }
-  }
-
-  async function rechazar() {
-    document.getElementById('contenido').style.display = 'none';
-    try {
-      await window.updateDoc(window.doc(window.db, 'directivos', window.directivoId), {
-        confirmacion: 'rechazado',
-        fechaConfirmacion: new Date()
-      });
-      document.getElementById('rechazado').style.display = 'block';
-    } catch (e) {
-      alert('Error al procesar. Intenta de nuevo.');
-      document.getElementById('contenido').style.display = 'block';
-    }
   }
 </script>
 

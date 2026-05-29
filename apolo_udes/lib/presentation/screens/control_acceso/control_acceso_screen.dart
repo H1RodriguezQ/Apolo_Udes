@@ -64,7 +64,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
 
     String mensajeDenegado = 'Código no válido';
     if (resultado == null) {
-      // Verificar si es QR ya usado
       if (provider.codigoYaUsado(codigo)) {
         mensajeDenegado = 'Código ya utilizado';
       } else {
@@ -89,7 +88,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (mounted && _camaraActiva) {
       setState(() => _ultimoResultado = null);
-      _scannerController.start();
+      _recrearController();
     }
   }
 
@@ -121,7 +120,8 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final registros = provider.registrosAcceso;
-    final isMobile = MediaQuery.of(context).size.width < 800;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 900;
 
     return Padding(
       padding: EdgeInsets.all(isMobile ? 16 : 28),
@@ -137,178 +137,177 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
             child: isMobile
                 ? _buildMobileLayout(registros)
                 : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Panel izquierdo: escáner ──
-                SizedBox(
-                  width: 340,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              width: double.infinity,
-                              height: 240,
-                              child: _buildCameraArea(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _toggleCamara,
-                                  icon: Icon(
-                                    _camaraActiva
-                                        ? Icons.videocam_off_rounded
-                                        : Icons.qr_code_scanner_rounded,
-                                    size: 18,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 340,
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      height: 240,
+                                      child: _buildCameraArea(),
+                                    ),
                                   ),
-                                  label: Text(_camaraActiva
-                                      ? 'Detener cámara'
-                                      : 'Activar cámara'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _camaraActiva
-                                        ? AppColors.error
-                                        : AppColors.primaryLight,
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: _toggleCamara,
+                                          icon: Icon(
+                                            _camaraActiva
+                                                ? Icons.videocam_off_rounded
+                                                : Icons.qr_code_scanner_rounded,
+                                            size: 18,
+                                          ),
+                                          label: Text(_camaraActiva
+                                              ? 'Detener'
+                                              : 'Activar'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: _camaraActiva
+                                                ? AppColors.error
+                                                : AppColors.primaryLight,
+                                          ),
+                                        ),
+                                      ),
+                                      if (_camaraActiva) ...[
+                                        const SizedBox(width: 8),
+                                        IconButton.filled(
+                                          onPressed: _toggleLinterna,
+                                          icon: Icon(_linternaActiva
+                                              ? Icons.flash_off_rounded
+                                              : Icons.flash_on_rounded),
+                                          tooltip: 'Linterna',
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: _linternaActiva
+                                                ? AppColors.warning
+                                                : AppColors.surfaceVariant,
+                                            foregroundColor: _linternaActiva
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ),
+                                  const SizedBox(height: 16),
+                                  const Row(
+                                    children: [
+                                      Expanded(child: Divider()),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 12),
+                                        child: Text('o ingresa manualmente',
+                                            style: AppTextStyles.caption),
+                                      ),
+                                      Expanded(child: Divider()),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: _codigoController,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Documento o código QR',
+                                      prefixIcon: Icon(Icons.badge_outlined),
+                                    ),
+                                    onSubmitted: (_) => _verificarManual(),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _procesando ? null : _verificarManual,
+                                      icon: const Icon(Icons.search_rounded, size: 18),
+                                      label: const Text('Verificar'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.infoLight,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.info_outline_rounded,
+                                            color: AppColors.info, size: 16),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Apunta al QR para registrar el acceso.',
+                                            style: TextStyle(
+                                                color: AppColors.info,
+                                                fontSize: 12),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                              if (_camaraActiva) ...[
-                                const SizedBox(width: 8),
-                                IconButton.filled(
-                                  onPressed: _toggleLinterna,
-                                  icon: Icon(_linternaActiva
-                                      ? Icons.flash_off_rounded
-                                      : Icons.flash_on_rounded),
-                                  tooltip: 'Linterna',
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: _linternaActiva
-                                        ? AppColors.warning
-                                        : AppColors.surfaceVariant,
-                                    foregroundColor: _linternaActiva
-                                        ? Colors.white
-                                        : AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Row(
-                            children: [
-                              Expanded(child: Divider()),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('o ingresa manualmente',
-                                    style: AppTextStyles.caption),
-                              ),
-                              Expanded(child: Divider()),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _codigoController,
-                            decoration: const InputDecoration(
-                              hintText: 'Documento o código QR',
-                              prefixIcon: Icon(Icons.badge_outlined),
-                            ),
-                            onSubmitted: (_) => _verificarManual(),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _procesando ? null : _verificarManual,
-                              icon: const Icon(Icons.search_rounded, size: 18),
-                              label: const Text('Verificar'),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.infoLight,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.info_outline_rounded,
-                                    color: AppColors.info, size: 16),
-                                SizedBox(width: 8),
+                                Wrap(
+                                  spacing: 10,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    const Text('Registro en tiempo real',
+                                        style: AppTextStyles.h4),
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.success,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    Text('${registros.length} accesos registrados',
+                                        style: AppTextStyles.bodySmall),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                const Divider(height: 1),
+                                const SizedBox(height: 8),
                                 Expanded(
-                                  child: Text(
-                                    'Apunta la cámara al código QR del invitado para registrar su acceso automáticamente.',
-                                    style: TextStyle(
-                                        color: AppColors.info, fontSize: 12),
-                                  ),
+                                  child: registros.isEmpty
+                                      ? const EmptyState(
+                                          icon: Icons.no_accounts_rounded,
+                                          title: 'Sin registros aún',
+                                          subtitle:
+                                              'Los accesos aparecerán aquí en tiempo real',
+                                        )
+                                      : ListView.separated(
+                                          itemCount: registros.length,
+                                          separatorBuilder: (_, __) =>
+                                              const Divider(height: 1),
+                                          itemBuilder: (context, i) =>
+                                              _RegistroTile(registro: registros[i]),
+                                        ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-
-                const SizedBox(width: 20),
-
-                // ── Panel derecho: registro ──
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text('Registro en tiempo real',
-                                  style: AppTextStyles.h4),
-                              const SizedBox(width: 10),
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text('${registros.length} accesos registrados',
-                                  style: AppTextStyles.bodySmall),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(height: 1),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: registros.isEmpty
-                                ? const EmptyState(
-                                    icon: Icons.no_accounts_rounded,
-                                    title: 'Sin registros aún',
-                                    subtitle:
-                                        'Los accesos aparecerán aquí en tiempo real',
-                                  )
-                                : ListView.separated(
-                                    itemCount: registros.length,
-                                    separatorBuilder: (_, __) =>
-                                        const Divider(height: 1),
-                                    itemBuilder: (context, i) =>
-                                        _RegistroTile(registro: registros[i]),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -326,26 +325,42 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(width: double.infinity, height: 220, child: _buildCameraArea()),
+                    child: SizedBox(
+                        width: double.infinity,
+                        height: 220,
+                        child: _buildCameraArea()),
                   ),
                   const SizedBox(height: 12),
                   Row(children: [
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _toggleCamara,
-                        icon: Icon(_camaraActiva ? Icons.videocam_off_rounded : Icons.qr_code_scanner_rounded, size: 18),
+                        icon: Icon(
+                            _camaraActiva
+                                ? Icons.videocam_off_rounded
+                                : Icons.qr_code_scanner_rounded,
+                            size: 18),
                         label: Text(_camaraActiva ? 'Detener' : 'Activar cámara'),
-                        style: ElevatedButton.styleFrom(backgroundColor: _camaraActiva ? AppColors.error : AppColors.primaryLight),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: _camaraActiva
+                                ? AppColors.error
+                                : AppColors.primaryLight),
                       ),
                     ),
                     if (_camaraActiva) ...[
                       const SizedBox(width: 8),
                       IconButton.filled(
                         onPressed: _toggleLinterna,
-                        icon: Icon(_linternaActiva ? Icons.flash_off_rounded : Icons.flash_on_rounded),
+                        icon: Icon(_linternaActiva
+                            ? Icons.flash_off_rounded
+                            : Icons.flash_on_rounded),
                         style: IconButton.styleFrom(
-                          backgroundColor: _linternaActiva ? AppColors.warning : AppColors.surfaceVariant,
-                          foregroundColor: _linternaActiva ? Colors.white : AppColors.textSecondary,
+                          backgroundColor: _linternaActiva
+                              ? AppColors.warning
+                              : AppColors.surfaceVariant,
+                          foregroundColor: _linternaActiva
+                              ? Colors.white
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -353,7 +368,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _codigoController,
-                    decoration: const InputDecoration(hintText: 'Documento o código QR', prefixIcon: Icon(Icons.badge_outlined)),
+                    decoration: const InputDecoration(
+                        hintText: 'Documento o código QR',
+                        prefixIcon: Icon(Icons.badge_outlined)),
                     onSubmitted: (_) => _verificarManual(),
                   ),
                   const SizedBox(height: 8),
@@ -363,6 +380,27 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                       onPressed: _procesando ? null : _verificarManual,
                       icon: const Icon(Icons.search_rounded, size: 18),
                       label: const Text('Verificar'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            color: AppColors.info, size: 14),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Apunta al QR para registrar el acceso.',
+                            style: TextStyle(color: AppColors.info, fontSize: 11),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -376,18 +414,35 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    const Text('Registro en tiempo real', style: AppTextStyles.h4),
-                    const SizedBox(width: 8),
-                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
-                    const SizedBox(width: 4),
-                    Text('${registros.length} accesos', style: AppTextStyles.bodySmall),
-                  ]),
+                  Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text('Registro en tiempo real',
+                          style: AppTextStyles.h4),
+                      Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                              color: AppColors.success,
+                              shape: BoxShape.circle)),
+                      Text('${registros.length} accesos',
+                          style: AppTextStyles.bodySmall),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   registros.isEmpty
-                      ? const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('Sin registros aún', style: AppTextStyles.bodySmall)))
-                      : Column(children: registros.take(10).map((r) => _RegistroTile(registro: r)).toList()),
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                              child: Text('Sin registros aún',
+                                  style: AppTextStyles.bodySmall)))
+                      : Column(
+                          children: registros
+                              .take(10)
+                              .map((r) => _RegistroTile(registro: r))
+                              .toList()),
                 ],
               ),
             ),
@@ -427,8 +482,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     if (_camaraActiva) {
       return Stack(
         children: [
-          MobileScanner(
-              controller: _scannerController, onDetect: _onDetect),
+          MobileScanner(controller: _scannerController, onDetect: _onDetect),
           Center(
             child: Container(
               width: 180,
@@ -507,40 +561,53 @@ class _ResultadoOverlay extends StatelessWidget {
     return Container(
       color: color.withValues(alpha: 0.95),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 56),
-            const SizedBox(height: 10),
-            Text(
-              valido ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-                letterSpacing: 1,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 56),
+              const SizedBox(height: 10),
+              Text(
+                valido ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            if (valido) ...[
-              const SizedBox(height: 6),
-              Text(nombre,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              const Text('Bienvenido/a',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-            ] else ...[
-              const SizedBox(height: 6),
-              Text(mensajeDenegado,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Text('Código: $documento',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              if (valido) ...[
+                const SizedBox(height: 6),
+                Text(nombre,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                const Text('Bienvenido/a',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ] else ...[
+                const SizedBox(height: 6),
+                Text(mensajeDenegado,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text('Código: $documento',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -572,9 +639,13 @@ class _RegistroTile extends StatelessWidget {
               children: [
                 Text(registro.nombre,
                     style: AppTextStyles.body
-                        .copyWith(fontWeight: FontWeight.w500)),
+                        .copyWith(fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 Text('Doc: ${registro.documento}',
-                    style: AppTextStyles.bodySmall),
+                    style: AppTextStyles.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -585,8 +656,7 @@ class _RegistroTile extends StatelessWidget {
                   style: AppTextStyles.caption),
               Container(
                 margin: const EdgeInsets.only(top: 3),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.successLight,
                   borderRadius: BorderRadius.circular(4),

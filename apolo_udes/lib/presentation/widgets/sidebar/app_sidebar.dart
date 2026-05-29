@@ -49,16 +49,19 @@ class AppSidebar extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.school_rounded,
+                      width: 52,
+                      height: 52,
+                      decoration: const BoxDecoration(
                         color: Colors.white,
-                        size: 24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/udes_logo.png',
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -109,7 +112,7 @@ class AppSidebar extends StatelessWidget {
             ),
           ),
 
-          // ── Navigation items con scroll ──
+          // ── Navigation items ──
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -123,7 +126,7 @@ class AppSidebar extends StatelessWidget {
             ),
           ),
 
-          // ── Footer con usuario real ──
+          // ── Footer ──
           Container(
             padding: const EdgeInsets.all(12),
             decoration: const BoxDecoration(
@@ -143,9 +146,7 @@ class AppSidebar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: Icon(
-                        isAdmin
-                            ? Icons.admin_panel_settings_rounded
-                            : Icons.badge_rounded,
+                        isAdmin ? Icons.admin_panel_settings_rounded : Icons.badge_rounded,
                         color: Colors.white,
                         size: 16,
                       ),
@@ -157,18 +158,11 @@ class AppSidebar extends StatelessWidget {
                         children: [
                           Text(
                             isAdmin ? 'Administrador' : 'Operador',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                           Text(
                             usuario?.correo ?? '',
-                            style: const TextStyle(
-                              color: AppColors.sidebarText,
-                              fontSize: 10,
-                            ),
+                            style: const TextStyle(color: AppColors.sidebarText, fontSize: 10),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -176,28 +170,15 @@ class AppSidebar extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => context.read<AppProvider>().logout(),
-                      icon: const Icon(
-                        Icons.logout_rounded,
-                        color: AppColors.sidebarText,
-                        size: 16,
-                      ),
+                      icon: const Icon(Icons.logout_rounded, color: AppColors.sidebarText, size: 16),
                       tooltip: 'Cerrar sesión',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 28,
-                        minHeight: 28,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  AppConstants.appVersion,
-                  style: const TextStyle(
-                    color: Color(0xFF4A6785),
-                    fontSize: 10,
-                  ),
-                ),
+                Text(AppConstants.appVersion, style: const TextStyle(color: Color(0xFF4A6785), fontSize: 10)),
               ],
             ),
           ),
@@ -211,24 +192,14 @@ class _SidebarItem {
   final String label;
   final IconData icon;
   final bool adminOnly;
-
-  const _SidebarItem({
-    required this.label,
-    required this.icon,
-    required this.adminOnly,
-  });
+  const _SidebarItem({required this.label, required this.icon, required this.adminOnly});
 }
 
 class _SidebarNavItem extends StatelessWidget {
   final _SidebarItem item;
   final bool isSelected;
   final VoidCallback onTap;
-
-  const _SidebarNavItem({
-    required this.item,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _SidebarNavItem({required this.item, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -246,11 +217,7 @@ class _SidebarNavItem extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                item.icon,
-                color: isSelected ? Colors.white : AppColors.sidebarText,
-                size: 20,
-              ),
+              Icon(item.icon, color: isSelected ? Colors.white : AppColors.sidebarText, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -263,14 +230,7 @@ class _SidebarNavItem extends StatelessWidget {
                 ),
               ),
               if (isSelected)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
             ],
           ),
         ),

@@ -12,7 +12,9 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 1024;
 
     final graduandosPorFacultad = <String, int>{};
     for (final g in provider.graduandos) {
@@ -33,17 +35,20 @@ class DashboardScreen extends StatelessWidget {
       'Rechazados': rechazados,
     };
 
-    final aforoConfirmados = provider.confirmaciones
-        .where((c) => c.estado.name == 'confirmado').length;
-    final aforoPendientes = provider.confirmaciones
-        .where((c) => c.estado.name == 'pendiente').length;
-    final aforoRechazados = provider.confirmaciones
-        .where((c) => c.estado.name == 'rechazado').length;
+    // Ocupación del Aforo
+    final totalGraduandos = provider.graduandos.length;
+    final totalInvitados = provider.invitaciones.length;
+    final totalDirectivos = provider.directivos
+        .where((d) => d.estado.name == 'confirmado').length;
+    final aforoTotal = provider.aforoDisponible;
+    final ocupado = totalGraduandos + totalInvitados + totalDirectivos;
+    final disponible = (aforoTotal - ocupado).clamp(0, aforoTotal);
 
-    final estadoAforo = {
-      'Confirmados': aforoConfirmados,
-      'Pendientes': aforoPendientes,
-      'Rechazados': aforoRechazados,
+    final ocupacionAforo = {
+      'Graduandos': totalGraduandos,
+      'Invitados': totalInvitados,
+      'Directivos': totalDirectivos,
+      'Disponible': disponible,
     };
 
     final directivosConfirmados = provider.directivos
@@ -66,18 +71,17 @@ class DashboardScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           const Text('Dashboard', style: AppTextStyles.h1),
           const SizedBox(height: 4),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Flexible(
-                child: Text(
-                  DateFormat("d 'de' MMMM, yyyy", 'es_CO').format(DateTime.now()),
-                  style: AppTextStyles.label,
-                ),
+              Text(
+                DateFormat("d 'de' MMMM, yyyy", 'es_CO').format(DateTime.now()),
+                style: AppTextStyles.label,
               ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -106,46 +110,57 @@ class DashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Metric Cards
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isMobile ? 2 : 4,
-            crossAxisSpacing: isMobile ? 10 : 16,
-            mainAxisSpacing: isMobile ? 10 : 16,
-            childAspectRatio: isMobile ? 1.1 : 1.3,
-            children: [
-              MetricCard(
-                title: 'Graduandos',
-                value: provider.totalGraduandos.toString(),
-                icon: Icons.school_rounded,
-                color: AppColors.primaryLight,
-              ),
-              MetricCard(
-                title: 'Invitaciones',
-                value: provider.totalInvitaciones.toString(),
-                icon: Icons.mail_rounded,
-                color: AppColors.success,
-              ),
-              MetricCard(
-                title: 'Aforo',
-                value: provider.aforoDisponible.toString(),
-                icon: Icons.event_seat_rounded,
-                color: AppColors.warning,
-              ),
-              MetricCard(
-                title: 'Directivos',
-                value: provider.totalDirectivos.toString(),
-                icon: Icons.person_outline_rounded,
-                color: AppColors.pending,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Ajustamos a 2 columnas en pantallas estrechas para dar espacio óptimo
+              final columns = screenWidth < 850 ? 2 : 4;
+              final spacing = isMobile ? 10.0 : 16.0;
+              final itemWidth = (constraints.maxWidth - (spacing * (columns - 1))) / columns;
+              
+              // Altura segura garantizada para las tarjetas
+              const targetHeight = 145.0;
+              final computedAspectRatio = itemWidth / targetHeight;
+
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: columns,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                childAspectRatio: computedAspectRatio,
+                children: [
+                  _LocalMetricCard(
+                    title: 'Graduandos',
+                    value: provider.totalGraduandos.toString(),
+                    icon: Icons.school_rounded,
+                    color: AppColors.primaryLight,
+                  ),
+                  _LocalMetricCard(
+                    title: 'Invitaciones',
+                    value: provider.totalInvitaciones.toString(),
+                    icon: Icons.mail_rounded,
+                    color: AppColors.success,
+                  ),
+                  _LocalMetricCard(
+                    title: 'Aforo',
+                    value: provider.aforoDisponible.toString(),
+                    icon: Icons.event_seat_rounded,
+                    color: AppColors.warning,
+                  ),
+                  _LocalMetricCard(
+                    title: 'Directivos',
+                    value: provider.totalDirectivos.toString(),
+                    icon: Icons.person_outline_rounded,
+                    color: AppColors.pending,
+                  ),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 20),
 
-          // Charts — en móvil apilados, en tablet lado a lado
-          if (isMobile) ...[
+          if (isMobile || isTablet) ...[
             _chartCard(
               title: 'Estado de Confirmaciones',
               subtitle: confirmados + rechazados + pendientes > 0
@@ -157,13 +172,13 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _chartCard(
-              title: 'Control de Aforo (QR)',
-              subtitle: aforoConfirmados + aforoRechazados + aforoPendientes > 0
-                  ? '${(aforoConfirmados / (aforoConfirmados + aforoRechazados + aforoPendientes) * 100).round()}% confirmados'
-                  : 'Sin datos aún',
-              child: aforoConfirmados + aforoRechazados + aforoPendientes == 0
-                  ? const Center(child: Text('Sin registros de aforo', style: AppTextStyles.bodySmall))
-                  : _AforoDonutChart(data: estadoAforo),
+              title: 'Ocupación del Aforo',
+              subtitle: aforoTotal > 0
+                  ? '$ocupado de $aforoTotal ocupados (${(ocupado / aforoTotal * 100).round()}%)'
+                  : 'Sin aforo configurado',
+              child: aforoTotal == 0
+                  ? const Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
+                  : _AforoOcupacionDonutChart(data: ocupacionAforo),
             ),
             const SizedBox(height: 16),
             _chartCard(
@@ -174,6 +189,27 @@ class DashboardScreen extends StatelessWidget {
               child: directivosConfirmados + directivosRechazados + directivosPendientes == 0
                   ? const Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
                   : _DirectivosDonutChart(data: estadoDirectivos),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Graduandos por Facultad', style: AppTextStyles.h4),
+                    const SizedBox(height: 4),
+                    const Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 220,
+                      child: graduandosPorFacultad.isEmpty
+                          ? const Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
+                          : _FacultadBarChart(data: graduandosPorFacultad),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ] else ...[
             IntrinsicHeight(
@@ -227,13 +263,13 @@ class DashboardScreen extends StatelessWidget {
                   Expanded(
                     flex: 4,
                     child: _chartCard(
-                      title: 'Control de Aforo (QR)',
-                      subtitle: aforoConfirmados + aforoRechazados + aforoPendientes > 0
-                          ? '${(aforoConfirmados / (aforoConfirmados + aforoRechazados + aforoPendientes) * 100).round()}% confirmados'
-                          : 'Sin datos aún',
-                      child: aforoConfirmados + aforoRechazados + aforoPendientes == 0
-                          ? const Center(child: Text('Sin registros de aforo', style: AppTextStyles.bodySmall))
-                          : _AforoDonutChart(data: estadoAforo),
+                      title: 'Ocupación del Aforo',
+                      subtitle: aforoTotal > 0
+                          ? '$ocupado de $aforoTotal (${(ocupado / aforoTotal * 100).round()}%)'
+                          : 'Sin aforo configurado',
+                      child: aforoTotal == 0
+                          ? const Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
+                          : _AforoOcupacionDonutChart(data: ocupacionAforo),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -256,7 +292,6 @@ class DashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Actividades recientes
           Card(
             child: Padding(
               padding: EdgeInsets.all(isMobile ? 16 : 24),
@@ -265,8 +300,7 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text('Últimas Actividades', style: AppTextStyles.h4),
-                      const Spacer(),
+                      const Expanded(child: Text('Últimas Actividades', style: AppTextStyles.h4)),
                       TextButton(onPressed: () {}, child: const Text('Ver todas')),
                     ],
                   ),
@@ -305,10 +339,192 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(subtitle, style: AppTextStyles.bodySmall),
             const SizedBox(height: 16),
-            SizedBox(height: 200, child: child),
+            SizedBox(height: 220, child: child),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LocalMetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _LocalMetricCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icono en caja contenedora estilizada
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 22,
+            ),
+          ),
+          const Spacer(),
+          // Valor numerico con FittedBox para prevenir desbordamientos
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E293B),
+                height: 1.1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Titulo de la metrica
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AforoOcupacionDonutChart extends StatefulWidget {
+  final Map<String, int> data;
+  const _AforoOcupacionDonutChart({required this.data});
+
+  @override
+  State<_AforoOcupacionDonutChart> createState() =>
+      _AforoOcupacionDonutChartState();
+}
+
+class _AforoOcupacionDonutChartState extends State<_AforoOcupacionDonutChart> {
+  int _touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = widget.data.entries.toList();
+    final total = widget.data.values.reduce((a, b) => a + b);
+
+    final colors = [
+      const Color(0xFF3B82F6), // Graduandos
+      const Color(0xFF10B981), // Invitados
+      const Color(0xFF8B5CF6), // Directivos
+      const Color(0xFFE5E7EB), // Disponible
+    ];
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: PieChart(PieChartData(
+            pieTouchData: PieTouchData(touchCallback: (event, res) {
+              setState(() {
+                _touchedIndex =
+                    (!event.isInterestedForInteractions || res == null || res.touchedSection == null)
+                        ? -1
+                        : res.touchedSection!.touchedSectionIndex;
+              });
+            }),
+            sections: List.generate(entries.length, (i) {
+              final isTouched = i == _touchedIndex;
+              final percentage = total > 0 ? (entries[i].value / total * 100) : 0;
+              return PieChartSectionData(
+                color: colors[i],
+                value: entries[i].value.toDouble(),
+                title: percentage >= 5
+                    ? '${percentage.round()}%'
+                    : '',
+                radius: isTouched ? 70 : 60,
+                titleStyle: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: i == 3 ? AppColors.textSecondary : Colors.white,
+                ),
+              );
+            }),
+            centerSpaceRadius: 35,
+            sectionsSpace: 2,
+          )),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(entries.length, (i) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: colors[i],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entries[i].key,
+                          style: AppTextStyles.caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          entries[i].value.toString(),
+                          style: AppTextStyles.h4.copyWith(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -422,66 +638,10 @@ class _ConfirmacionDonutChartState extends State<_ConfirmacionDonutChart> {
               color: colors[i],
               value: entries[i].value.toDouble(),
               title: total > 0 ? '${(entries[i].value / total * 100).round()}%' : '0%',
-              radius: i == _touchedIndex ? 80 : 70,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+              radius: i == _touchedIndex ? 70 : 60,
+              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
             )),
-            centerSpaceRadius: 40,
-            sectionsSpace: 2,
-          )),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(entries.length, (i) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle)),
-              const SizedBox(width: 5),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(entries[i].key, style: AppTextStyles.caption),
-                Text(entries[i].value.toString(), style: AppTextStyles.h4.copyWith(fontSize: 14)),
-              ]),
-            ]),
-          )),
-        ),
-      ],
-    );
-  }
-}
-
-class _AforoDonutChart extends StatefulWidget {
-  final Map<String, int> data;
-  const _AforoDonutChart({required this.data});
-  @override
-  State<_AforoDonutChart> createState() => _AforoDonutChartState();
-}
-
-class _AforoDonutChartState extends State<_AforoDonutChart> {
-  int _touchedIndex = -1;
-  @override
-  Widget build(BuildContext context) {
-    final entries = widget.data.entries.toList();
-    final total = widget.data.values.reduce((a, b) => a + b);
-    final colors = [AppColors.success, AppColors.warning, AppColors.error];
-    return Row(
-      children: [
-        Expanded(
-          child: PieChart(PieChartData(
-            pieTouchData: PieTouchData(touchCallback: (event, res) {
-              setState(() {
-                _touchedIndex = (!event.isInterestedForInteractions || res == null || res.touchedSection == null)
-                    ? -1 : res.touchedSection!.touchedSectionIndex;
-              });
-            }),
-            sections: List.generate(entries.length, (i) => PieChartSectionData(
-              color: colors[i],
-              value: entries[i].value.toDouble(),
-              title: total > 0 ? '${(entries[i].value / total * 100).round()}%' : '0%',
-              radius: i == _touchedIndex ? 80 : 70,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-            )),
-            centerSpaceRadius: 40,
+            centerSpaceRadius: 35,
             sectionsSpace: 2,
           )),
         ),
@@ -534,10 +694,10 @@ class _DirectivosDonutChartState extends State<_DirectivosDonutChart> {
               color: colors[i],
               value: entries[i].value.toDouble(),
               title: total > 0 ? '${(entries[i].value / total * 100).round()}%' : '0%',
-              radius: i == _touchedIndex ? 80 : 70,
-              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+              radius: i == _touchedIndex ? 70 : 60,
+              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
             )),
-            centerSpaceRadius: 40,
+            centerSpaceRadius: 35,
             sectionsSpace: 2,
           )),
         ),
@@ -609,9 +769,9 @@ class _ActividadRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(actividad.detalle, style: AppTextStyles.body),
+                Text(actividad.detalle, style: AppTextStyles.body, maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text(actividad.usuario, style: AppTextStyles.bodySmall),
+                Text(actividad.usuario, style: AppTextStyles.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

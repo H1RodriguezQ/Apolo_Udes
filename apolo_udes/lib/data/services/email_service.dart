@@ -103,13 +103,17 @@ class EmailService {
     }
   }
  
-  static Future<bool> enviarInvitacionDirectivo({
+  static Future<bool> enviarInvitacionDirectivo({ 
     required String nombre,
     required String cargo,
     required String correo,
     required String directivoId,
     required String fechaCeremonia,
     String horaCeremonia = '',
+    String codigoQr = '', 
+    required String qrBase64,  
+    String qrUrl = '',      
+    
   }) async {
     if (kIsWeb) return false;
     final correoLimpio = correo.trim().toLowerCase();
@@ -125,6 +129,8 @@ class EmailService {
         horaTexto: horaTexto,
         urlConfirmar: urlConfirmar,
         urlRechazar: urlRechazar,
+        codigoQr: codigoQr,   
+        qrUrl: qrUrl,         
       );
       final message = Message()
         ..from = Address(AppConstants.emailRemitente, AppConstants.emailNombre)
@@ -381,12 +387,12 @@ class EmailService {
             <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
               <tr>
                 <td width="48%" style="text-align:center;padding:20px;background:#f8f9fb;border-radius:8px;">
-                  <p style="margin:0 0 4px;color:#718096;font-size:11px;text-transform:uppercase;">📅 Fecha</p>
+                  <p style="margin:0;color:#718096;font-size:11px;text-transform:uppercase;">📅 Fecha</p>
                   <p style="margin:0;color:#0F2347;font-size:14px;font-weight:700;">$fechaCeremonia</p>
                 </td>
                 <td width="4%"></td>
                 <td width="48%" style="text-align:center;padding:20px;background:#f8f9fb;border-radius:8px;">
-                  <p style="margin:0 0 4px;color:#718096;font-size:11px;text-transform:uppercase;">🕐 Hora</p>
+                  <p style="margin:0;color:#718096;font-size:11px;text-transform:uppercase;">🕐 Hora</p>
                   <p style="margin:0;color:#0F2347;font-size:14px;font-weight:700;">$horaCeremonia</p>
                 </td>
               </tr>
@@ -417,10 +423,28 @@ class EmailService {
     required String horaTexto,
     required String urlConfirmar,
     required String urlRechazar,
+    String codigoQr = '',   
+    String qrUrl = '',      
   }) {
     final lugar = AppConstants.eventoLugar;
     final direccion = AppConstants.eventoDireccion;
     final ciudad = AppConstants.eventoCiudad;
+ 
+    final qrHtml = qrUrl.isNotEmpty ? '''
+    <div style="text-align:center;margin-bottom:28px;">
+      <p style="margin:0 0 12px;color:#2d3748;font-size:14px;font-weight:600;">
+        Su código QR de acceso
+      </p>
+      <div style="display:inline-block;padding:16px;background:#ffffff;border:2px solid #1A3A6B;border-radius:12px;">
+        <img src="$qrUrl" width="180" height="180" alt="Código QR" style="display:block;" />
+      </div>
+      <p style="margin:10px 0 0;color:#718096;font-size:12px;">
+        Código: <strong style="color:#0F2347;">$codigoQr</strong>
+      </p>
+      <p style="margin:6px 0 0;color:#718096;font-size:12px;">
+        Presente este QR el día del evento para acceder al recinto.
+      </p>
+    </div>''' : '';
  
     return '''
 <!DOCTYPE html>
@@ -467,23 +491,24 @@ class EmailService {
               <p style="margin:0;color:#0F2347;font-size:15px;font-weight:700;">$lugar</p>
               <p style="margin:4px 0 0;color:#718096;font-size:13px;">$direccion</p>
             </div>
-            <div style="text-align:center;margin-bottom:28px;">
-              <p style="margin:0 0 16px;color:#2d3748;font-size:15px;font-weight:600;">¿Confirma su asistencia?</p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="50%" style="padding-right:8px;">
-                    <a href="$urlConfirmar" style="display:block;padding:16px;background:#276749;color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
-                      ✅ Sí, asistiré
-                    </a>
-                  </td>
-                  <td width="50%" style="padding-left:8px;">
-                    <a href="$urlRechazar" style="display:block;padding:16px;background:#ffffff;color:#e53e3e;border:2px solid #e53e3e;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
-                      ❌ No podré asistir
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </div>
+            
+            $qrHtml
+            
+            <p style="text-align:center;color:#2d3748;font-size:15px;font-weight:600;margin-bottom:16px;">¿Confirma su asistencia?</p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" style="padding-right:8px;">
+                  <a href="$urlConfirmar" style="display:block;padding:16px;background:#276749;color:#ffffff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
+                    ✅ Sí, asistiré
+                  </a>
+                </td>
+                <td width="50%" style="padding-left:8px;">
+                  <a href="$urlRechazar" style="display:block;padding:16px;background:#ffffff;color:#e53e3e;border:2px solid #e53e3e;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;text-align:center;">
+                    ❌ No podré asistir
+                  </a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
@@ -499,4 +524,3 @@ class EmailService {
 ''';
   }
 }
- 

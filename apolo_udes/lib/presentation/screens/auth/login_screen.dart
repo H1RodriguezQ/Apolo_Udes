@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen>
       _selectedRole == UserRole.admin ? 'admin@udes.edu.co' : 'operador@udes.edu.co';
 
   String get _roleLabel =>
-      _selectedRole == UserRole.admin ? 'Administrador' : 'Operador';
+      _selectedRole == UserRole.admin ? 'Admin' : 'Operador';
 
   @override
   void initState() {
@@ -96,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
+    final isMobile = screenWidth < 900;
 
     if (isMobile) {
       return _buildMobile();
@@ -105,7 +105,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // ── Layout móvil ──
   Widget _buildMobile() {
     return Scaffold(
       body: Container(
@@ -120,39 +119,45 @@ class _LoginScreenState extends State<LoginScreen>
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Header branding
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                   child: Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
+                        width: 56,
+                        height: 56,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                         ),
-                        child: Image.asset('assets/images/udes_logo.png', width: 40, height: 40, fit: BoxFit.contain),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/udes_logo.png',
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Apolo UDES',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800)),
-                          Text('Sistema de Gestión',
-                              style: TextStyle(
-                                  color: Color(0xFFB8CCE8), fontSize: 12)),
-                        ],
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Apolo UDES',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800)),
+                            Text('Sistema de Gestión',
+                                style: TextStyle(
+                                    color: Color(0xFFB8CCE8), fontSize: 12)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-
-                // Formulario
                 Container(
                   margin: const EdgeInsets.only(top: 8),
                   decoration: const BoxDecoration(
@@ -167,11 +172,10 @@ class _LoginScreenState extends State<LoginScreen>
                     child: SlideTransition(
                       position: _slideAnim,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Badge
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 5),
@@ -209,8 +213,6 @@ class _LoginScreenState extends State<LoginScreen>
                                     color: AppColors.textSecondary,
                                     fontSize: 13)),
                             const SizedBox(height: 20),
-
-                            // Selector de rol
                             const Text('Tipo de acceso',
                                 style: TextStyle(
                                     fontSize: 13,
@@ -221,8 +223,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 selected: _selectedRole,
                                 onChanged: _onRoleChanged),
                             const SizedBox(height: 20),
-
-                            // Formulario
                             Form(
                               key: _formKey,
                               child: Column(
@@ -269,7 +269,6 @@ class _LoginScreenState extends State<LoginScreen>
                                         v == null || v.isEmpty ? 'Ingresa tu contraseña' : null,
                                     onFieldSubmitted: (_) => _login(),
                                   ),
-
                                   if (_errorMessage != null) ...[
                                     const SizedBox(height: 12),
                                     Container(
@@ -293,7 +292,6 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                     ),
                                   ],
-
                                   const SizedBox(height: 24),
                                   SizedBox(
                                     width: double.infinity,
@@ -307,13 +305,15 @@ class _LoginScreenState extends State<LoginScreen>
                                               child: CircularProgressIndicator(
                                                   color: Colors.white,
                                                   strokeWidth: 2.5))
-                                          : Text('Ingresar como $_roleLabel'),
+                                          : FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text('Ingresar como $_roleLabel'),
+                                            ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
                             const SizedBox(height: 24),
                             Center(
                               child: Text(AppConstants.appVersion,
@@ -333,7 +333,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Layout desktop/tablet ──
   Widget _buildDesktop() {
     return Scaffold(
       backgroundColor: AppColors.primary,
@@ -360,15 +359,20 @@ class _LoginScreenState extends State<LoginScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2)),
+                      width: 90,
+                      height: 90,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
                       ),
-                      child: Image.asset('assets/images/udes_logo.png', width: 60, height: 60, fit: BoxFit.contain),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/udes_logo.png',
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     const Text('Apolo UDES',
@@ -380,7 +384,9 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 12),
                     const Text('Sistema de Gestión de\nCeremonia de Grado',
                         style: TextStyle(
-                            color: Color(0xFFB8CCE8), fontSize: 18, height: 1.5)),
+                            color: Color(0xFFB8CCE8),
+                            fontSize: 18,
+                            height: 1.5)),
                   ],
                 ),
               ),
@@ -541,7 +547,10 @@ class _LoginScreenState extends State<LoginScreen>
                                               child: CircularProgressIndicator(
                                                   color: Colors.white,
                                                   strokeWidth: 2.5))
-                                          : Text('Ingresar como $_roleLabel'),
+                                          : FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text('Ingresar como $_roleLabel'),
+                                            ),
                                     ),
                                   ),
                                 ],
@@ -585,7 +594,7 @@ class _RoleSelector extends StatelessWidget {
       child: Row(
         children: [
           _RoleTab(
-            label: 'Administrador',
+            label: 'Admin',
             icon: Icons.admin_panel_settings_rounded,
             isSelected: selected == UserRole.admin,
             onTap: () => onChanged(UserRole.admin),
@@ -623,7 +632,7 @@ class _RoleTab extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(7),
@@ -637,19 +646,25 @@ class _RoleTab extends StatelessWidget {
                   ]
                 : [],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  size: 16,
-                  color: isSelected ? Colors.white : AppColors.textSecondary),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? Colors.white : AppColors.textSecondary)),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 16,
+                    color: isSelected ? Colors.white : AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary)),
+              ],
+            ),
           ),
         ),
       ),

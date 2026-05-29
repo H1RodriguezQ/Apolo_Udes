@@ -21,7 +21,12 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    
+    // Decidimos posicionar los botones en una nueva línea si el ancho de pantalla es menor a 950px
+    // para dar espacio amplio al título y evitar el aplastamiento horizontal
+    final showButtonsInline = screenWidth > 950;
     
     // Filtrado en tiempo real de graduandos según la barra de búsqueda
     final graduandos = provider.graduandos
@@ -36,32 +41,46 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header de la pantalla con botones responsivos
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
+              if (showButtonsInline)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Graduandos', style: AppTextStyles.h1),
+                          Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Row(
+                      children: _buildButtons(context, provider, isMobile),
+                    ),
+                  ],
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Graduandos', style: AppTextStyles.h1),
                         Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
                       ],
                     ),
-                  ),
-                  if (!isMobile) ..._buildButtons(context, provider, isMobile),
-                ],
-              ),
-              if (isMobile) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _buildButtons(context, provider, isMobile),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _buildButtons(context, provider, isMobile),
+                    ),
+                  ],
                 ),
-              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -74,6 +93,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          
           Expanded(
             child: Card(
               child: graduandos.isEmpty
@@ -99,6 +119,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
         icon: const Icon(Icons.download_rounded, size: 18),
         label: const Text('Plantilla'),
       ),
+      const SizedBox(width: 8),
       ElevatedButton.icon(
         onPressed: _importando ? null : _importarExcel,
         icon: _importando
@@ -111,25 +132,27 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
         label: Text(_importando ? 'Importando...' : 'Subir Excel'),
         style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
       ),
+      const SizedBox(width: 8),
       ElevatedButton.icon(
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add_rounded, size: 18),
         label: const Text('Agregar'),
       ),
-      if (provider.graduandos.isNotEmpty)
+      if (provider.graduandos.isNotEmpty) ...[
+        const SizedBox(width: 8),
         ElevatedButton.icon(
           onPressed: _importando ? null : _borrarTodo,
           icon: const Icon(Icons.delete_sweep_rounded, size: 18),
           label: const Text('Borrar'),
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
         ),
+      ],
     ];
   }
 
   Future<void> _importarExcel() async {
     setState(() => _importando = true);
     
-    // Leemos el excel asíncronamente
     final result = await ExcelService.importarGraduandos();
     
     if (!mounted) return;
@@ -150,18 +173,13 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
       return;
     }
 
-    // Informamos a la UI que empiece la importación en la base de datos local y Firebase
     final provider = context.read<AppProvider>();
-    
-    // Disparamos la importación. 
-    // Internamente, el Provider guardará todo e iniciará el ciclo de envío asíncrono.
     final duplicados = await provider.importarGraduandos(result.graduandos);
     final agregados = result.graduandos.length - duplicados;
     
     if (!mounted) return;
     setState(() => _importando = false);
     
-    // Mostramos feedback de éxito de inmediato sin que el usuario espere a que terminen de enviarse todos los emails de la red
     showDialog(
       context: context, 
       builder: (_) => _ResultadoImportDialog(
@@ -298,89 +316,96 @@ class _GraduandosTable extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SingleChildScrollView(
-        child: Table(
-          columnWidths: const {
-            0: FlexColumnWidth(3), 
-            1: FlexColumnWidth(2), 
-            2: FlexColumnWidth(2),
-            3: FlexColumnWidth(3), 
-            4: FlexColumnWidth(2), 
-            5: FlexColumnWidth(1.5),
-            6: FlexColumnWidth(1.5), 
-            7: FlexColumnWidth(2.5),
-          },
-          children: [
-            TableRow(
-              decoration: const BoxDecoration(color: AppColors.surfaceVariant),
-              children: ['Graduando', 'Documento', 'Código', 'Programa', 'Facultad', 'Hora', 'Estado', 'Acciones']
-                  .map((h) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        child: Text(h, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      ))
-                  .toList(),
-            ),
-            
-            ...graduandos.asMap().entries.map((entry) {
-              final i = entry.key;
-              final g = entry.value;
-              return TableRow(
-                decoration: BoxDecoration(
-                  color: i.isEven ? Colors.white : const Color(0xFFFAFBFC),
-                  border: const Border(bottom: BorderSide(color: AppColors.divider)),
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 1100, // Ancho minimo que evita compresion de columnas
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Table(
+              columnWidths: const {
+                0: FlexColumnWidth(3), 
+                1: FlexColumnWidth(2), 
+                2: FlexColumnWidth(2),
+                3: FlexColumnWidth(3), 
+                4: FlexColumnWidth(2), 
+                5: FlexColumnWidth(1.5),
+                6: FlexColumnWidth(1.5), 
+                7: FlexColumnWidth(2.5),
+              },
+              children: [
+                TableRow(
+                  decoration: const BoxDecoration(color: AppColors.surfaceVariant),
+                  children: ['Graduando', 'Documento', 'Código', 'Programa', 'Facultad', 'Hora', 'Estado', 'Acciones']
+                      .map((h) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            child: Text(h, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          ))
+                      .toList(),
                 ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        UserAvatar(name: g.nombreCompleto, size: 32),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(g.nombreCompleto, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500))),
-                      ],
+                
+                ...graduandos.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final g = entry.value;
+                  return TableRow(
+                    decoration: BoxDecoration(
+                      color: i.isEven ? Colors.white : const Color(0xFFFAFBFC),
+                      border: const Border(bottom: BorderSide(color: AppColors.divider)),
                     ),
-                  ),
-                  _cell(g.documento), 
-                  _cell(g.codigoEstudiantil), 
-                  _cell(g.programa),
-                  _cell(_facultadCorta(g.facultad)), 
-                  _cell(g.horaCeremonia),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
-                    child: StatusBadge.fromEstadoGraduando(g.estado),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_rounded, size: 18),
-                          color: AppColors.primaryLight,
-                          onPressed: () => showDialog(context: context, builder: (_) => _AgregarGraduandoDialog(graduando: g)),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            UserAvatar(name: g.nombreCompleto, size: 32),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(g.nombreCompleto, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500))),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                          color: AppColors.error,
-                          onPressed: () async {
-                            final confirm = await showConfirmDialog(
-                              context, 
-                              title: 'Eliminar graduando', 
-                              content: '¿Eliminar a ${g.nombreCompleto}?', 
-                              confirmLabel: 'Eliminar', 
-                              isDangerous: true,
-                            );
-                            if (confirm == true && context.mounted) {
-                              context.read<AppProvider>().eliminarGraduando(g.id);
-                            }
-                          },
+                      ),
+                      _cell(g.documento), 
+                      _cell(g.codigoEstudiantil), 
+                      _cell(g.programa),
+                      _cell(_facultadCorta(g.facultad)), 
+                      _cell(g.horaCeremonia),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
+                        child: StatusBadge.fromEstadoGraduando(g.estado),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_rounded, size: 18),
+                              color: AppColors.primaryLight,
+                              onPressed: () => showDialog(context: context, builder: (_) => _AgregarGraduandoDialog(graduando: g)),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                              color: AppColors.error,
+                              onPressed: () async {
+                                final confirm = await showConfirmDialog(
+                                  context, 
+                                  title: 'Eliminar graduando', 
+                                  content: '¿Eliminar a ${g.nombreCompleto}?', 
+                                  confirmLabel: 'Eliminar', 
+                                  isDangerous: true,
+                                );
+                                if (confirm == true && context.mounted) {
+                                  context.read<AppProvider>().eliminarGraduando(g.id);
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ],
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
         ),
       ),
     );
