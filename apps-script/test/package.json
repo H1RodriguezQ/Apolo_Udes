@@ -1,0 +1,11 @@
+{
+  "name": "apolo-udes-apps-script-tests",
+  "private": true,
+  "description": "Pruebas locales del servidor de correos: renderizador de la plantilla y generador del QR. Se ejecutan con `npm test` (Node 18+).",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0"
+  }
+}
