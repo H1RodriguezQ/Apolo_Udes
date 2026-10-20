@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi código de acceso - UDES</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, #0F2347 0%, #1A3A6B 60%, #1E4D8C 100%); padding: 24px 20px; text-align: center; }
+    .header h1 { color: #fff; font-size: 22px; font-weight: 800; }
+    .header p { color: #B8CCE8; font-size: 13px; margin-top: 4px; }
+    .banner { background: linear-gradient(90deg, #C9A84C, #F0D060, #C9A84C); padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #3D2B00; letter-spacing: 2px; }
+    .container { max-width: 440px; margin: 24px auto; padding: 0 16px; flex: 1; width: 100%; }
+    .card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); text-align: center; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1A3A6B; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .nombre { color: #0F2347; font-size: 22px; font-weight: 800; margin: 6px 0 2px; }
+    .sub { color: #718096; font-size: 13px; }
+    #qr { display: inline-block; padding: 14px; background: #fff; border: 2px solid #1A3A6B; border-radius: 12px; margin: 22px 0 12px; }
+    .codigo { font-family: Consolas, monospace; color: #0F2347; font-size: 13px; font-weight: 700; word-break: break-all; }
+    .aviso { border-radius: 8px; padding: 12px 14px; margin-top: 18px; font-size: 13px; }
+    .aviso.ok { background: #F0FFF4; border: 1px solid #9AE6B4; color: #276749; }
+    .aviso.pendiente { background: #FFF8E1; border: 1px solid #F0D060; color: #7B5800; }
+    .aviso.error { background: #FFF5F5; border: 1px solid #FEB2B2; color: #9B2C2C; }
+    .aviso a { color: inherit; font-weight: 700; }
+    /* Datos de la ceremonia tomados de configuracion/evento: solo se pinta
+       la fila si hay dato configurado, para no mostrar huecos vacíos. */
+    .evento { background: #f8f9fb; border-radius: 10px; padding: 14px 16px; margin-top: 16px; text-align: left; }
+    .evento-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; color: #2d3748; font-size: 14px; }
+    .evento-row:last-child { margin-bottom: 0; }
+    .evento-row span { word-break: break-word; }
+    .footer { text-align: center; padding: 24px; color: #718096; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎓 Apolo UDES</h1>
+  <p>Ceremonia de Graduación</p>
+</div>
+<div class="banner">✦ MI CÓDIGO DE ACCESO ✦</div>
+
+<div class="container">
+  <div class="card" id="card">
+    <div class="spinner"></div>
+    <p class="sub">Cargando tu invitación...</p>
+  </div>
+</div>
+
+<div class="footer">
+  Presenta este código en la entrada. Sube el brillo de la pantalla para leerlo más rápido.<br>
+  Universidad de Santander – UDES
+</div>
+
+<!-- Librería para dibujar el QR en el propio navegador: el código nunca se
+     envía a un servicio externo (a diferencia de ImgBB, V-09). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { getFirestore, doc, getDoc }
+    from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+
+  const app = initializeApp({
+    apiKey: "AIzaSyDMcbZf2eIQrwt9mFeuui8MjD1RxynNQcQ",
+    authDomain: "apolo-udes.firebaseapp.com",
+    projectId: "apolo-udes",
+    storageBucket: "apolo-udes.firebasestorage.app",
+    messagingSenderId: "588093325085",
+    appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
+  });
+  const db = getFirestore(app);
+
+  const card = document.getElementById('card');
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  // Invitados (por defecto) o directivos (?tipo=directivo)
+  const esDirectivo = params.get('tipo') === 'directivo';
+
+  // Todo el texto se inserta con textContent: nada escrito por usuarios se
+  // interpreta como HTML.
+  function el(tag, clase, texto) {
+    const e = document.createElement(tag);
+    if (clase) e.className = clase;
+    if (texto != null) e.textContent = texto;
+    return e;
+  }
+
+  function mostrarError(titulo, texto) {
+    card.replaceChildren(
+      el('div', null, '❌'),
+      el('p', 'nombre', titulo),
+      el('p', 'sub', texto),
+    );
+  }
+
+  // Datos de la ceremonia (fecha, hora y lugar) desde configuracion/evento,
+  // que las reglas permiten leer sin iniciar sesión. Si el administrador aún
+  // no lo configura o la lectura falla, la tarjeta se arma igual sin ese
+  // bloque: el código de acceso no depende de estos datos.
+  async function eventoDeLaCeremonia(inv) {
+    let conf = {};
+    try {
+      const snap = await getDoc(doc(db, 'configuracion', 'evento'));
+      if (snap.exists()) conf = snap.data();
+    } catch (e) {
+      console.warn('No se pudo cargar la configuración del evento', e);
+    }
+
+    // La hora depende de la facultad: en directivos viene en su propio
+    // registro y en invitados hay que buscarla en el espejo público del
+    // graduando que los invitó.
+    let facultad = inv.facultad || '';
+    if (!facultad && inv.graduandoId) {
+      try {
+        const g = await getDoc(doc(db, 'graduandos_publico', inv.graduandoId));
+        if (g.exists()) facultad = g.data().facultad || '';
+      } catch (e) {
+        console.warn('No se pudo cargar la facultad del graduando', e);
+      }
+    }
+
+    const filas = [];
+    const ts = conf.fechaCeremonia;
+    const fecha = ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
+    if (fecha) {
+      filas.push(['📅', fecha.toLocaleDateString('es-CO',
+        { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })]);
+    }
+    const hora = (conf.horasPorFacultad || {})[facultad];
+    if (hora) filas.push(['🕐', hora]);
+    if (conf.lugar) {
+      filas.push(['📍', conf.lugar +
+        (conf.direccion ? ', ' + conf.direccion : '') +
+        (conf.ciudad ? ' · ' + conf.ciudad : '')]);
+    }
+    if (!filas.length) return null;
+
+    // Todo con textContent: nada escrito por el administrador se interpreta
+    // como HTML.
+    const caja = el('div', 'evento');
+    for (const fila of filas) {
+      const r = el('div', 'evento-row');
+      r.append(fila[0] + ' ');
+      r.append(el('span', null, fila[1]));
+      caja.append(r);
+    }
+    return caja;
+  }
+
+  async function cargar() {
+    if (!id) return mostrarError('Enlace inválido', 'Verifica el enlace del correo.');
+
+    let snap;
+    try {
+      snap = await getDoc(doc(db, esDirectivo ? 'directivos' : 'invitados', id));
+    } catch (e) {
+      console.error(e);
+      return mostrarError('No se pudo cargar', 'Revisa tu conexión e inténtalo de nuevo.');
+    }
+    if (!snap.exists()) return mostrarError('Enlace inválido', 'Esta invitación no existe.');
+
+    const inv = snap.data();
+
+    if (inv.estado === 'anulado') {
+      return mostrarError('Invitación anulada', 'Esta invitación ya no es válida. Comunícate con la universidad.');
+    }
+    if (!inv.codigoQr) {
+      return mostrarError('Aún no está lista', 'Tu código se está generando. Vuelve a abrir este enlace en unos minutos.');
+    }
+
+    const qr = el('div');
+    qr.id = 'qr';
+    new QRCode(qr, {
+      text: inv.codigoQr,
+      width: 240,
+      height: 240,
+      colorDark: '#0F2347',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    let aviso;
+    if (inv.confirmacion === 'confirmado') {
+      aviso = el('div', 'aviso ok', '✅ Asistencia confirmada. Este código es válido para 1 persona.');
+    } else if (inv.confirmacion === 'rechazado') {
+      aviso = el('div', 'aviso error', 'Registraste que no asistirás, así que este código no dará acceso.');
+    } else {
+      aviso = el('div', 'aviso pendiente');
+      aviso.append('⚠️ Aún no has confirmado tu asistencia. El código solo es válido si confirmas: ');
+      const a = el('a', null, 'confirmar ahora');
+      a.href = (esDirectivo ? 'directivos.html' : 'confirmar.html') +
+        '?id=' + encodeURIComponent(id) + '&r=si';
+      aviso.append(a);
+    }
+
+    // La ceremonia se muestra debajo del aviso, solo si hay algo que decir.
+    const evento = await eventoDeLaCeremonia(inv);
+
+    card.replaceChildren(
+      el('p', 'sub', 'Invitación para'),
+      el('p', 'nombre', (esDirectivo ? inv.nombre : inv.nombreInvitado) || ''),
+      el('p', 'sub', esDirectivo ? (inv.cargo || '') : 'Invitado de ' + (inv.graduandoNombre || '')),
+      qr,
+      el('p', 'codigo', inv.codigoQr),
+      aviso,
+      ...(evento ? [evento] : []),
+    );
+  }
+
+  cargar();
+</script>
+
+</body>
+</html>
