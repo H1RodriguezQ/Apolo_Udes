@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'data/services/database_service.dart';
 import 'providers/app_provider.dart';
+import 'providers/theme_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 
@@ -19,42 +22,81 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Persistencia sin conexión: Firestore guarda en disco la última copia
+  // leída, así que la tablet sigue mostrando los graduandos y validando QR
+  // aunque se quede sin internet (la copia de seguridad en SQLite es
+  // complementaria: sirve para abrir la app ya sin conexión).
+  if (!kIsWeb) {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      // 100 MB (el máximo permitido): alcanza de sobra para cientos de
+      // graduandos e invitados, y evita que Firestore borre la caché.
+      cacheSizeBytes: 100 * 1024 * 1024,
+    );
+  }
+
   // Inicialización de los servicios de base de datos local
   await DatabaseService.initialize();
-  
+
   // Configuración de los formatos locales de fecha en español (Colombia)
   await initializeDateFormatting('es_CO', null);
 
-  runApp(const ApoloUdesApp());
+  // Carga el modo de tema guardado (claro, oscuro o sistema)
+  final themeProvider = ThemeProvider();
+  await themeProvider.cargar();
+
+  runApp(ApoloUdesApp(themeProvider: themeProvider));
 }
 
 class ApoloUdesApp extends StatelessWidget {
-  const ApoloUdesApp({super.key});
+  final ThemeProvider themeProvider;
+  const ApoloUdesApp({super.key, required this.themeProvider});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      // Carga automática de los datos de los graduandos al inicializar el proveedor
-      create: (_) => AppProvider()..cargarGraduandosDesdeDB(),
-      child: MaterialApp(
-        title: 'Apolo UDES',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        
-        // ── Localización para DatePicker en español ──
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('es', 'CO'),
-          Locale('en', 'US'),
-        ],
-        locale: const Locale('es', 'CO'),
-        
-        // Widget raíz que evalúa el estado de la sesión
-        home: const _AppRoot(),
+    return MultiProvider(
+      providers: [
+        // Carga automática de los datos de los graduandos al inicializar el proveedor
+        ChangeNotifierProvider(
+            create: (_) => AppProvider()..cargarGraduandosDesdeDB()),
+        ChangeNotifierProvider.value(value: themeProvider),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, tema, _) => MaterialApp(
+          title: 'Apolo UDES',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: tema.modo,
+
+          // Sincroniza AppColors con el modo real y reconstruye la interfaz
+          builder: (context, child) {
+            final oscuro = tema.modo == ThemeMode.dark ||
+                (tema.modo == ThemeMode.system &&
+                    MediaQuery.platformBrightnessOf(context) ==
+                        Brightness.dark);
+            AppColors.isDark = oscuro;
+            return KeyedSubtree(
+              key: ValueKey(oscuro),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+
+          // ── Localización para DatePicker en español ──
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('es', 'CO'),
+            Locale('en', 'US'),
+          ],
+          locale: const Locale('es', 'CO'),
+
+          // Widget raíz que evalúa el estado de la sesión
+          home: const _AppRoot(),
+        ),
       ),
     );
   }
@@ -67,12 +109,10 @@ class _AppRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escucha el estado de autenticación desde el AppProvider
     final isAuthenticated = context.watch<AppProvider>().isAuthenticated;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      // Transición fluida de 300ms entre pantallas
       child: isAuthenticated
           ? const HomeScreen(key: ValueKey('home'))
           : const LoginScreen(key: ValueKey('login')),

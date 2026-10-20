@@ -1,0 +1,447 @@
+rules_version = '2';
+
+// ============================================================================
+// Apolo UDES - Reglas de seguridad de Cloud Firestore
+// Principio: todo esta denegado salvo lo que se permite explicitamente.
+// El rol se lee del documento usuarios/{uid}; solo un administrador lo escribe.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function rutaPerfil() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    function tienePerfilActivo() {
+      return autenticado()
+        && exists(rutaPerfil())
+        && get(rutaPerfil()).data.get('estado', 'activo') == 'activo';
+    }
+
+    function rol() {
+      return get(rutaPerfil()).data.rol;
+    }
+
+    function puntoAsignado() {
+      return get(rutaPerfil()).data.get('puntoValidacion', '');
+    }
+
+    function esAdmin() {
+      return tienePerfilActivo() && rol() == 'admin';
+    }
+
+    function esOperador() {
+      return tienePerfilActivo() && rol() == 'operador';
+    }
+
+    function esStaff() {
+      return tienePerfilActivo() && rol() in ['admin', 'operador', 'consulta'];
+    }
+
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(campos);
+    }
+
+    function esTexto(campo, maxLongitud) {
+      return campo is string && campo.size() > 0 && campo.size() <= maxLongitud;
+    }
+
+    // ── Validaciones compartidas con la app ────────────────────────────────
+    // Mismo criterio que lib/core/validators/validadores_graduando.dart:
+    // la capa de la app (formulario/pagina) y esta capa tienen que aceptar y
+    // rechazar lo mismo, para que no haya hueco por donde entre lo que la
+    // app ya rechazó.
+
+    // ValidarCorreo(): patron de RFC simple, maximo 254 y sin ".." seguido.
+    // RE2 (el motor de Firestore) no admite lookahead, por eso el ".." se
+    // comprueba con un segundo .matches() que busca DOS puntos seguidos.
+    function esCorreo(campo) {
+      return campo is string
+        && campo.size() > 3
+        && campo.size() <= 254
+        && campo.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$")
+        && !campo.matches(".*\\.\\..*");
+    }
+
+    // ValidarNombrePersona(): empieza por letra y solo letras (con tilde y
+    // ene), espacios, apostrofe y guion. El largo minimo/maximo va aparte
+    // con size(), porque en RE2 no se puede meter el {n} dentro del patron
+    // y que la funcion reciba el limite.
+    function esNombrePersona(campo, maxLongitud) {
+      return campo is string
+        && campo.size() >= 2
+        && campo.size() <= maxLongitud
+        && campo.matches("^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]*$");
+    }
+
+    // ValidarDocumento(): 6 a 15 caracteres alfanumericos que NO empiezan
+    // por 0 (las cedulas colombianas nunca empiezan en 0; los pasaportes
+    // empiezan por letra). Las cedulas repetidas o consecutivas las ve la
+    // app: RE2 no admite referencias retroactivas para expresarlas aqui.
+    function esDocumento(campo) {
+      return campo is string
+        && campo.matches("^[1-9A-Za-z][A-Za-z0-9]{5,14}$");
+    }
+
+    function perfilValido(d) {
+      return d.rol in ['admin', 'operador', 'consulta']
+        && d.get('estado', 'activo') in ['activo', 'inactivo', 'eliminado']
+        // El nombre solo se acota en largo (puede venir vacío si el perfil
+        // lo creó el script de asignación de roles, que escribe con la SDK
+        // de Admin y no pasa por estas reglas); lo crítico es el correo.
+        && d.get('nombre', '') is string
+        && d.get('nombre', '').size() <= 120
+        && esCorreo(d.get('correo', ''))
+        && (d.rol != 'operador'
+            || (d.get('puntoValidacion', null) is string
+                && d.puntoValidacion.size() > 0
+                && d.puntoValidacion.size() <= 60));
+    }
+
+    // Ruta del cupo que ocupa un invitado: cupos/{graduandoId}_{numero}
+    function rutaCupo(graduandoId, numero) {
+      return /databases/$(database)/documents/cupos/$(graduandoId + '_' + string(numero));
+    }
+
+    // Ruta del indice unico de documento: invitados_documentos/{grad}_{doc}
+    function rutaIndice(graduandoId, documento) {
+      return /databases/$(database)/documents/invitados_documentos/$(graduandoId + '_' + documento);
+    }
+
+    // Todos los cupos anteriores a `numero` están ocupados: el contador nunca
+    // deja huecos. Como el máximo son 3 cupos (RF-11a), con revisar hasta 3
+    // alcanza.
+    function cuposInferioresOcupados(graduandoId, numero) {
+      return (numero <= 1 || existsAfter(rutaCupo(graduandoId, 1)))
+        && (numero <= 2 || existsAfter(rutaCupo(graduandoId, 2)))
+        && (numero <= 3 || existsAfter(rutaCupo(graduandoId, 3)));
+    }
+
+    // El cupo `numero` le corresponde a ese invitado DESPUES del lote: el
+    // invitado existe, es del mismo graduando y declara ese mismo numero
+    // (los dos documentos viajan juntos en el mismo lote o transaccion).
+    function cupoCoherente(graduandoId, invitadoId, numero) {
+      return existsAfter(/databases/$(database)/documents/invitados/$(invitadoId))
+        && getAfter(/databases/$(database)/documents/invitados/$(invitadoId))
+             .data.graduandoId == graduandoId
+        && getAfter(/databases/$(database)/documents/invitados/$(invitadoId))
+             .data.get('cupo', 0) == numero;
+    }
+
+    // Una confirmacion se responde UNA sola vez; solo cambia `confirmacion`
+    // y, opcionalmente, `fechaConfirmacion` con la hora del servidor.
+    function confirmacionValida() {
+      return resource.data.get('confirmacion', 'pendiente') == 'pendiente'
+        && soloCambia(['confirmacion', 'fechaConfirmacion'])
+        && request.resource.data.confirmacion in ['confirmado', 'rechazado']
+        && (!('fechaConfirmacion' in request.resource.data)
+            || request.resource.data.fechaConfirmacion == request.time);
+    }
+
+    // ------------------------------------------------------------- graduandos
+
+    match /graduandos/{graduandoId} {
+      allow get, list: if esStaff();
+      allow create, update, delete: if esAdmin();
+    }
+
+    match /graduandos_publico/{graduandoId} {
+      allow get: if true;
+      allow list: if esStaff();
+      allow create, update, delete: if esAdmin();
+
+      // RF-11b: la pagina publica ocupa cupos y necesita subir el contador sin
+      // iniciar sesion. Solo se permite subirlo (nunca bajar), hasta el limite
+      // que fija el administrador, y unicamente si ese cupo YA existe y los
+      // anteriores tambien: asi nadie puede inflar el contador, dejar cupos
+      // huerfanos ni abrir huecos.
+      allow update: if
+           soloCambia(['cuposUsados'])
+        && request.resource.data.cuposUsados is int
+        && request.resource.data.cuposUsados >= 1
+        && request.resource.data.cuposUsados >= resource.data.get('cuposUsados', 0)
+        && request.resource.data.cuposUsados <= request.resource.data.get('invitadosPermitidos', 2)
+        && existsAfter(rutaCupo(graduandoId, request.resource.data.cuposUsados))
+        && getAfter(rutaCupo(graduandoId, request.resource.data.cuposUsados))
+             .data.graduandoId == graduandoId
+        && cuposInferioresOcupados(graduandoId, request.resource.data.cuposUsados);
+    }
+
+    match /configuracion/{documento} {
+      allow get: if true;
+      allow list: if esStaff();
+      allow write: if esAdmin();
+    }
+
+    // -------------------------------------------------------------------- cupos
+    // RF-11a: cada invitado ocupa un cupo numerado (1, 2 y, si se autorizo, 3).
+    // Un cupo existente no se puede volver a crear ni modificar.
+
+    match /cupos/{cupoId} {
+      allow get, list: if esStaff();
+
+      // Rama publica: la pagina de registro ocupa el primer cupo libre y, en
+      // el MISMO lote, sube el contador hasta ese numero. El cupo N solo se
+      // crea si el contador queda en N: asi no existen cupos huerfanos
+      // (sin contador) ni desfases, y el limite lo pone `invitadosPermitidos`.
+      allow create: if
+           request.resource.data.keys().hasOnly(['graduandoId', 'invitadoId', 'numero'])
+        && request.resource.data.numero is int
+        && request.resource.data.numero >= 1
+        && cupoId == request.resource.data.graduandoId + '_' + string(request.resource.data.numero)
+        && request.resource.data.numero <= get(/databases/$(database)/documents/graduandos/$(request.resource.data.graduandoId))
+                                             .data.get('invitadosPermitidos', 2)
+        && request.resource.data.numero == getAfter(/databases/$(database)/documents/graduandos_publico/$(request.resource.data.graduandoId))
+                                             .data.get('cuposUsados', 0)
+        && cupoCoherente(request.resource.data.graduandoId,
+                         request.resource.data.invitadoId,
+                         request.resource.data.numero)
+        // Mantenimiento (TAREA 6): al anular un invitado, el administrador
+        // renumerica los cupos para que no quede ningun hueco sin usar. Aqui
+        // el contador publico NO acompana (baja), por eso se valida aparte y
+        // sin pedir el limite: los numeros salen de los cupos que ya existen.
+        || (esAdmin()
+            && request.resource.data.keys().hasOnly(['graduandoId', 'invitadoId', 'numero'])
+            && request.resource.data.numero is int
+            && request.resource.data.numero >= 1
+            && cupoId == request.resource.data.graduandoId + '_' + string(request.resource.data.numero)
+            && cupoCoherente(request.resource.data.graduandoId,
+                             request.resource.data.invitadoId,
+                             request.resource.data.numero));
+
+      allow delete: if esAdmin();
+
+      // Renumeracion (TAREA 6): solo cambian a quien le pertenece el cupo y
+      // a que numero pasa; el ID del documento tiene que coincidir con ese
+      // numero y el invitado tiene que declararlo.
+      allow update: if esAdmin()
+        && soloCambia(['invitadoId', 'numero'])
+        && request.resource.data.graduandoId == resource.data.graduandoId
+        && request.resource.data.numero is int
+        && request.resource.data.numero >= 1
+        && cupoId == request.resource.data.graduandoId + '_' + string(request.resource.data.numero)
+        && cupoCoherente(request.resource.data.graduandoId,
+                         request.resource.data.invitadoId,
+                         request.resource.data.numero);
+    }
+
+    // ---------------------------------------------------------------- invitados
+
+    match /invitados/{invitadoId} {
+      allow get: if true;
+      allow list: if esStaff();
+
+      allow create: if
+           request.resource.data.keys().hasOnly([
+             'id', 'graduandoId', 'graduandoNombre', 'nombreInvitado',
+             'correoInvitado', 'documento', 'tipo', 'estado', 'fechaRegistro',
+             'cupo'
+           ])
+        && request.resource.data.id == invitadoId
+        && request.resource.data.graduandoNombre is string
+        && request.resource.data.graduandoNombre.size() <= 100
+        // Nombre y correo con el MISMO patron que exige la pagina publica y
+        // que valida validadores_graduando.dart: no se cuela nada que la app
+        // ya rechazaria (tampoco HTML, comillas ni otros caracteres).
+        && esNombrePersona(request.resource.data.nombreInvitado, 80)
+        && esCorreo(request.resource.data.correoInvitado)
+        && esDocumento(request.resource.data.documento)
+        && request.resource.data.tipo in ['principal', 'secundaria']
+        && request.resource.data.estado == 'pendiente'
+        // La hora la pone el servidor: no se puede registrar con fecha vieja.
+        && request.resource.data.fechaRegistro == request.time
+        && exists(/databases/$(database)/documents/graduandos/$(request.resource.data.graduandoId))
+        && request.resource.data.cupo is int
+        && existsAfter(rutaCupo(request.resource.data.graduandoId, request.resource.data.cupo))
+        && getAfter(rutaCupo(request.resource.data.graduandoId, request.resource.data.cupo))
+             .data.invitadoId == invitadoId
+        // Indice unico de documento: se crea en el MISMO lote y debe apuntar
+        // a este invitado. Si la cedula ya estaba registrada para el mismo
+        // graduando, el indice existente apunta a otro invitado y todo el lote
+        // se rechaza: una cedula no puede ocupar dos cupos.
+        && existsAfter(rutaIndice(request.resource.data.graduandoId, request.resource.data.documento))
+        && getAfter(rutaIndice(request.resource.data.graduandoId, request.resource.data.documento))
+             .data.invitadoId == invitadoId;
+
+      allow update: if confirmacionValida();
+
+      allow create, update, delete: if esAdmin();
+    }
+
+    // --------------------------------------------------- invitados_documentos
+    // Indice unico: {graduandoId}_{documento}. Mientras exista, esa cedula no
+    // puede volver a registrarse para el mismo graduando ni ocupar otro cupo.
+    // Se crea en el mismo lote que el invitado (las reglas miran el estado
+    // final del lote), asi que el par invitado+indice entra o sale entero.
+
+    match /invitados_documentos/{indiceId} {
+      allow get, list: if esStaff();
+
+      allow create: if
+           request.resource.data.keys().hasOnly([
+             'graduandoId', 'documento', 'invitadoId'
+           ])
+        && indiceId == request.resource.data.graduandoId + '_' + request.resource.data.documento
+        && esTexto(request.resource.data.graduandoId, 64)
+        // Mismo patron que `invitados.documento`: si no fueran identicos,
+        // el indice se podria fabricar con otro documento y no bloquearia.
+        && esDocumento(request.resource.data.documento)
+        && esTexto(request.resource.data.invitadoId, 64)
+        // Solo se indexa a un invitado REAL de ese graduando y con esa misma
+        // cedula: el indice no se puede fabricar para bloquear a otros.
+        && existsAfter(/databases/$(database)/documents/invitados/$(request.resource.data.invitadoId))
+        && getAfter(/databases/$(database)/documents/invitados/$(request.resource.data.invitadoId))
+             .data.graduandoId == request.resource.data.graduandoId
+        && getAfter(/databases/$(database)/documents/invitados/$(request.resource.data.invitadoId))
+             .data.documento == request.resource.data.documento;
+
+      // Mantenimiento: solo el administrador puede tocar o borrar el indice.
+      allow update, delete: if esAdmin();
+    }
+
+    // --------------------------------------------------------------- directivos
+
+    match /directivos/{directivoId} {
+      allow get: if true;
+      allow list: if esStaff();
+      allow update: if confirmacionValida();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ------------------------------------------------------------- validaciones
+    // SOLO INSERCION (no repudio). El operador solo registra su propio punto.
+
+    match /validaciones/{validacionId} {
+      allow get, list: if esStaff();
+
+      allow create: if
+           (esOperador() || esAdmin())
+        && request.resource.data.keys().hasOnly([
+             'codigo', 'nombre', 'tipo', 'resultado', 'puntoValidacion',
+             'operadorId', 'operadorCorreo', 'timestamp'
+           ])
+        && request.resource.data.operadorId == request.auth.uid
+        && request.resource.data.timestamp == request.time
+        && request.resource.data.resultado in ['valido', 'usado', 'invalido']
+        // Tipos y largos de los campos de la bitacora de accesos. `codigo`
+        // y `nombre` pueden venir vacios cuando no se reconocio a nadie
+        // (minimizacion de datos), por eso solo se acotan el largo.
+        && request.resource.data.codigo is string
+        && request.resource.data.codigo.size() <= 64
+        && request.resource.data.codigo.matches("^[A-Za-z0-9_-]*$")
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() <= 120
+        && request.resource.data.tipo is string
+        && request.resource.data.tipo.size() <= 30
+        && esTexto(request.resource.data.puntoValidacion, 60)
+        && esCorreo(request.resource.data.operadorCorreo)
+        && (esAdmin() || request.resource.data.puntoValidacion == puntoAsignado());
+
+      allow update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------ usuarios
+
+    match /usuarios/{usuarioId} {
+      allow get: if autenticado() && (request.auth.uid == usuarioId || esAdmin());
+      allow list: if esAdmin();
+
+      allow create: if esAdmin() && perfilValido(request.resource.data);
+
+      allow update: if esAdmin()
+        && perfilValido(request.resource.data)
+        && (usuarioId != request.auth.uid
+            || (request.resource.data.rol == 'admin'
+                && request.resource.data.get('estado', 'activo') == 'activo'));
+
+      allow delete: if esAdmin() && usuarioId != request.auth.uid;
+    }
+
+    // ----------------------------------------------------------------- auditoria
+    // Bitacora de SOLO INSERCION; autor y hora los verifica el servidor.
+
+    match /auditoria/{registroId} {
+      allow get, list: if esAdmin();
+
+      allow create: if esStaff()
+        && request.resource.data.keys().hasOnly([
+             'autorId', 'autorCorreo', 'autorRol', 'accion', 'detalle',
+             'tipo', 'fecha'
+           ])
+        && request.resource.data.autorId == request.auth.uid
+        && request.resource.data.fecha == request.time
+        && esTexto(request.resource.data.accion, 200)
+        // La bitacora tampoco acepta textos infinitos ni campos raros.
+        && request.resource.data.detalle is string
+        && request.resource.data.detalle.size() <= 500
+        && esTexto(request.resource.data.tipo, 40)
+        && esTexto(request.resource.data.autorRol, 40)
+        && esCorreo(request.resource.data.autorCorreo);
+
+      allow update, delete: if false;
+    }
+
+    // ------------------------------------------------------- solicitudes_correo
+    // El servidor (Google Apps Script) es el unico que manda los correos y el
+    // unico que escribe `enviados`/`estado` con la cuenta de servicio (las
+    // reglas no aplican a la SDK de Admin). La app solo deja la peticion.
+    // Por eso el cliente solo puede CREAR: marcar algo como "terminada" desde
+    // una tablet seria mentira y podria tapar un fallo de envio.
+
+    match /solicitudes_correo/{solicitudId} {
+      allow get, list: if esAdmin();
+
+      allow create: if esAdmin()
+        && request.resource.data.keys().hasOnly([
+             'tipo', 'titulo', 'mensaje', 'destinatarios', 'invitadoId',
+             'correoOpcional', 'estado', 'creadoPor', 'fecha', 'enviados'
+           ])
+        && request.resource.data.tipo in ['recordatorio', 'campana', 'invitacion']
+        && esTexto(request.resource.data.titulo, 100)
+        // El titulo va como asunto del correo: sin saltos de linea no se
+        // puede inyectar otro asunto o destinatario desde la app.
+        && !request.resource.data.titulo.matches(".*[\\r\\n].*")
+        && esTexto(request.resource.data.mensaje, 1000)
+        && request.resource.data.destinatarios in [
+             'todos', 'confirmados', 'pendientes', 'individual'
+           ]
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.enviados == 0
+        && request.resource.data.fecha == request.time
+        // Quien pide el correo es quien firma la peticion (no se puede firmar
+        // con el correo de otro usuario).
+        && request.resource.data.creadoPor == get(rutaPerfil()).data.correo
+        // Un envio individual SIEMPRE trae a quien y a que correo va; los
+        // masivos no traen esos campos sueltos.
+        && ((request.resource.data.destinatarios == 'individual'
+              && 'invitadoId' in request.resource.data
+              && 'correoOpcional' in request.resource.data)
+            || (request.resource.data.destinatarios != 'individual'
+              && !('invitadoId' in request.resource.data)
+              && !('correoOpcional' in request.resource.data)))
+        && (!('invitadoId' in request.resource.data)
+            || (request.resource.data.invitadoId is string
+                && request.resource.data.invitadoId.size() > 0
+                && request.resource.data.invitadoId.size() <= 64))
+        && (!('correoOpcional' in request.resource.data)
+            || esCorreo(request.resource.data.correoOpcional));
+
+      // Solo el servidor (SDK de Admin) puede avanzar el estado o borrar.
+      allow update, delete: if false;
+    }
+
+    // --------------------------------------------------- denegacion por defecto
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

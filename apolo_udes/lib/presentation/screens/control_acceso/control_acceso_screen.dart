@@ -132,6 +132,40 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
             title: 'Control de Acceso',
             subtitle: 'Verificación de asistencia mediante código QR',
           ),
+          // Aviso de una limitación de diseño: mientras esta tablet está sin
+          // internet no se entera de lo que validó la otra entrada, así que
+          // el mismo QR podría aceptarse en ambas hasta reconectar.
+          if (!provider.enLinea) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.warningLight,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi_off_rounded,
+                      color: AppColors.warning, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Sin conexión: los accesos se validan con la información '
+                      'guardada en esta tablet y se sincronizarán al reconectar. '
+                      'Mientras tanto, el otro punto de entrada no ve estos registros.',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Expanded(
             child: isMobile
@@ -198,15 +232,15 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  const Row(
+                                  Row(
                                     children: [
-                                      Expanded(child: Divider()),
+                                      const Expanded(child: Divider()),
                                       Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 12),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
                                         child: Text('o ingresa manualmente',
                                             style: AppTextStyles.caption),
                                       ),
-                                      Expanded(child: Divider()),
+                                      const Expanded(child: Divider()),
                                     ],
                                   ),
                                   const SizedBox(height: 16),
@@ -268,7 +302,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                                   spacing: 10,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
-                                    const Text('Registro en tiempo real',
+                                    Text('Registro en tiempo real',
                                         style: AppTextStyles.h4),
                                     Container(
                                       width: 8,
@@ -418,7 +452,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Text('Registro en tiempo real',
+                      Text('Registro en tiempo real',
                           style: AppTextStyles.h4),
                       Container(
                           width: 8,
@@ -433,8 +467,8 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   registros.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
+                      ? Padding(
+                          padding: const EdgeInsets.all(16),
                           child: Center(
                               child: Text('Sin registros aún',
                                   style: AppTextStyles.bodySmall)))

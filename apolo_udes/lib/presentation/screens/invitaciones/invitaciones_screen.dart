@@ -1,12 +1,8 @@
-import 'dart:convert';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
-import '../../../data/services/email_service.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
 
@@ -57,16 +53,20 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                 ),
                 const SizedBox(width: 10),
               ],
-              ElevatedButton.icon(
-                onPressed: _enviandoRecordatorios ? null : () => _enviarRecordatorios(context, provider),
-                icon: _enviandoRecordatorios
-                    ? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded, size: 18),
-                label: Text(_enviandoRecordatorios ? 'Enviando...' : 'Enviar recordatorios'),
-              ),
+              // Solo el administrador pide correos: los envía el servidor y
+              // las reglas de Firestore no aceptan peticiones de otros roles.
+              if (isAdmin && invitaciones.isNotEmpty) ...[
+                ElevatedButton.icon(
+                  onPressed: _enviandoRecordatorios ? null : () => _enviarRecordatorios(context, provider),
+                  icon: _enviandoRecordatorios
+                      ? const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(_enviandoRecordatorios ? 'Enviando...' : 'Enviar recordatorios'),
+                ),
+              ],
             ],
           ),
 
@@ -101,6 +101,15 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                 color: AppColors.info,
                 icon: Icons.send_rounded,
               ),
+              const SizedBox(width: 12),
+              // Las anuladas se cuentan aparte de las rechazadas: las anula
+              // la universidad (y su cupo quedó libre), las rechaza el invitado.
+              _MiniMetric(
+                label: 'Anuladas',
+                value: '${invitaciones.where((i) => i.estado == EstadoInvitacion.anulada).length}',
+                color: AppColors.textSecondary,
+                icon: Icons.block_rounded,
+              ),
             ],
           ),
 
@@ -117,7 +126,13 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                         subtitle: 'Las invitaciones aparecerán aquí',
                       )
                     : isMobile
-                        ? _InvitacionesList(invitaciones: invitaciones, enviando: _enviando, onEnviar: (inv) => _enviarInvitacion(context, inv))
+                        ? _InvitacionesList(
+                            invitaciones: invitaciones,
+                            enviando: _enviando,
+                            onEnviar: (inv) => _enviarInvitacion(context, inv),
+                            onAnular: (inv) => _anularInvitado(context, inv),
+                            puedeEnviar: isAdmin,
+                          )
                         : SingleChildScrollView(
                         child: Table(
                           columnWidths: const {
@@ -130,7 +145,7 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                           },
                           children: [
                             TableRow(
-                              decoration: const BoxDecoration(color: AppColors.surfaceVariant),
+                              decoration: BoxDecoration(color: AppColors.surfaceVariant),
                               children: ['Invitado', 'Graduando', 'Tipo', 'Estado', 'Fecha Envío', 'Acción']
                                   .map((h) => Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -146,7 +161,7 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                               return TableRow(
                                 decoration: BoxDecoration(
                                   color: i.isEven ? Colors.white : const Color(0xFFFAFBFC),
-                                  border: const Border(bottom: BorderSide(color: AppColors.divider)),
+                                  border: Border(bottom: BorderSide(color: AppColors.divider)),
                                 ),
                                 children: [
                                   Padding(
@@ -191,17 +206,33 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                                       : '—'),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: estaEnviando
-                                        ? const SizedBox(
-                                            width: 20, height: 20,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight),
-                                          )
-                                        : IconButton(
-                                            icon: const Icon(Icons.send_rounded, size: 18),
-                                            color: AppColors.primaryLight,
-                                            tooltip: 'Enviar invitación por correo',
-                                            onPressed: () => _enviarInvitacion(context, inv),
-                                          ),
+                                    child: !isAdmin || inv.estado == EstadoInvitacion.anulada
+                                        // Reenviar y anular son acciones de
+                                        // administrador; un anulado ya no
+                                        // recibe ningún correo.
+                                        ? const SizedBox.shrink()
+                                        : estaEnviando
+                                            ? const SizedBox(
+                                                width: 20, height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight),
+                                              )
+                                            : Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  IconButton(
+                                                    icon: const Icon(Icons.send_rounded, size: 18),
+                                                    color: AppColors.primaryLight,
+                                                    tooltip: 'Enviar invitación por correo',
+                                                    onPressed: () => _enviarInvitacion(context, inv),
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.block_rounded, size: 18),
+                                                    color: AppColors.error,
+                                                    tooltip: 'Anular invitado y liberar su cupo',
+                                                    onPressed: () => _anularInvitado(context, inv),
+                                                  ),
+                                                ],
+                                              ),
                                   ),
                                 ],
                               );
@@ -223,7 +254,8 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Recordatorios enviados exitosamente'),
+          // El servidor es quien manda los correos: aquí solo se pidió.
+          content: Text('✅ Recordatorio en cola. El servidor lo enviará en unos minutos.'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -257,39 +289,28 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
   Future<void> _enviarInvitacion(BuildContext context, Invitacion inv) async {
     final provider = context.read<AppProvider>();
 
-    final graduando = provider.graduandos.firstWhere(
-      (g) => g.id == inv.graduandoId,
-      orElse: () => provider.graduandos.first,
-    );
-
+    // Se puede corregir el correo antes de pedir el reenvío: si el invitado
+    // escribió mal su dirección, así se arregla sin borrar la invitación.
     final correoDestino = await _pedirCorreo(context, inv.invitado);
     if (correoDestino == null || correoDestino.isEmpty) return;
 
     setState(() => _enviando.add(inv.id));
 
     try {
-      final qrBase64 = await _generarQrBase64(inv.codigoQr ?? inv.id);
-
-      final exito = await EmailService.enviarInvitacion(
-        graduando: graduando,
-        nombreInvitado: inv.invitado,
-        correoInvitado: correoDestino,
-        codigoQr: inv.codigoQr ?? inv.id,
-        qrBase64: qrBase64,
-        fechaCeremonia: DateFormat("EEEE d 'de' MMMM 'de' yyyy", 'es_CO')
-            .format(DateTime.now().add(const Duration(days: 30))),
+      await provider.solicitarReenvioInvitacion(
         invitadoId: inv.id,
+        nombre: inv.invitado,
+        correo: correoDestino,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(exito
-              ? '✅ Invitación enviada a $correoDestino'
-              : '❌ No se pudo enviar. Verifica las credenciales de correo.'),
-          backgroundColor: exito ? AppColors.success : AppColors.error,
-          duration: const Duration(seconds: 4),
+        const SnackBar(
+          // El envío lo hace el servidor de correos (Apps Script), no la app.
+          content: Text('✅ Solicitud enviada: el servidor reenviará la invitación en unos minutos.'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 4),
         ),
       );
     } catch (e) {
@@ -299,6 +320,81 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
       );
     } finally {
       if (mounted) setState(() => _enviando.remove(inv.id));
+    }
+  }
+
+  /// Pide confirmación y anula el invitado. La operación completa (anular +
+  /// liberar cupo + renumerar) es UNA transacción en el servicio: o pasa todo
+  /// o no pasa nada, para que no quede un cupo ocupado a medias.
+  Future<void> _anularInvitado(BuildContext context, Invitacion inv) async {
+    // Se captura antes del `await` para no usar el contexto después de un
+    // salto asíncrono.
+    final provider = context.read<AppProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final motivo = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Anular invitado'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Se anulará a ${inv.invitado} y su cupo quedará libre para '
+              'otra persona.',
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'El registro NO se borra: se conserva como "anulado" con su '
+              'motivo para dejar constancia, y ya no podrá volver a '
+              'registrarse con este enlace.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: motivo,
+              maxLength: 80,
+              decoration: const InputDecoration(
+                labelText: 'Motivo (opcional)',
+                hintText: 'Cambio de invitado, error de registro…',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Anular'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true || !mounted) return;
+    try {
+      final ocupados =
+          await provider.anularInvitado(inv, motivo: motivo.text.trim());
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Invitado anulado. Cupos ocupados: $ocupados'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('No se pudo anular: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      motivo.dispose();
     }
   }
 
@@ -323,25 +419,6 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
         ],
       ),
     );
-  }
-
-  Future<String> _generarQrBase64(String data) async {
-    final qrPainter = QrPainter(
-      data: data,
-      version: QrVersions.auto,
-      errorCorrectionLevel: QrErrorCorrectLevel.M,
-      eyeStyle: const QrEyeStyle(color: Color(0xFF0F2347)),
-      dataModuleStyle: const QrDataModuleStyle(color: Color(0xFF0F2347)),
-    );
-    const imageSize = Size(200, 200);
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    qrPainter.paint(canvas, imageSize);
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(200, 200);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    final bytes = byteData!.buffer.asUint8List();
-    return base64Encode(bytes);
   }
 
   Widget _cell(String text) {
@@ -395,7 +472,20 @@ class _InvitacionesList extends StatelessWidget {
   final Set<String> enviando;
   final Function(Invitacion) onEnviar;
 
-  const _InvitacionesList({required this.invitaciones, required this.enviando, required this.onEnviar});
+  /// Anular también es una acción de administrador: libera cupos y deja
+  /// registro en la bitácora.
+  final Function(Invitacion) onAnular;
+
+  /// Solo el administrador puede pedirle al servidor que reenvíe un correo.
+  final bool puedeEnviar;
+
+  const _InvitacionesList({
+    required this.invitaciones,
+    required this.enviando,
+    required this.onEnviar,
+    required this.onAnular,
+    required this.puedeEnviar,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -445,15 +535,32 @@ class _InvitacionesList extends StatelessWidget {
                   ],
                 ),
               ),
-              estaEnviando
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight))
-                  : IconButton(
+              if (!puedeEnviar || inv.estado == EstadoInvitacion.anulada)
+                const SizedBox.shrink()
+              else if (estaEnviando)
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight))
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
                       icon: const Icon(Icons.send_rounded, size: 18),
                       color: AppColors.primaryLight,
+                      tooltip: 'Enviar invitación por correo',
                       onPressed: () => onEnviar(inv),
                       constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                       padding: EdgeInsets.zero,
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.block_rounded, size: 18),
+                      color: AppColors.error,
+                      tooltip: 'Anular invitado y liberar su cupo',
+                      onPressed: () => onAnular(inv),
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
             ],
           ),
         );

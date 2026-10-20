@@ -3,8 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
-import '../../widgets/common/widgets.dart';
+import '../bitacora/bitacora_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -71,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Dashboard', style: AppTextStyles.h1),
+          Text('Dashboard', style: AppTextStyles.h1),
           const SizedBox(height: 4),
           Wrap(
             spacing: 8,
@@ -112,12 +113,9 @@ class DashboardScreen extends StatelessWidget {
 
           LayoutBuilder(
             builder: (context, constraints) {
-              // Ajustamos a 2 columnas en pantallas estrechas para dar espacio óptimo
               final columns = screenWidth < 850 ? 2 : 4;
               final spacing = isMobile ? 10.0 : 16.0;
               final itemWidth = (constraints.maxWidth - (spacing * (columns - 1))) / columns;
-              
-              // Altura segura garantizada para las tarjetas
               const targetHeight = 145.0;
               final computedAspectRatio = itemWidth / targetHeight;
 
@@ -167,7 +165,7 @@ class DashboardScreen extends StatelessWidget {
                   ? '${(confirmados / (confirmados + rechazados + pendientes) * 100).round()}% confirmados'
                   : 'Sin datos aún',
               child: confirmados + rechazados + pendientes == 0
-                  ? const Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
+                  ? Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
                   : _ConfirmacionDonutChart(data: estadoConfirmaciones),
             ),
             const SizedBox(height: 16),
@@ -177,7 +175,7 @@ class DashboardScreen extends StatelessWidget {
                   ? '$ocupado de $aforoTotal ocupados (${(ocupado / aforoTotal * 100).round()}%)'
                   : 'Sin aforo configurado',
               child: aforoTotal == 0
-                  ? const Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
+                  ? Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
                   : _AforoOcupacionDonutChart(data: ocupacionAforo),
             ),
             const SizedBox(height: 16),
@@ -187,7 +185,7 @@ class DashboardScreen extends StatelessWidget {
                   ? '${(directivosConfirmados / (directivosConfirmados + directivosRechazados + directivosPendientes) * 100).round()}% confirmados'
                   : 'Sin datos aún',
               child: directivosConfirmados + directivosRechazados + directivosPendientes == 0
-                  ? const Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
+                  ? Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
                   : _DirectivosDonutChart(data: estadoDirectivos),
             ),
             const SizedBox(height: 16),
@@ -197,14 +195,14 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Graduandos por Facultad', style: AppTextStyles.h4),
+                    Text('Graduandos por Facultad', style: AppTextStyles.h4),
                     const SizedBox(height: 4),
-                    const Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
+                    Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
                     const SizedBox(height: 16),
                     SizedBox(
                       height: 220,
                       child: graduandosPorFacultad.isEmpty
-                          ? const Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
+                          ? Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
                           : _FacultadBarChart(data: graduandosPorFacultad),
                     ),
                   ],
@@ -224,14 +222,14 @@ class DashboardScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Graduandos por Facultad', style: AppTextStyles.h4),
+                            Text('Graduandos por Facultad', style: AppTextStyles.h4),
                             const SizedBox(height: 4),
-                            const Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
+                            Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
                             const SizedBox(height: 24),
                             SizedBox(
                               height: 200,
                               child: graduandosPorFacultad.isEmpty
-                                  ? const Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
+                                  ? Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
                                   : _FacultadBarChart(data: graduandosPorFacultad),
                             ),
                           ],
@@ -248,7 +246,7 @@ class DashboardScreen extends StatelessWidget {
                           ? '${(confirmados / (confirmados + rechazados + pendientes) * 100).round()}% confirmados'
                           : 'Sin datos aún',
                       child: confirmados + rechazados + pendientes == 0
-                          ? const Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
+                          ? Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
                           : _ConfirmacionDonutChart(data: estadoConfirmaciones),
                     ),
                   ),
@@ -268,7 +266,7 @@ class DashboardScreen extends StatelessWidget {
                           ? '$ocupado de $aforoTotal (${(ocupado / aforoTotal * 100).round()}%)'
                           : 'Sin aforo configurado',
                       child: aforoTotal == 0
-                          ? const Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
+                          ? Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
                           : _AforoOcupacionDonutChart(data: ocupacionAforo),
                     ),
                   ),
@@ -281,7 +279,7 @@ class DashboardScreen extends StatelessWidget {
                           ? '${(directivosConfirmados / (directivosConfirmados + directivosRechazados + directivosPendientes) * 100).round()}% confirmados'
                           : 'Sin datos aún',
                       child: directivosConfirmados + directivosRechazados + directivosPendientes == 0
-                          ? const Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
+                          ? Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
                           : _DirectivosDonutChart(data: estadoDirectivos),
                     ),
                   ),
@@ -292,36 +290,10 @@ class DashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(isMobile ? 16 : 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(child: Text('Últimas Actividades', style: AppTextStyles.h4)),
-                      TextButton(onPressed: () {}, child: const Text('Ver todas')),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  provider.actividades.isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text('Sin actividad reciente', style: AppTextStyles.bodySmall),
-                          ))
-                      : Column(
-                          children: provider.actividades
-                              .take(5)
-                              .map((a) => _ActividadRow(actividad: a))
-                              .toList(),
-                        ),
-                ],
-              ),
-            ),
+          _ActividadCard(
+            isAdmin: provider.isAdmin,
+            actividades: provider.actividades,
+            isMobile: isMobile,
           ),
         ],
       ),
@@ -347,6 +319,116 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
+// ── Actividad: bitácora (admin) o sesión actual (operador) ──
+
+class _ActividadCard extends StatefulWidget {
+  final bool isAdmin;
+  final List<ActividadReciente> actividades;
+  final bool isMobile;
+  const _ActividadCard({
+    required this.isAdmin,
+    required this.actividades,
+    required this.isMobile,
+  });
+
+  @override
+  State<_ActividadCard> createState() => _ActividadCardState();
+}
+
+class _ActividadCardState extends State<_ActividadCard> {
+  Stream<List<BitacoraEntrada>>? _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    // El stream se crea una sola vez: si se creara en build(), cada
+    // actualizacion del dashboard abriria una nueva conexion.
+    if (widget.isAdmin) _stream = streamBitacora(limite: 6);
+  }
+
+  void _abrirBitacora() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Bitácora'),
+          backgroundColor: AppColors.sidebarBg,
+          foregroundColor: Colors.white,
+        ),
+        body: const BitacoraScreen(),
+      ),
+    ));
+  }
+
+  Widget _vacio(String texto) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(texto, style: AppTextStyles.bodySmall),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(widget.isMobile ? 16 : 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.isAdmin ? 'Bitácora reciente' : 'Actividad de esta sesión',
+                    style: AppTextStyles.h4,
+                  ),
+                ),
+                if (widget.isAdmin)
+                  TextButton.icon(
+                    onPressed: _abrirBitacora,
+                    icon: const Icon(Icons.history_rounded, size: 16),
+                    label: const Text('Ver bitácora completa'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            if (widget.isAdmin)
+              StreamBuilder<List<BitacoraEntrada>>(
+                stream: _stream,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _vacio('No fue posible cargar la bitácora');
+                  }
+                  if (!snap.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final lista = snap.data!;
+                  if (lista.isEmpty) return _vacio('Sin registros todavía');
+                  return Column(
+                    children: lista.map((e) => BitacoraRow(entrada: e)).toList(),
+                  );
+                },
+              )
+            else if (widget.actividades.isEmpty)
+              _vacio('Sin actividad reciente')
+            else
+              Column(
+                children: widget.actividades
+                    .take(5)
+                    .map((a) => _ActividadRow(actividad: a))
+                    .toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LocalMetricCard extends StatelessWidget {
   final String title;
   final String value;
@@ -365,56 +447,49 @@ class _LocalMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface, // antes: Colors.white fijo
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icono en caja contenedora estilizada
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 22,
-            ),
+            child: Icon(icon, color: color, size: 22),
           ),
           const Spacer(),
-          // Valor numerico con FittedBox para prevenir desbordamientos
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                color: AppColors.textPrimary,
                 height: 1.1,
               ),
             ),
           ),
           const SizedBox(height: 4),
-          // Titulo de la metrica
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF64748B),
+              color: AppColors.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -446,7 +521,8 @@ class _AforoOcupacionDonutChartState extends State<_AforoOcupacionDonutChart> {
       const Color(0xFF3B82F6), // Graduandos
       const Color(0xFF10B981), // Invitados
       const Color(0xFF8B5CF6), // Directivos
-      const Color(0xFFE5E7EB), // Disponible
+      // Disponible: gris más oscuro en modo oscuro para que no deslumbre
+      AppColors.isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
     ];
 
     return Row(
@@ -468,9 +544,7 @@ class _AforoOcupacionDonutChartState extends State<_AforoOcupacionDonutChart> {
               return PieChartSectionData(
                 color: colors[i],
                 value: entries[i].value.toDouble(),
-                title: percentage >= 5
-                    ? '${percentage.round()}%'
-                    : '',
+                title: percentage >= 5 ? '${percentage.round()}%' : '',
                 radius: isTouched ? 70 : 60,
                 titleStyle: TextStyle(
                   fontSize: 11,
@@ -496,26 +570,19 @@ class _AforoOcupacionDonutChartState extends State<_AforoOcupacionDonutChart> {
                   Container(
                     width: 10,
                     height: 10,
-                    decoration: BoxDecoration(
-                      color: colors[i],
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          entries[i].key,
-                          style: AppTextStyles.caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          entries[i].value.toString(),
-                          style: AppTextStyles.h4.copyWith(fontSize: 13),
-                        ),
+                        Text(entries[i].key,
+                            style: AppTextStyles.caption,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        Text(entries[i].value.toString(),
+                            style: AppTextStyles.h4.copyWith(fontSize: 13)),
                       ],
                     ),
                   ),
@@ -589,7 +656,7 @@ class _FacultadBarChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) =>
-              const FlLine(color: AppColors.divider, strokeWidth: 1),
+              FlLine(color: AppColors.divider, strokeWidth: 1),
         ),
         barGroups: List.generate(entries.length, (i) {
           final colors = [AppColors.primaryLight, AppColors.success, AppColors.warning, AppColors.error, AppColors.pending];
@@ -723,7 +790,7 @@ class _DirectivosDonutChartState extends State<_DirectivosDonutChart> {
 }
 
 class _ActividadRow extends StatelessWidget {
-  final dynamic actividad;
+  final ActividadReciente actividad;
   const _ActividadRow({required this.actividad});
 
   IconData get _icon {
@@ -750,7 +817,7 @@ class _ActividadRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hora = actividad.hora as DateTime;
+    final hora = actividad.hora;
     final horaStr = '${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),

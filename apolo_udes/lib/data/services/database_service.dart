@@ -120,6 +120,27 @@ class DatabaseService {
     return await db.delete('graduandos');
   }
 
+  /// Deja la copia local EXACTAMENTE igual que la lista que viene de
+  /// Firestore: inserta o actualiza las que llegan y borra las que ya no
+  /// están. Como la clave es el `id`, repetir la operación no duplica filas.
+  Future<void> sincronizarGraduandos(List<Graduando> graduandos) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final idsNuevos = graduandos.map((g) => g.id).toSet();
+      final existentes = await txn.query('graduandos', columns: ['id']);
+      for (final fila in existentes) {
+        final id = fila['id'] as String;
+        if (!idsNuevos.contains(id)) {
+          await txn.delete('graduandos', where: 'id = ?', whereArgs: [id]);
+        }
+      }
+      for (final g in graduandos) {
+        await txn.insert('graduandos', _toMap(g),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
   /// Cuenta total de graduandos
   Future<int> countGraduandos() async {
     final db = await database;

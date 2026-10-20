@@ -103,10 +103,15 @@ class AppConstants {
     '06:00 PM',
   ];
 
-  // ── Configuración de correo (Gmail SMTP) ──
-  static const String emailRemitente = 'apolo.udes@gmail.com';
-  static const String emailPassword = 'uaqwqjiwbktuxhky';
-  static const String emailNombre = 'Apolo UDES - Universidad de Santander';
+  // ── Servidor de correos (Google Apps Script) ──
+  // URL de la implementación de la app web de Codigo.gs (cuenta
+  // apolo.udes@gmail.com): Apps Script > Implementar > Administrar
+  // implementaciones > URL de la aplicación web (termina en /exec).
+  //
+  // La contraseña de Gmail NUNCA se guarda en la app: el envío lo hace el
+  // servidor. Mientras esta URL esté vacía, la app solo deja la solicitud en
+  // la colección `solicitudes_correo` y el disparador de 5 minutos la procesa.
+  static const String urlEnvioCorreos = '';
 
   // ── Datos del evento ──
   static const String eventoLugar = 'Auditorio Mayor, Campus Lagos del Cacique';

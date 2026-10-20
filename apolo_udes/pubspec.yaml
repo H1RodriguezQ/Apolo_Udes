@@ -29,9 +29,8 @@ dependencies:
   # State Management
   provider: ^6.1.2
 
-  # QR Code
+  # QR Code (solo lectura: el QR lo dibuja la página web mi-qr.html)
   mobile_scanner: ^5.1.0
-  qr_flutter: ^4.1.0
 
   # Permisos
   permission_handler: ^11.3.1
@@ -44,21 +43,19 @@ dependencies:
 
   # Utilities
   intl: 0.20.2
-  shared_preferences: ^2.2.3
+  shared_preferences: ^2.5.5
 
   # Icons
   cupertino_icons: ^1.0.6
 
-  # Correo SMTP
-  mailer: ^6.1.0
-
-  # HTTP
+  # HTTP (avisos al servidor de correos de Apps Script)
   http: ^1.2.0
 
   # Firebase
   firebase_core: ^4.9.0
   cloud_firestore: ^6.4.1
   firebase_storage: ^13.4.1
+  firebase_auth: ^6.7.0
 
 dev_dependencies:
   flutter_test:

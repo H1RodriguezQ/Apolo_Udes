@@ -6,7 +6,11 @@
 
 enum EstadoGraduando { activo, pendiente, inactivo }
 
-enum EstadoInvitacion { confirmada, pendiente, enviada, rechazada }
+// `anulada` NO es lo mismo que `rechazada`: la rechaza el invitado (él no va),
+// la anula la universidad (le quitan el cupo y su QR deja de servir). Estar
+// separadas evita contar mal en los indicadores y evita reenviar correos a
+// alguien ya anulado.
+enum EstadoInvitacion { confirmada, pendiente, enviada, rechazada, anulada }
 
 enum EstadoConfirmacion { confirmado, pendiente, rechazado }
 
@@ -18,7 +22,10 @@ enum RolUsuario { administrador, operador }
 
 enum EstadoUsuario { activo, inactivo }
 
-enum EstadoNotificacion { enviado, pendiente, rechazado }
+// Los estados de `solicitudes_correo` que escribe el servidor de correos:
+// pendiente (creada) → en_proceso (va a medio camino o le faltó cupo de
+// Gmail) → terminada (ya se enviaron todos).
+enum EstadoNotificacion { enviado, pendiente, rechazado, enProceso, terminada }
 
 // ----- Extension helpers -----
 
@@ -39,6 +46,7 @@ extension EstadoInvitacionExt on EstadoInvitacion {
       case EstadoInvitacion.pendiente: return 'Pendiente';
       case EstadoInvitacion.enviada: return 'Enviada';
       case EstadoInvitacion.rechazada: return 'Rechazada';
+      case EstadoInvitacion.anulada: return 'Anulada';
     }
   }
 }
@@ -95,6 +103,14 @@ class Graduando {
   final EstadoGraduando estado;
   final String? avatarUrl;
 
+  /// Estado del correo con el enlace de registro que envía el servidor
+  /// (Apps Script): 'pendiente' = en cola, 'enviado', 'error'.
+  /// `null` cuando el documento todavía no trae el campo (registros
+  /// antiguos) y entonces no se pinta ningún badge, para no dar por
+  /// enviado un correo que nadie pidió. Solo el servidor lo cambia; la
+  /// app únicamente lo devuelve a 'pendiente' para pedir un reenvío.
+  final String? correoRegistro;
+
   Graduando({
     required this.id,
     required this.codigoEstudiantil,
@@ -108,6 +124,7 @@ class Graduando {
     required this.horaCeremonia,
     required this.estado,
     this.avatarUrl,
+    this.correoRegistro,
   });
 
   String get nombreCompleto => '$nombres $apellidos';
@@ -117,6 +134,7 @@ class Graduando {
     String? nombres, String? apellidos, String? programa,
     String? facultad, String? telefono, String? correo,
     String? horaCeremonia, EstadoGraduando? estado, String? avatarUrl,
+    String? correoRegistro,
   }) {
     return Graduando(
       id: id ?? this.id, codigoEstudiantil: codigoEstudiantil ?? this.codigoEstudiantil,
@@ -125,6 +143,7 @@ class Graduando {
       facultad: facultad ?? this.facultad, telefono: telefono ?? this.telefono,
       correo: correo ?? this.correo, horaCeremonia: horaCeremonia ?? this.horaCeremonia,
       estado: estado ?? this.estado, avatarUrl: avatarUrl ?? this.avatarUrl,
+      correoRegistro: correoRegistro ?? this.correoRegistro,
     );
   }
 }
@@ -171,6 +190,11 @@ class Directivo {
   final DateTime? fechaConfirmacion;
   final String? codigoQr; // 🆕 QR para acceso
 
+  /// Estado del correo de invitación que envía el servidor (Apps Script):
+  /// 'pendiente' = en cola, 'enviado', 'error'. `null` si el documento aún
+  /// no lo trae (registros antiguos): en ese caso no se pinta badge.
+  final String? correoInvitacion;
+
   Directivo({
     required this.id,
     required this.nombre,
@@ -181,12 +205,13 @@ class Directivo {
     required this.estado,
     this.fechaConfirmacion,
     this.codigoQr,
+    this.correoInvitacion,
   });
 
   Directivo copyWith({
     String? id, String? nombre, String? cargo, String? correo,
     String? facultad, String? telefono, EstadoDirectivo? estado,
-    DateTime? fechaConfirmacion, String? codigoQr,
+    DateTime? fechaConfirmacion, String? codigoQr, String? correoInvitacion,
   }) {
     return Directivo(
       id: id ?? this.id, nombre: nombre ?? this.nombre,
@@ -194,6 +219,7 @@ class Directivo {
       facultad: facultad ?? this.facultad, telefono: telefono ?? this.telefono,
       estado: estado ?? this.estado, fechaConfirmacion: fechaConfirmacion ?? this.fechaConfirmacion,
       codigoQr: codigoQr ?? this.codigoQr,
+      correoInvitacion: correoInvitacion ?? this.correoInvitacion,
     );
   }
 }
@@ -220,10 +246,22 @@ class CampanaNotificacion {
   final double tasaEntrega;
   final int totalDestinatarios;
 
+  // Copia exacta de los campos que la petición de correo tiene en Firestore.
+  // Se conservan para poder REINTENTAR una solicitud fallida: las reglas no
+  // dejan editar `solicitudes_correo` (solo el servidor avanza su estado),
+  // así que el reintento crea otra solicitud idéntica en la cola.
+  final String tipo;
+  final String destinatarios;
+  final String mensaje;
+  final String? invitadoId;
+  final String? correoOpcional;
+
   CampanaNotificacion({
     required this.id, required this.titulo, required this.descripcion,
     required this.estado, this.fechaEnvio, required this.tasaEntrega,
     required this.totalDestinatarios,
+    this.tipo = 'campana', this.destinatarios = 'todos', this.mensaje = '',
+    this.invitadoId, this.correoOpcional,
   });
 }
 
@@ -235,22 +273,25 @@ class Usuario {
   final RolUsuario rol;
   final EstadoUsuario estado;
   final DateTime ultimoAcceso;
+  final String? puntoValidacion;
 
   Usuario({
     required this.id, required this.nombre, required this.correo,
     required this.password, required this.rol, required this.estado,
-    required this.ultimoAcceso,
+    required this.ultimoAcceso, this.puntoValidacion,
   });
 
   Usuario copyWith({
     String? id, String? nombre, String? correo, String? password,
     RolUsuario? rol, EstadoUsuario? estado, DateTime? ultimoAcceso,
+    String? puntoValidacion,
   }) {
     return Usuario(
       id: id ?? this.id, nombre: nombre ?? this.nombre,
       correo: correo ?? this.correo, password: password ?? this.password,
       rol: rol ?? this.rol, estado: estado ?? this.estado,
       ultimoAcceso: ultimoAcceso ?? this.ultimoAcceso,
+      puntoValidacion: puntoValidacion ?? this.puntoValidacion,
     );
   }
 }

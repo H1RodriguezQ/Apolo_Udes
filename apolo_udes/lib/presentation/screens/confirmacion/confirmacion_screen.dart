@@ -58,7 +58,7 @@ class ConfirmacionScreen extends StatelessWidget {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppColors.primaryLight, AppColors.primary]), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primaryLight, AppColors.primary]), borderRadius: BorderRadius.circular(12)),
                         child: Column(children: [
                           Text('$tasa%', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
                           const Text('Tasa de confirmación', style: TextStyle(color: Colors.white70, fontSize: 11), textAlign: TextAlign.center),
@@ -77,7 +77,7 @@ class ConfirmacionScreen extends StatelessWidget {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [AppColors.primaryLight, AppColors.primary]), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.primaryLight, AppColors.primary]), borderRadius: BorderRadius.circular(12)),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -190,7 +190,7 @@ class _ConfirmacionesTable extends StatelessWidget {
               },
               children: [
                 TableRow(
-                  decoration: const BoxDecoration(color: AppColors.surfaceVariant),
+                  decoration: BoxDecoration(color: AppColors.surfaceVariant),
                   children: ['Invitado', 'Graduando', 'Documento', 'Estado', 'Código QR']
                       .map((h) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), child: Text(h, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary))))
                       .toList(),
@@ -204,7 +204,7 @@ class _ConfirmacionesTable extends StatelessWidget {
                       : '—';
 
                   return TableRow(
-                    decoration: BoxDecoration(color: i.isEven ? Colors.white : const Color(0xFFFAFBFC), border: const Border(bottom: BorderSide(color: AppColors.divider))),
+                    decoration: BoxDecoration(color: i.isEven ? Colors.white : const Color(0xFFFAFBFC), border: Border(bottom: BorderSide(color: AppColors.divider))),
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../providers/app_provider.dart';
+import '../widgets/common/selector_tema.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -21,6 +22,11 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
   final _lugarCtrl = TextEditingController();
   final _direccionCtrl = TextEditingController();
   final _ciudadCtrl = TextEditingController();
+  // Datos que la invitación por correo imprime en la tarjeta (se envían a
+  // Apps Script en configuracion/evento): el número de la ceremonia y el
+  // lugar tal como debe aparecer en la invitación.
+  final _numeroCeremoniaCtrl = TextEditingController();
+  final _lugarCeremoniaCtrl = TextEditingController();
 
   // Facultades reales de UDES
   final List<String> _facultades = [
@@ -40,12 +46,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
     _cargarConfiguracion();
   }
 
-
-
   void _inicializarHoras() {
     // Generar horas cada 30 minutos desde 8:30 AM hasta 6:00 PM
     final List<String> horasDisponibles = _generarHorarios();
-    
+
     // Asignar una hora diferente a cada facultad
     for (int i = 0; i < _facultades.length; i++) {
       if (i < horasDisponibles.length) {
@@ -87,6 +91,8 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
     _lugarCtrl.dispose();
     _direccionCtrl.dispose();
     _ciudadCtrl.dispose();
+    _numeroCeremoniaCtrl.dispose();
+    _lugarCeremoniaCtrl.dispose();
     super.dispose();
   }
 
@@ -117,6 +123,17 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
           _ciudadCtrl.text = data['ciudad'] as String;
         }
 
+        // Invitación por correo: si el documento todavía no trae los campos
+        // (registro anterior a esta versión) se dejan vacíos y el admin los
+        // completa la próxima vez que guarde.
+        if (data['numeroCeremonia'] != null) {
+          _numeroCeremoniaCtrl.text = '${data['numeroCeremonia']}';
+        }
+
+        if (data['lugarCeremonia'] != null) {
+          _lugarCeremoniaCtrl.text = data['lugarCeremonia'] as String;
+        }
+
         if (data['horasPorFacultad'] != null) {
           final horas = Map<String, String>.from(data['horasPorFacultad']);
           setState(() => _horasPorFacultad.addAll(horas));
@@ -135,6 +152,8 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
         _direccionCtrl.text = 'Calle 70 No. 55-210';
         _ciudadCtrl.text = 'Bucaramanga, Santander';
         _aforoCtrl.text = '500';
+        _numeroCeremoniaCtrl.text = '1';
+        _lugarCeremoniaCtrl.text = 'Auditorio Mayor · Campus Lagos del Cacique';
       }
 
       if (_aforoCtrl.text.isEmpty && mounted) {
@@ -148,7 +167,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
             context.read<AppProvider>().aforoDisponible.toString();
       }
     } finally {
-      setState(() => _cargando = false);
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -204,6 +223,34 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       return;
     }
 
+    // Número de ceremonia: entero de 1 a 99. Va impreso en el asunto del
+    // correo y en la tarjeta de la invitación ("CEREMONIA N.º 3").
+    final numeroCeremonia = int.tryParse(_numeroCeremoniaCtrl.text.trim());
+    if (numeroCeremonia == null || numeroCeremonia < 1 || numeroCeremonia > 99) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa el número de ceremonia (entre 1 y 99)'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // Lugar tal como se imprime en la invitación: de 3 a 120 caracteres.
+    final lugarCeremonia = _lugarCeremoniaCtrl.text.trim();
+    if (lugarCeremonia.length < 3 || lugarCeremonia.length > 120) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'El lugar de la ceremonia debe tener entre 3 y 120 caracteres'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _guardando = true);
     try {
       await FirebaseFirestore.instance
@@ -216,6 +263,9 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
         'ciudad': _ciudadCtrl.text.trim(),
         'horasPorFacultad': _horasPorFacultad,
         'aforoDisponible': aforoValor,
+        // Lo que imprime la invitación por correo (ver Codigo.gs).
+        'numeroCeremonia': numeroCeremonia,
+        'lugarCeremonia': lugarCeremonia,
         'actualizadoPor':
             context.read<AppProvider>().usuarioActual?.correo ?? 'admin',
         'actualizadoEn': FieldValue.serverTimestamp(),
@@ -246,8 +296,8 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
   Future<void> _seleccionarFecha() async {
     final fecha = await showDatePicker(
       context: context,
-      initialDate: _fechaCeremonia ??
-          DateTime.now().add(const Duration(days: 30)),
+      initialDate:
+          _fechaCeremonia ?? DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       locale: const Locale('es', 'CO'),
@@ -264,12 +314,12 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Configuración del Evento', style: AppTextStyles.h1),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Fecha, hora, aforo, lugar y facultades',
                       style: TextStyle(
@@ -307,10 +357,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('📅 Fecha de la Ceremonia',
+                            Text('📅 Fecha de la Ceremonia',
                                 style: AppTextStyles.h3),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Todas las facultades comparten la misma fecha',
                               style: TextStyle(
                                   color: AppColors.textSecondary, fontSize: 13),
@@ -360,7 +410,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                                         ),
                                       ),
                                     ),
-                                    const Icon(Icons.chevron_right_rounded,
+                                    Icon(Icons.chevron_right_rounded,
                                         color: AppColors.textSecondary),
                                   ],
                                 ),
@@ -379,10 +429,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('📍 Lugar del Evento',
+                            Text('📍 Lugar del Evento',
                                 style: AppTextStyles.h3),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Nombre del lugar donde se realizará la ceremonia',
                               style: TextStyle(
                                   color: AppColors.textSecondary, fontSize: 13),
@@ -420,6 +470,65 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // ── Invitación por correo ──
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('✉️ Invitación por Correo',
+                                style: AppTextStyles.h3),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Datos que aparecen impresos en la tarjeta de invitación',
+                              style: TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _numeroCeremoniaCtrl,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    decoration: const InputDecoration(
+                                      prefixIcon: Icon(
+                                          Icons.confirmation_number_rounded),
+                                      labelText: 'Número de ceremonia',
+                                      hintText: 'Ej: 3',
+                                      helperText: 'Entre 1 y 99',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 2,
+                                  child: TextFormField(
+                                    controller: _lugarCeremoniaCtrl,
+                                    maxLength: 120,
+                                    decoration: const InputDecoration(
+                                      prefixIcon:
+                                          Icon(Icons.apartment_rounded),
+                                      labelText: 'Lugar de la ceremonia',
+                                      hintText:
+                                          'Ej: Auditorio Mayor · Campus Lagos del Cacique',
+                                      helperText:
+                                          'Tal como aparece en la invitación',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // ── Aforo ──
                     Card(
                       child: Padding(
@@ -427,10 +536,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('🎟️ Aforo Disponible',
+                            Text('🎟️ Aforo Disponible',
                                 style: AppTextStyles.h3),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Número máximo de personas permitidas en el evento',
                               style: TextStyle(
                                   color: AppColors.textSecondary, fontSize: 13),
@@ -464,10 +573,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('🕐 Hora por Facultad',
+                            Text('🕐 Hora por Facultad',
                                 style: AppTextStyles.h3),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Cada facultad puede tener un horario diferente',
                               style: TextStyle(
                                   color: AppColors.textSecondary, fontSize: 13),
@@ -482,7 +591,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                                       flex: 3,
                                       child: Text(
                                         entry.key,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                           color: AppColors.textPrimary,
@@ -493,7 +602,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                                     Expanded(
                                       flex: 2,
                                       child: DropdownButtonFormField<String>(
-                                        value: entry.value,
+                                        initialValue: entry.value,
                                         isExpanded: true,
                                         decoration: const InputDecoration(
                                           contentPadding: EdgeInsets.symmetric(
@@ -519,6 +628,20 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Apariencia (NUEVO) ──
+                    // Se aplica al instante y solo en este dispositivo;
+                    // no depende del botón "Guardar cambios".
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: SelectorTema(),
                         ),
                       ),
                     ),

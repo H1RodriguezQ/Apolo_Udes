@@ -5,15 +5,6 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -47,7 +38,6 @@ class DefaultFirebaseOptions {
     projectId: 'apolo-udes',
     authDomain: 'apolo-udes.firebaseapp.com',
     storageBucket: 'apolo-udes.firebasestorage.app',
-    measurementId: 'G-B60XYETXRX',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -59,7 +49,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCc7KlY01YZfJGhkPCv4ak4HWI61zS01uQ',
+    apiKey: 'PEGAR_API_KEY_de_GoogleService-Info.plist',
     appId: '1:588093325085:ios:05aa401924d9b6a9032bf4',
     messagingSenderId: '588093325085',
     projectId: 'apolo-udes',
@@ -68,7 +58,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCc7KlY01YZfJGhkPCv4ak4HWI61zS01uQ',
+    apiKey: 'PEGAR_API_KEY_de_GoogleService-Info.plist',
     appId: '1:588093325085:ios:05aa401924d9b6a9032bf4',
     messagingSenderId: '588093325085',
     projectId: 'apolo-udes',
@@ -83,6 +73,5 @@ class DefaultFirebaseOptions {
     projectId: 'apolo-udes',
     authDomain: 'apolo-udes.firebaseapp.com',
     storageBucket: 'apolo-udes.firebasestorage.app',
-    measurementId: 'G-2RHQCFFWDH',
   );
 }

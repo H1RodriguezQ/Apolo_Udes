@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_theme.dart';
 import '../../providers/app_provider.dart';
 import '../widgets/sidebar/app_sidebar.dart';
 import 'dashboard/dashboard_screen.dart';
@@ -15,26 +16,28 @@ import 'configuracion_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // IMPORTANTE: este orden debe coincidir exactamente con el de
+  // `_allItems` en app_sidebar.dart. El menu envia un indice y aqui se
+  // usa ese mismo indice para elegir la pantalla.
   static final List<Widget> _adminScreens = [
-    const DashboardScreen(),
-    const GraduandosScreen(),
-    const InvitacionesScreen(),
-    const ConfirmacionScreen(),
-    const ControlAccesoScreen(),
-    const NotificacionesScreen(),
-    const UsuariosScreen(),
-    const DirectivosScreen(),
-    const ConfiguracionScreen(),
+    const DashboardScreen(),        // 0
+    const GraduandosScreen(),       // 1
+    const InvitacionesScreen(),     // 2
+    const ConfirmacionScreen(),     // 3
+    const ControlAccesoScreen(),    // 4
+    const NotificacionesScreen(),   // 5
+    const DirectivosScreen(),       // 6
+    const UsuariosScreen(),         // 7
+    const ConfiguracionScreen(),    // 8
   ];
 
   static final List<Widget> _operadorScreens = [
-    const DashboardScreen(),
-    const GraduandosScreen(),
-    const InvitacionesScreen(),
-    const ConfirmacionScreen(),
-    const ControlAccesoScreen(),
-    const NotificacionesScreen(),
-    const DirectivosScreen(),
+    const DashboardScreen(),        // 0
+    const InvitacionesScreen(),     // 1
+    const ConfirmacionScreen(),     // 2
+    const ControlAccesoScreen(),    // 3
+    const NotificacionesScreen(),   // 4
+    const DirectivosScreen(),       // 5
   ];
 
   static final List<String> _adminTitles = [
@@ -44,14 +47,13 @@ class HomeScreen extends StatelessWidget {
     'Confirmación',
     'Control de Acceso',
     'Notificaciones',
-    'Usuarios',
     'Directivos',
+    'Usuarios',
     'Configuración',
   ];
 
   static final List<String> _operadorTitles = [
     'Dashboard',
-    'Graduandos',
     'Invitaciones',
     'Confirmación',
     'Control de Acceso',
@@ -82,16 +84,17 @@ class HomeScreen extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          backgroundColor: const Color(0xFF0F2347),
+          backgroundColor: AppColors.sidebarBg,
           foregroundColor: Colors.white,
           iconTheme: const IconThemeData(color: Colors.white),
           elevation: 1,
         ),
+        // enDrawer: el menú se cierra solo al elegir una opción
         drawer: const Drawer(
-          child: AppSidebar(),
+          child: AppSidebar(enDrawer: true),
         ),
         body: Container(
-          color: const Color(0xFFF3F4F6),
+          color: AppColors.background, // antes: Color(0xFFF3F4F6) fijo
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: screens[safeIndex],
@@ -104,9 +107,12 @@ class HomeScreen extends StatelessWidget {
           children: [
             const AppSidebar(),
             Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: screens[safeIndex],
+              // Aísla el repintado del contenido mientras el sidebar se anima
+              child: RepaintBoundary(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: screens[safeIndex],
+                ),
               ),
             ),
           ],

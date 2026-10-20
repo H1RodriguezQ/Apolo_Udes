@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../providers/app_provider.dart';
-
-enum UserRole { admin, operador }
+import '../../../data/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,22 +21,15 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   String? _errorMessage;
 
-  UserRole _selectedRole = UserRole.admin;
-
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
 
-  String get _emailHint =>
-      _selectedRole == UserRole.admin ? 'admin@udes.edu.co' : 'operador@udes.edu.co';
-
-  String get _roleLabel =>
-      _selectedRole == UserRole.admin ? 'Admin' : 'Operador';
+  static const String _emailHint = 'correo@udes.edu.co';
 
   @override
   void initState() {
     super.initState();
-    _correoController.text = 'admin@udes.edu.co';
     _animController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -48,6 +40,20 @@ class _LoginScreenState extends State<LoginScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
+    // Si la tablet ya tenía una sesión abierta, se entra sin volver a escribir
+    // la contraseña. Así también se puede reabrir la app SIN internet: el
+    // token de Firebase Auth y el perfil quedan guardados en el equipo.
+    // Si no hay sesión (o no se puede leer el perfil), se queda en el
+    // formulario y no se muestra ningún error.
+    _restaurarSesion();
+  }
+
+  Future<void> _restaurarSesion() async {
+    setState(() => _isLoading = true);
+    await context.read<AppProvider>().restaurarSesion();
+    // Al restaurarse, _AppRoot reemplaza esta pantalla por la de inicio y
+    // este widget deja de existir: por eso se comprueba `mounted`.
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -58,15 +64,6 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  void _onRoleChanged(UserRole role) {
-    setState(() {
-      _selectedRole = role;
-      _correoController.text = role == UserRole.admin ? 'admin@udes.edu.co' : '';
-      _passwordController.clear();
-      _errorMessage = null;
-    });
-  }
-
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -74,23 +71,38 @@ class _LoginScreenState extends State<LoginScreen>
       _errorMessage = null;
     });
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    // El rol lo determina el servidor a partir del token; no se envia.
+    final error = await context.read<AppProvider>().login(
+          _correoController.text.trim(),
+          _passwordController.text,
+        );
+
     if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _errorMessage = error;
+    });
+  }
 
-    final success = context.read<AppProvider>().login(
-      _correoController.text.trim(),
-      _passwordController.text,
-      role: _selectedRole.name,
-    );
-
-    if (!success) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Credenciales incorrectas. Intente nuevamente.';
-      });
-    } else {
-      setState(() => _isLoading = false);
+  Future<void> _recuperarContrasena() async {
+    final correo = _correoController.text.trim();
+    if (correo.isEmpty) {
+      setState(() =>
+          _errorMessage = 'Escribe tu correo para recuperar la contrasena.');
+      return;
     }
+    try {
+      await AuthService.recuperarContrasena(correo);
+    } catch (_) {
+      // Respuesta uniforme: no revela si la cuenta existe.
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Si el correo esta registrado, recibiras un enlace para restablecer la contrasena.'),
+      ),
+    );
   }
 
   @override
@@ -107,6 +119,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildMobile() {
     return Scaffold(
+      // Mismo color del panel: así el espacio debajo del formulario no
+      // queda de otro color (antes se veía una franja negra abajo).
+      backgroundColor: AppColors.surface,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -160,9 +175,9 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 Container(
                   margin: const EdgeInsets.only(top: 8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface, // antes: Colors.white fijo
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(28),
                       topRight: Radius.circular(28),
                     ),
@@ -183,7 +198,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 color: AppColors.errorLight,
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                    color: AppColors.error.withValues(alpha: 0.3)),
+                                    color:
+                                        AppColors.error.withValues(alpha: 0.3)),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -201,34 +217,25 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(height: 20),
-                            const Text('Iniciar Sesión',
+                            Text('Iniciar Sesión',
                                 style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary,
                                     letterSpacing: -0.5)),
                             const SizedBox(height: 6),
-                            const Text('Ingresa tus credenciales institucionales',
+                            Text(
+                                'Ingresa tus credenciales institucionales',
                                 style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 13)),
-                            const SizedBox(height: 20),
-                            const Text('Tipo de acceso',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary)),
-                            const SizedBox(height: 8),
-                            _RoleSelector(
-                                selected: _selectedRole,
-                                onChanged: _onRoleChanged),
                             const SizedBox(height: 20),
                             Form(
                               key: _formKey,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Correo Institucional',
+                                  Text('Correo Institucional',
                                       style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -237,15 +244,16 @@ class _LoginScreenState extends State<LoginScreen>
                                   TextFormField(
                                     controller: _correoController,
                                     keyboardType: TextInputType.emailAddress,
-                                    decoration: InputDecoration(
+                                    decoration: const InputDecoration(
                                         hintText: _emailHint,
                                         prefixIcon:
-                                            const Icon(Icons.email_outlined)),
-                                    validator: (v) =>
-                                        v == null || v.isEmpty ? 'Ingresa tu correo' : null,
+                                            Icon(Icons.email_outlined)),
+                                    validator: (v) => v == null || v.isEmpty
+                                        ? 'Ingresa tu correo'
+                                        : null,
                                   ),
                                   const SizedBox(height: 16),
-                                  const Text('Contraseña',
+                                  Text('Contraseña',
                                       style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -256,17 +264,20 @@ class _LoginScreenState extends State<LoginScreen>
                                     obscureText: _obscurePassword,
                                     decoration: InputDecoration(
                                       hintText: '••••••••',
-                                      prefixIcon: const Icon(Icons.lock_outlined),
+                                      prefixIcon:
+                                          const Icon(Icons.lock_outlined),
                                       suffixIcon: IconButton(
                                         icon: Icon(_obscurePassword
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined),
                                         onPressed: () => setState(() =>
-                                            _obscurePassword = !_obscurePassword),
+                                            _obscurePassword =
+                                                !_obscurePassword),
                                       ),
                                     ),
-                                    validator: (v) =>
-                                        v == null || v.isEmpty ? 'Ingresa tu contraseña' : null,
+                                    validator: (v) => v == null || v.isEmpty
+                                        ? 'Ingresa tu contraseña'
+                                        : null,
                                     onFieldSubmitted: (_) => _login(),
                                   ),
                                   if (_errorMessage != null) ...[
@@ -305,9 +316,9 @@ class _LoginScreenState extends State<LoginScreen>
                                               child: CircularProgressIndicator(
                                                   color: Colors.white,
                                                   strokeWidth: 2.5))
-                                          : FittedBox(
+                                          : const FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text('Ingresar como $_roleLabel'),
+                                              child: Text('Ingresar'),
                                             ),
                                     ),
                                   ),
@@ -335,7 +346,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildDesktop() {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      // antes: AppColors.primary, que en modo oscuro es un azul claro
+      backgroundColor: AppColors.sidebarBg,
       body: Row(
         children: [
           Expanded(
@@ -415,7 +427,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 color: AppColors.errorLight,
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                    color: AppColors.error.withValues(alpha: 0.3)),
+                                    color:
+                                        AppColors.error.withValues(alpha: 0.3)),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -433,33 +446,25 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(height: 24),
-                            const Text('Iniciar Sesión',
+                            Text('Iniciar Sesión',
                                 style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary,
                                     letterSpacing: -0.5)),
                             const SizedBox(height: 8),
-                            const Text('Ingresa tus credenciales institucionales',
+                            Text(
+                                'Ingresa tus credenciales institucionales',
                                 style: TextStyle(
-                                    color: AppColors.textSecondary, fontSize: 14)),
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14)),
                             const SizedBox(height: 24),
-                            const Text('Tipo de acceso',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary)),
-                            const SizedBox(height: 10),
-                            _RoleSelector(
-                                selected: _selectedRole,
-                                onChanged: _onRoleChanged),
-                            const SizedBox(height: 28),
                             Form(
                               key: _formKey,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Correo Institucional',
+                                  Text('Correo Institucional',
                                       style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -468,15 +473,16 @@ class _LoginScreenState extends State<LoginScreen>
                                   TextFormField(
                                     controller: _correoController,
                                     keyboardType: TextInputType.emailAddress,
-                                    decoration: InputDecoration(
+                                    decoration: const InputDecoration(
                                         hintText: _emailHint,
                                         prefixIcon:
-                                            const Icon(Icons.email_outlined)),
-                                    validator: (v) =>
-                                        v == null || v.isEmpty ? 'Ingresa tu correo' : null,
+                                            Icon(Icons.email_outlined)),
+                                    validator: (v) => v == null || v.isEmpty
+                                        ? 'Ingresa tu correo'
+                                        : null,
                                   ),
                                   const SizedBox(height: 20),
-                                  const Text('Contraseña',
+                                  Text('Contraseña',
                                       style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -487,24 +493,28 @@ class _LoginScreenState extends State<LoginScreen>
                                     obscureText: _obscurePassword,
                                     decoration: InputDecoration(
                                       hintText: '••••••••',
-                                      prefixIcon: const Icon(Icons.lock_outlined),
+                                      prefixIcon:
+                                          const Icon(Icons.lock_outlined),
                                       suffixIcon: IconButton(
                                         icon: Icon(_obscurePassword
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined),
                                         onPressed: () => setState(() =>
-                                            _obscurePassword = !_obscurePassword),
+                                            _obscurePassword =
+                                                !_obscurePassword),
                                       ),
                                     ),
-                                    validator: (v) =>
-                                        v == null || v.isEmpty ? 'Ingresa tu contraseña' : null,
+                                    validator: (v) => v == null || v.isEmpty
+                                        ? 'Ingresa tu contraseña'
+                                        : null,
                                     onFieldSubmitted: (_) => _login(),
                                   ),
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: TextButton(
-                                      onPressed: () {},
-                                      child: const Text('¿Olvidaste tu contraseña?',
+                                      onPressed: _recuperarContrasena,
+                                      child: const Text(
+                                          '¿Olvidaste tu contraseña?',
                                           style: TextStyle(
                                               color: AppColors.primaryLight,
                                               fontSize: 13,
@@ -547,9 +557,9 @@ class _LoginScreenState extends State<LoginScreen>
                                               child: CircularProgressIndicator(
                                                   color: Colors.white,
                                                   strokeWidth: 2.5))
-                                          : FittedBox(
+                                          : const FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text('Ingresar como $_roleLabel'),
+                                              child: Text('Ingresar'),
                                             ),
                                     ),
                                   ),
@@ -571,102 +581,6 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RoleSelector extends StatelessWidget {
-  final UserRole selected;
-  final ValueChanged<UserRole> onChanged;
-
-  const _RoleSelector({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          _RoleTab(
-            label: 'Admin',
-            icon: Icons.admin_panel_settings_rounded,
-            isSelected: selected == UserRole.admin,
-            onTap: () => onChanged(UserRole.admin),
-          ),
-          _RoleTab(
-            label: 'Operador',
-            icon: Icons.badge_rounded,
-            isSelected: selected == UserRole.operador,
-            onTap: () => onChanged(UserRole.operador),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoleTab extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RoleTab({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(7),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : [],
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon,
-                    size: 16,
-                    color: isSelected ? Colors.white : AppColors.textSecondary),
-                const SizedBox(width: 6),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.textSecondary)),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

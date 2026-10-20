@@ -74,7 +74,7 @@ class MetricCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28, // Bajado ligeramente de 30 para mejor ajuste
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -97,6 +97,50 @@ class MetricCard extends StatelessWidget {
 }
 
 // ---- Status Badge ----
+
+/// Badge del estado del correo que envía el SERVIDOR (Apps Script), para
+/// `graduandos.correoRegistro` y `directivos.correoInvitacion`.
+///
+/// - `null` → no se pinta nada: el documento es anterior a este campo y no
+///   se sabe si el correo salió, mejor no mostrar "enviado" sin más.
+/// - `pendiente` → ya quedó en cola, Apps Script lo manda cada 5 minutos.
+/// - `enviado` / `error` → lo escribió el servidor tras intentarlo.
+class EstadoCorreoBadge extends StatelessWidget {
+  final String? estado;
+  final String etiquetaCorta;
+
+  const EstadoCorreoBadge({
+    super.key,
+    required this.estado,
+    this.etiquetaCorta = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (estado) {
+      case 'enviado':
+        return StatusBadge(
+          label: etiquetaCorta.isEmpty ? 'Correo enviado' : etiquetaCorta,
+          backgroundColor: AppColors.successLight,
+          textColor: AppColors.success,
+        );
+      case 'error':
+        return StatusBadge(
+          label: etiquetaCorta.isEmpty ? 'Correo con error' : etiquetaCorta,
+          backgroundColor: AppColors.errorLight,
+          textColor: AppColors.error,
+        );
+      case 'pendiente':
+        return StatusBadge(
+          label: etiquetaCorta.isEmpty ? 'Correo en cola' : etiquetaCorta,
+          backgroundColor: AppColors.warningLight,
+          textColor: AppColors.warning,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+}
 class StatusBadge extends StatelessWidget {
   final String label;
   final Color backgroundColor;
@@ -157,6 +201,13 @@ class StatusBadge extends StatelessWidget {
           label: estado.label,
           backgroundColor: AppColors.errorLight,
           textColor: AppColors.error,
+        );
+      // Gris: ya no es una invitación "viva", pero tampoco es un rechazo.
+      case EstadoInvitacion.anulada:
+        return StatusBadge(
+          label: estado.label,
+          backgroundColor: AppColors.surfaceVariant,
+          textColor: AppColors.textSecondary,
         );
     }
   }

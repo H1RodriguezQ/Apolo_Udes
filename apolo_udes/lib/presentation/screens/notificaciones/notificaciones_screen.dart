@@ -15,9 +15,17 @@ class NotificacionesScreen extends StatelessWidget {
     final notificaciones = provider.notificaciones;
     final isMobile = MediaQuery.of(context).size.width < 600;
 
+    // Métricas reales de `solicitudes_correo`: cuántas peticiones están en
+    // cola del servidor, cuántas va procesando y cuántas ya terminaron.
     final enCola = notificaciones.where((n) => n.estado == EstadoNotificacion.pendiente).length;
-    final leidos = notificaciones.where((n) => n.estado == EstadoNotificacion.enviado).fold<int>(0, (sum, n) => sum + n.totalDestinatarios);
-    final rechazados = notificaciones.where((n) => n.estado == EstadoNotificacion.rechazado).fold<int>(0, (sum, n) => sum + n.totalDestinatarios);
+    final enProceso = notificaciones.where((n) => n.estado == EstadoNotificacion.enProceso).length;
+    // `enviado` lo dejan las peticiones de versiones anteriores: se cuenta igual.
+    final terminadas = notificaciones
+        .where((n) =>
+            n.estado == EstadoNotificacion.terminada ||
+            n.estado == EstadoNotificacion.enviado)
+        .length;
+    final conError = notificaciones.where((n) => n.estado == EstadoNotificacion.rechazado).length;
 
     return Padding(
       padding: EdgeInsets.all(isMobile ? 16 : 28),
@@ -27,11 +35,14 @@ class NotificacionesScreen extends StatelessWidget {
           Row(
             children: [
               const Expanded(child: SectionHeader(title: 'Notificaciones', subtitle: 'Gestión de campañas de comunicación')),
-              ElevatedButton.icon(
-                onPressed: () => _mostrarNuevaCampana(context, provider),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Nueva campaña'),
-              ),
+              // Las campañas las manda el servidor; las reglas solo aceptan
+              // peticiones firmadas por un administrador.
+              if (provider.isAdmin)
+                ElevatedButton.icon(
+                  onPressed: () => _mostrarNuevaCampana(context, provider),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Nueva campaña'),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -41,20 +52,23 @@ class NotificacionesScreen extends StatelessWidget {
                   Row(children: [
                     _NotifMetric(label: 'En cola', value: '$enCola', color: AppColors.warning, icon: Icons.schedule_send_rounded),
                     const SizedBox(width: 10),
-                    _NotifMetric(label: 'Leídos', value: '$leidos', color: AppColors.success, icon: Icons.mark_email_read_rounded),
+                    _NotifMetric(label: 'En proceso', value: '$enProceso', color: AppColors.info, icon: Icons.autorenew_rounded),
                   ]),
                   const SizedBox(height: 10),
                   Row(children: [
-                    _NotifMetric(label: 'Rechazados', value: '$rechazados', color: AppColors.error, icon: Icons.email_outlined),
-                    const Expanded(child: SizedBox()),
+                    _NotifMetric(label: 'Terminadas', value: '$terminadas', color: AppColors.success, icon: Icons.check_circle_rounded),
+                    const SizedBox(width: 10),
+                    _NotifMetric(label: 'Con error', value: '$conError', color: AppColors.error, icon: Icons.error_outline_rounded),
                   ]),
                 ])
               : Row(children: [
                   _NotifMetric(label: 'Envíos en cola', value: '$enCola', color: AppColors.warning, icon: Icons.schedule_send_rounded),
                   const SizedBox(width: 12),
-                  _NotifMetric(label: 'Mensajes Leídos', value: '$leidos', color: AppColors.success, icon: Icons.mark_email_read_rounded),
+                  _NotifMetric(label: 'En proceso', value: '$enProceso', color: AppColors.info, icon: Icons.autorenew_rounded),
                   const SizedBox(width: 12),
-                  _NotifMetric(label: 'Rechazados', value: '$rechazados', color: AppColors.error, icon: Icons.email_outlined),
+                  _NotifMetric(label: 'Terminadas', value: '$terminadas', color: AppColors.success, icon: Icons.check_circle_rounded),
+                  const SizedBox(width: 12),
+                  _NotifMetric(label: 'Con error', value: '$conError', color: AppColors.error, icon: Icons.error_outline_rounded),
                 ]),
 
           const SizedBox(height: 16),
@@ -69,7 +83,16 @@ class NotificacionesScreen extends StatelessWidget {
                 : ListView.separated(
                     itemCount: notificaciones.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) => _CampaignCard(campana: notificaciones[i], isMobile: isMobile),
+                    itemBuilder: (context, i) => _CampaignCard(
+                      campana: notificaciones[i],
+                      isMobile: isMobile,
+                      // Un fallo se puede reintentar, y solo por administrador.
+                      onReintentar: notificaciones[i].estado ==
+                                  EstadoNotificacion.rechazado &&
+                              provider.isAdmin
+                          ? provider.reintentarCorreo
+                          : null,
+                    ),
                   ),
           ),
         ],
@@ -127,7 +150,8 @@ class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Campaña enviada exitosamente'),
+          // El envío lo hace el servidor (Apps Script), no la app.
+          content: Text('✅ Campaña en cola. El servidor la enviará en unos minutos.'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -154,18 +178,18 @@ class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                const Expanded(child: Text('Nueva campaña', style: AppTextStyles.h2)),
+                Expanded(child: Text('Nueva campaña', style: AppTextStyles.h2)),
                 IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
               ]),
               const SizedBox(height: 16),
-              const Text('Título', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              Text('Título', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
               const SizedBox(height: 6),
               TextField(
                 controller: _tituloCtrl,
                 decoration: const InputDecoration(hintText: 'Ej: Recordatorio ceremonia de grado'),
               ),
               const SizedBox(height: 14),
-              const Text('Mensaje (opcional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              Text('Mensaje (opcional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
               const SizedBox(height: 6),
               TextField(
                 controller: _mensajeCtrl,
@@ -173,10 +197,10 @@ class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
                 decoration: const InputDecoration(hintText: 'Mensaje adicional para los invitados...'),
               ),
               const SizedBox(height: 14),
-              const Text('Destinatarios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+              Text('Destinatarios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _destinatarios,
+                initialValue: _destinatarios,
                 decoration: const InputDecoration(),
                 items: const [
                   DropdownMenuItem(value: 'todos', child: Text('Todos los invitados')),
@@ -210,11 +234,23 @@ class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
 class _CampaignCard extends StatelessWidget {
   final CampanaNotificacion campana;
   final bool isMobile;
-  const _CampaignCard({required this.campana, required this.isMobile});
+
+  /// Solo se pasa cuando la solicitud del servidor falló (`error`) y quien
+  /// mira es administrador: las reglas no dejan tocar `solicitudes_correo`,
+  /// así que el reintento crea otra petición idéntica en la cola.
+  final Future<bool> Function(CampanaNotificacion)? onReintentar;
+
+  const _CampaignCard({
+    required this.campana,
+    required this.isMobile,
+    this.onReintentar,
+  });
 
   Color get _statusColor {
     switch (campana.estado) {
       case EstadoNotificacion.enviado: return AppColors.success;
+      case EstadoNotificacion.terminada: return AppColors.success;
+      case EstadoNotificacion.enProceso: return AppColors.info;
       case EstadoNotificacion.pendiente: return AppColors.warning;
       case EstadoNotificacion.rechazado: return AppColors.error;
     }
@@ -223,14 +259,18 @@ class _CampaignCard extends StatelessWidget {
   String get _statusLabel {
     switch (campana.estado) {
       case EstadoNotificacion.enviado: return 'Enviado';
+      case EstadoNotificacion.terminada: return 'Terminada';
+      case EstadoNotificacion.enProceso: return 'En proceso';
       case EstadoNotificacion.pendiente: return 'En cola';
-      case EstadoNotificacion.rechazado: return 'Rechazado';
+      case EstadoNotificacion.rechazado: return 'Error';
     }
   }
 
   IconData get _icon {
     switch (campana.estado) {
       case EstadoNotificacion.enviado: return Icons.check_circle_rounded;
+      case EstadoNotificacion.terminada: return Icons.check_circle_rounded;
+      case EstadoNotificacion.enProceso: return Icons.autorenew_rounded;
       case EstadoNotificacion.pendiente: return Icons.schedule_rounded;
       case EstadoNotificacion.rechazado: return Icons.cancel_rounded;
     }
@@ -263,14 +303,46 @@ class _CampaignCard extends StatelessWidget {
                 Text(campana.descripcion, style: AppTextStyles.bodySmall),
               ])),
             ]),
-            if (campana.fechaEnvio != null) ...[
+            if (campana.fechaEnvio != null || campana.totalDestinatarios > 0) ...[
               const SizedBox(height: 10),
-              Text(DateFormat('dd/MM/yyyy HH:mm').format(campana.fechaEnvio!), style: AppTextStyles.caption),
+              Row(children: [
+                if (campana.fechaEnvio != null)
+                  Text(DateFormat('dd/MM/yyyy HH:mm').format(campana.fechaEnvio!), style: AppTextStyles.caption),
+                if (campana.fechaEnvio != null && campana.totalDestinatarios > 0)
+                  Text('  ·  ', style: AppTextStyles.caption),
+                // Correos que el servidor ya lleva enviados de esta solicitud.
+                Text('${campana.totalDestinatarios} enviados', style: AppTextStyles.caption),
+              ]),
+            ],
+            if (onReintentar != null) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                  onPressed: () => _reintentar(context),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Reintentar'),
+                ),
+              ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  /// Vuelve a dejar el mismo pedido en la cola del servidor. El estado de la
+  /// solicitud vieja lo cambia únicamente Apps Script: aquí solo se crea otra.
+  Future<void> _reintentar(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await onReintentar!(campana);
+    messenger.showSnackBar(SnackBar(
+      backgroundColor: ok ? AppColors.success : AppColors.error,
+      content: Text(ok
+          ? 'Reintentado: el servidor procesará esta nueva petición en unos minutos.'
+          : 'No fue posible reintentar el correo.'),
+    ));
   }
 }
 
@@ -289,7 +361,7 @@ class _NotifMetric extends StatelessWidget {
           Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             Text(label, style: AppTextStyles.label),
           ])),
         ]),
