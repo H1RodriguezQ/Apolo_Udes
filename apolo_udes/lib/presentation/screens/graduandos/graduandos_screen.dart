@@ -659,9 +659,13 @@ class _GraduandosTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          // Ocupa exactamente el ancho visible. Solo en pantallas muy
-          // angostas (menos de 820 px) se desplaza horizontalmente.
-          width: c.maxWidth < 820 ? 820 : c.maxWidth,
+          // Ancho mínimo garantizado de la tabla: la suma de anchos cómodos
+          // (740 px de columnas fijas + 630 px para Graduando, Programa y
+          // Facultad). Antes el mínimo era 820 px y esas tres columnas
+          // colapsaban a ~50 px: los textos salían letra por letra. Con 1370
+          // px nunca se comprimen; si la pantalla es más angosta, la tabla
+          // se desplaza horizontalmente en lugar de romperse.
+          width: c.maxWidth < 1370 ? 1370 : c.maxWidth,
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: Table(
@@ -686,7 +690,10 @@ class _GraduandosTable extends StatelessWidget {
                   children: ['Graduando', 'Documento', 'Código', 'Programa', 'Facultad', 'Hora', 'Estado', 'Acciones']
                       .map((h) => Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Text(h, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            child: Text(h,
+                                style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
                 ),
@@ -710,7 +717,14 @@ class _GraduandosTable extends StatelessWidget {
                           children: [
                             UserAvatar(name: g.nombreCompleto, size: 32),
                             const SizedBox(width: 10),
-                            Expanded(child: Text(g.nombreCompleto, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500))),
+                            Expanded(
+                              child: Text(
+                                g.nombreCompleto,
+                                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -792,14 +806,17 @@ class _GraduandosTable extends StatelessWidget {
   }
 
   /// `unaLinea`: para documento, código y hora, que nunca deben partirse.
+  /// El resto (programa y facultad) aguanta hasta 2 líneas y luego trunca con
+  /// puntos suspensivos: así un nombre largo no reventaba la fila ni salía
+  /// letra por letra cuando la columna se achicaba.
   Widget _cell(String text, {bool unaLinea = false}) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Text(
           text,
           style: AppTextStyles.body,
-          maxLines: unaLinea ? 1 : null,
-          softWrap: !unaLinea,
-          overflow: unaLinea ? TextOverflow.ellipsis : null,
+          maxLines: unaLinea ? 1 : 2,
+          softWrap: true,
+          overflow: TextOverflow.ellipsis,
         ),
       );
 }
