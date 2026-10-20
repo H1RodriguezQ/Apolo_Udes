@@ -45,3 +45,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Credenciales - nunca versionar
+*serviceAccount*.json
+*firebase-adminsdk*.json
+/claves/
+
+# Salida de despliegue de Firebase Hosting: se genera con
+# "flutter build web --release" y se copia aqui antes de "firebase deploy".
+# No se versiona porque es artefacto de compilacion, igual que /build/.
+/hosting/

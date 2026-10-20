@@ -1,0 +1,39 @@
+# ===========================================================================
+# Reglas de todo el repositorio (raíz).
+# La carpeta apolo_udes/.gitignore sigue siendo la que cubre el proyecto
+# Flutter; aquí solo va lo que está FUERA de esa carpeta y lo que conviene
+# bloquear en todo el árbol.
+# ===========================================================================
+
+# Credenciales de servicio (cuentas de servicio de GCP/Firebase).
+# Nunca se suben: si necesitas una en otra máquina, se copia a mano.
+claves/
+serviceAccount*.json
+
+# Llaves de firma de Android y ficheros de entorno con secretos.
+*.jks
+*.keystore
+key.properties
+*.pem
+*.p12
+.env
+.env.*
+
+# Dependencias de Node: se instalan con `npm install`, no se versionan.
+node_modules/
+
+# Salidas de herramientas: logs del emulador y caché del CLI de Firebase.
+.firebase/
+*.log
+
+# Archivos temporales de desarrollo y respaldos locales (no se versionan).
+*.dart.bak
+*.bak
+.agents/
+.claude/
+quitar_const.dart
+devtools_options.yaml
+skills-lock.json
+
+# Cloud Functions: dependencias de Node (se instalan con npm install).
+functions/node_modules/
