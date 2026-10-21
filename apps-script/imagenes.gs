@@ -1,0 +1,1 @@
+   [IO.File]::WriteAllText("C:\Apolo-Udes\apps-script\imagenes.gs", (Get-Clipboard -Raw))
