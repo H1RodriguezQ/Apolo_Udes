@@ -25,6 +25,48 @@ procesa cada 5 minutos y devuelve `enviado` o `error` en el mismo campo.
 
 ---
 
+## 🔄 Flujo de una invitación
+
+1. El administrador registra al graduando (formulario o Excel). Queda con
+   `correoRegistro: 'pendiente'`.
+2. Apps Script le envía al graduando el correo **"Registre a sus invitados"**
+   con un botón que abre `invitados.html?id=<graduando>`.
+3. En esa página el graduando registra a sus invitados (nombre, correo y
+   documento) hasta su cupo, con la autorización de la Ley 1581 marcada.
+   **Registrar a un invitado cuenta como confirmación de asistencia.**
+4. Apps Script le asigna a cada invitado nuevo un código de acceso
+   (`INV-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XX`) y le envía la invitación con su QR y el
+   enlace **"Ver mi invitación en línea"** (`confirmar.html?id=<invitado>`).
+5. Si el invitado no podrá ir, lo avisa desde "Mi invitación" (pide
+   confirmación y su código queda sin validez).
+6. El día de la ceremonia el operador escanea el QR o digita el documento en
+   **Control de Acceso**. Cada invitación sirve para **un solo ingreso**, aunque
+   validen varias tablets a la vez.
+
+Los directivos siguen un camino aparte: confirman en `directivos.html` y ahí
+mismo ven su QR (`DIR-…`).
+
+---
+
+## 📸 Cómo se ve
+
+Capturas con datos de ejemplo (no son personas reales).
+
+![Páginas públicas en el celular](docs/capturas/vista-general.png)
+
+| Registro de invitados | Mi invitación | Directivos |
+|:---:|:---:|:---:|
+| <img src="docs/capturas/registro-invitados.png" width="240" alt="Registro de invitados"> | <img src="docs/capturas/mi-invitacion.png" width="240" alt="Mi invitación"> | <img src="docs/capturas/directivo-confirmar.png" width="240" alt="Confirmación de directivos"> |
+| El graduando registra a sus invitados desde el enlace de su correo | El invitado ve su QR, la fecha y el lugar | El directivo confirma y recibe su QR |
+
+**Correos** (se ven igual en Gmail, Outlook y el celular):
+
+| Enlace de registro (graduando) | Invitación con QR (invitado) |
+|:---:|:---:|
+| <img src="docs/capturas/correo-registro.png" width="320" alt="Correo de registro"> | <img src="docs/capturas/correo-invitacion.png" width="320" alt="Correo de invitación"> |
+
+---
+
 ## 🚀 Módulos
 
 Accesibles desde el menú lateral (`lib/presentation/widgets/sidebar/app_sidebar.dart`):
@@ -35,7 +77,7 @@ Accesibles desde el menú lateral (`lib/presentation/widgets/sidebar/app_sidebar
 | 📊 **Dashboard** | Métricas, gráficas, actividad reciente y acceso a la **Bitácora** | Todos (bitácora: admin) |
 | 🎓 **Graduandos** | CRUD + **importar Excel** + **borrar lista** | Admin |
 | 📨 **Invitaciones** | Cupos por graduando (máx. 3), invitados y sus códigos | Todos |
-| ✅ **Confirmación** | Confirmación de asistencia de los invitados (una sola vez) | Todos |
+| ✅ **Confirmación** | Invitados registrados: con código (confirmados), sin código todavía (pendientes) y los que avisaron que no asisten | Todos |
 | 📷 **Control de Acceso** | Escáner QR con cámara + linterna + búsqueda manual | Todos |
 | 🔔 **Notificaciones** | Campañas y recordatorios (quedan en cola de correos) | Todos |
 | 👥 **Directivos** | Autoridades de la ceremonia | Todos |
@@ -84,24 +126,53 @@ Además `estado` (`activo` / `inactivo`) anula el acceso sin borrar el perfil.
 | `auditoria` | Bitácora de acciones sensibles | App (solo inserción) |
 | `solicitudes_correo` | Cola de correos para Apps Script | Admin |
 
-**Los invitados anulados no se borran**: se marcan como `anulada` y sus cupos
+**Los invitados anulados no se borran**: se marcan como `anulado` y sus cupos
 se renumeran para que no queden huecos.
 
 ---
 
 ## 🌐 Páginas web (`web/`)
 
+Todas comparten el mismo diseño de la invitación (crema, dorado y azul
+institucional, logos oficiales) y están pensadas para el celular: letra grande,
+botones de 54 px y textos claros para personas de cualquier edad.
+
 | Archivo | Uso |
 |---|---|
 | `index.html` | Arranque de la app Flutter en web |
 | `mi-qr.html` | QR del graduando (se dibuja con la librería local `qrcodejs`, sin servicios externos) |
-| `confirmar.html` | Confirmación de asistencia del invitado (una sola vez) |
-| `invitados.html` | Registro público del invitado: valida **capa 1** antes de escribir |
-| `directivos.html` | Panel para directivos con gráficas propias |
+| `invitados.html` | Registro de invitados del graduando: cupos, documento único, autorización Ley 1581 y validación **capa 1** antes de escribir |
+| `confirmar.html` | **Mi invitación**: QR del invitado, fecha, hora y lugar, "Agregar al calendario", "Cómo llegar" y "No podré asistir" |
+| `directivos.html` | Confirmación de asistencia del directivo y su QR |
+| `assets/` | Logos oficiales que usan las páginas |
 
-`flutter build web --release` copia estas páginas a `build/web`. Para
-desplegarlas, ese contenido se lleva a `hosting/` (el `public` de
-`firebase.json`) y se ejecuta `firebase deploy --only firestore:rules,hosting`.
+Publicar (`firebase.json` publica directamente `build/web`):
+
+```powershell
+flutter build web
+firebase deploy --only hosting
+```
+
+Las reglas se publican aparte con `firebase deploy --only firestore:rules`.
+
+---
+
+## 📧 Correos (Apps Script)
+
+El servidor de correos es el proyecto de Apps Script **"Apolo UDES - Correos"**
+(cuenta de Google de la ceremonia). Un activador ejecuta `enviarCorreos()` cada
+5 minutos:
+
+| Flujo | Qué envía | Cuándo |
+|---|---|---|
+| Solicitudes de la app | Invitaciones, recordatorios y campañas | Documento en `solicitudes_correo` con `estado: 'pendiente'` |
+| Enlace de registro | Correo "Registre a sus invitados" al graduando | Graduando con `correoRegistro: 'pendiente'` |
+| Invitados de la web | Asigna el código y envía la invitación con QR | Invitado con `estado: 'pendiente'` sin código |
+
+Los correos están hechos con tablas y estilos en línea para verse igual en
+Gmail, Outlook y el celular. Logos, birrete y QR van como imágenes adjuntas
+dentro del correo (`cid:`), así que no dependen de que una imagen esté
+publicada. El QR lo genera el propio script (`qr.gs`).
 
 ---
 
@@ -269,6 +340,10 @@ compilan ni se incluyen en el build.
 | Fase | Estado |
 |---|---|
 | TAREA 1–11 (Firestore offline, códigos, dedupe, anulación, badges, reglas, HTML, cierre de jornada, pruebas) | ✅ Hechas |
-| TAREA 12 — empaquetado y despliegue | ⏳ Pendiente: `hosting/`, APK (requiere JDK 17) y `firebase deploy` |
+| TAREA 12 — despliegue de Hosting y páginas web | ✅ Publicado en `apolo-udes.web.app` |
+| Registro de invitados por la web + invitación automática con QR | ✅ Hecho |
+| Validación de QR de invitados en Control de Acceso | ✅ Hecho |
+| Correo de invitación a directivos desde Apps Script | ⏳ Pendiente |
+| APK para la tablet (requiere JDK 17) y prueba en el ensayo | ⏳ Pendiente |
 
 **v2.4.1 — 2026** | Universidad de Santander UDES
