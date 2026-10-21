@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
@@ -21,6 +22,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // En la web la sesión dura solo mientras la pestaña esté abierta: al
+  // cerrarla, la próxima vez pide correo y contraseña. En la tablet Android
+  // la sesión se sigue recordando para que el operador no la escriba a cada rato.
+  if (kIsWeb) {
+    await FirebaseAuth.instance.setPersistence(Persistence.SESSION);
+  }
 
   // Persistencia sin conexión: Firestore guarda en disco la última copia
   // leída, así que la tablet sigue mostrando los graduandos y validando QR

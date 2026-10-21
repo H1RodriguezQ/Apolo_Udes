@@ -245,7 +245,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   void _escucharInvitacionesFirestore() {
-    if (kIsWeb) return;
     _invitacionesSubscription?.cancel();
     _invitacionesSubscription = FirebaseFirestore.instance
         .collection('invitados').orderBy('fechaRegistro', descending: true)
@@ -284,33 +283,40 @@ class AppProvider extends ChangeNotifier {
     }, onError: (e) => debugPrint('Error escuchando invitaciones: $e'));
   }
 
+  // Desde que el registro en la página web cuenta como confirmación, todo
+  // invitado registrado que ya tenga su código de acceso puede entrar. Antes
+  // solo entraban los que tenían `confirmacion: 'confirmado'` (la página
+  // vieja de "asistiré / no asistiré") y los registrados en la web siempre
+  // salían como QR inválido.
+  // No entran: los anulados (los anuló la universidad) ni los que avisaron
+  // que no asisten. Los que todavía no tienen código quedan "pendientes":
+  // Apps Script se los asigna y les manda el correo en unos minutos.
   void _escucharConfirmacionesFirestore() {
-    if (kIsWeb) return;
     _confirmacionesSubscription?.cancel();
     _confirmacionesSubscription = FirebaseFirestore.instance
-        .collection('invitados').where('confirmacion', whereIn: ['confirmado', 'rechazado'])
+        .collection('invitados')
         .snapshots().listen((snapshot) {
-      // Los invitados anulados (graduando eliminado) no entran a la lista de
-      // confirmados: así verificarAcceso rechaza su QR.
       _confirmaciones = snapshot.docs
           .where((doc) => doc.data()['estado'] != 'anulado')
           .map((doc) {
         final data = doc.data();
-        final confirmacionStr = data['confirmacion'] as String? ?? 'pendiente';
         final graduandoId = data['graduandoId'] as String? ?? '';
         final graduando = _graduandos.firstWhere((g) => g.id == graduandoId,
           orElse: () => Graduando(id: '', codigoEstudiantil: '', documento: '', nombres: '',
             apellidos: '', programa: '', facultad: '', telefono: '', correo: '', horaCeremonia: '', estado: EstadoGraduando.activo));
+        final codigoQr = (data['codigoQr'] as String? ?? '').trim();
         EstadoConfirmacion estado;
-        switch (confirmacionStr) {
-          case 'confirmado': estado = EstadoConfirmacion.confirmado; break;
-          case 'rechazado': estado = EstadoConfirmacion.rechazado; break;
-          default: estado = EstadoConfirmacion.pendiente;
+        if (data['confirmacion'] == 'rechazado') {
+          estado = EstadoConfirmacion.rechazado;
+        } else if (codigoQr.isNotEmpty) {
+          estado = EstadoConfirmacion.confirmado;
+        } else {
+          estado = EstadoConfirmacion.pendiente;
         }
         return Confirmacion(id: doc.id, invitado: data['nombreInvitado'] as String? ?? '',
           documento: data['documento'] as String? ?? '',
           graduandoNombre: graduando.nombreCompleto.isNotEmpty ? graduando.nombreCompleto : data['graduandoNombre'] as String? ?? '',
-          estado: estado, codigoQr: data['codigoQr'] as String?);
+          estado: estado, codigoQr: codigoQr.isEmpty ? null : codigoQr);
       }).toList();
       _reconstruirCodigosUsados();
       notifyListeners();
@@ -337,7 +343,6 @@ class AppProvider extends ChangeNotifier {
   // tiempo real, de modo que un graduando agregado, editado o eliminado en
   // una tablet aparece en la otra en segundos y sin reiniciar la aplicación.
   void _escucharGraduandosFirestore() {
-    if (kIsWeb) return;
     _graduandosSubscription?.cancel();
     _graduandosSubscription = FirebaseFirestore.instance
         .collection('graduandos')
@@ -555,7 +560,6 @@ class AppProvider extends ChangeNotifier {
   // ── Directivos CRUD con QR ──
 
   void _escucharDirectivosFirestore() {
-    if (kIsWeb) return;
     _directivosSubscription?.cancel();
     _directivosSubscription = FirebaseFirestore.instance
         .collection('directivos').snapshots().listen((snapshot) {
@@ -775,7 +779,7 @@ class AppProvider extends ChangeNotifier {
       return null;
     }
 
-    // 1. Buscar en CONFIRMACIONES (invitados)
+    // 1. Buscar en CONFIRMACIONES (invitados registrados con código)
     final confirmacion = _confirmacionDe(codigoODocumento);
 
     if (confirmacion != null &&
@@ -868,7 +872,7 @@ class AppProvider extends ChangeNotifier {
 
   /// Muestra en Notificaciones cómo va cada solicitud de correo.
   void _escucharSolicitudesCorreo() {
-    if (kIsWeb || !isAdmin) return;
+    if (!isAdmin) return;
     _solicitudesSubscription?.cancel();
     _solicitudesSubscription = FirebaseFirestore.instance
         .collection('solicitudes_correo')
