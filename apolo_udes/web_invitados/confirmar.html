@@ -1,116 +1,252 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Confirmación de Asistencia - UDES</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi invitación · Ceremonia de grado UDES</title>
+  <!-- Mismas fuentes que invitados.html: Pinyon Script solo para el título
+       decorativo; todo lo importante va en Cormorant Garamond o Montserrat. -->
+  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@500;600&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
-    .header { background: linear-gradient(135deg, #0F2347 0%, #1A3A6B 60%, #1E4D8C 100%); padding: 28px 20px; text-align: center; }
-    .header h1 { color: #fff; font-size: 24px; font-weight: 800; }
-    .header p { color: #B8CCE8; font-size: 13px; margin-top: 4px; }
-    .banner { background: linear-gradient(90deg, #C9A84C, #F0D060, #C9A84C); padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #3D2B00; letter-spacing: 2px; }
-    .container { max-width: 480px; margin: 32px auto; padding: 0 16px; flex: 1; }
-    .card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin-bottom: 20px; text-align: center; }
-    .loading { padding: 40px; color: #718096; }
-    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1A3A6B; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .invitado-nombre { color: #0F2347; font-size: 22px; font-weight: 800; margin: 8px 0; }
-    .graduando { color: #718096; font-size: 13px; margin-bottom: 20px; }
-    .evento-info { background: #f8f9fb; border-radius: 10px; padding: 16px; margin: 16px 0; text-align: left; }
-    .evento-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: #2d3748; font-size: 14px; }
-    .evento-row:last-child { margin-bottom: 0; }
-    .pregunta { font-size: 16px; font-weight: 600; color: #0F2347; margin: 24px 0 16px; }
-    .botones { display: flex; gap: 12px; }
-    .btn-confirmar {
-      flex: 1; padding: 16px;
-      background: linear-gradient(135deg, #276749, #38A169);
-      color: #fff; border: none; border-radius: 10px;
-      font-size: 16px; font-weight: 700; cursor: pointer;
+    /* Paleta del diseño aprobado (azul institucional, dorado y crema). */
+    :root{
+      --azul:#004899; --azul-hondo:#003a7d;
+      --dorado:#b8975a; --dorado-claro:#e2d6b8; --dorado-texto:#7a5f2f;
+      --crema:#fbf8f1; --fondo:#dfe3ea;
+      --texto:#2a2a2a; --texto-suave:#4a4a4a; --rojo:#8f2a1f;
+      --serif:'Cormorant Garamond',Georgia,serif;
+      --sans:Montserrat,Arial,sans-serif;
     }
-    .btn-rechazar {
-      flex: 1; padding: 16px;
-      background: #fff; color: #e53e3e;
-      border: 2px solid #e53e3e; border-radius: 10px;
-      font-size: 16px; font-weight: 700; cursor: pointer;
-    }
-    .btn-confirmar:hover { opacity: 0.9; }
-    .btn-rechazar:hover { background: #FFF5F5; }
-    .success { background: #F0FFF4; border: 1px solid #9AE6B4; border-radius: 12px; padding: 32px; text-align: center; display: none; }
-    .success h2 { color: #276749; font-size: 20px; margin-bottom: 8px; }
-    .success p { color: #2F855A; font-size: 14px; }
-    .rechazado { background: #FFF5F5; border: 1px solid #FEB2B2; border-radius: 12px; padding: 32px; text-align: center; display: none; }
-    .rechazado h2 { color: #C53030; font-size: 20px; margin-bottom: 8px; }
-    .rechazado p { color: #9B2C2C; font-size: 14px; }
-    .footer { text-align: center; padding: 24px; color: #718096; font-size: 12px; }
+    /* Todo en rem: si la persona tiene la letra grande en su celular, la
+       página crece con ella. */
+    html{font-size:100%}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--fondo);color:var(--texto);font-family:var(--serif);font-size:1.125rem;line-height:1.5;min-height:100vh}
+    [hidden]{display:none !important}
+
+    .encabezado{background:var(--azul-hondo);border-top:3px solid var(--dorado);border-bottom:3px solid var(--dorado);padding:1rem;text-align:center}
+    .encabezado .marca{font-family:var(--sans);font-size:.75rem;letter-spacing:3px;color:#e3d3a8;font-weight:600}
+    .encabezado .sub{font-style:italic;color:#d5e0f0;font-size:1rem;margin-top:2px}
+
+    .contenedor{max-width:560px;margin:1.5rem auto 0;padding:0 1rem}
+
+    /* Tarjeta con esquinas art déco */
+    .tarjeta{position:relative;background:var(--crema);border:1px solid var(--dorado);padding:2.25rem 1.5rem 1.75rem;text-align:center}
+    .esq{position:absolute;width:40px;height:40px;pointer-events:none}
+    .esq.si{top:8px;left:8px}.esq.sd{top:8px;right:8px;transform:scaleX(-1)}
+    .esq.ii{bottom:8px;left:8px;transform:scaleY(-1)}.esq.id{bottom:8px;right:8px;transform:scale(-1,-1)}
+
+    .cinta{display:inline-block;background:#c2a05a;
+      background-image:linear-gradient(100deg,#9c7a3c 0%,#e3c983 35%,#b8954f 60%,#ecd497 80%,#a8853f 100%);
+      font-family:var(--sans);font-size:.75rem;letter-spacing:3px;font-weight:600;color:#2c2210;padding:6px 16px}
+    .titulo{font-family:'Pinyon Script',cursive;font-weight:400;font-size:2.5rem;line-height:1.15;color:var(--azul);margin-top:.75rem}
+    .titulo span{color:#8a6d3b}
+
+    .separador{display:flex;align-items:center;justify-content:center;gap:12px;margin:1.1rem 0}
+    .separador::before,.separador::after{content:"";width:64px;height:1px;background:#d3bf93}
+
+    .etiqueta{font-family:var(--sans);font-size:.75rem;letter-spacing:1px;font-weight:600;color:var(--dorado-texto);text-transform:uppercase}
+    .nombre{font-size:1.65rem;font-weight:500;color:var(--azul);margin-top:4px;line-height:1.25}
+    .cargo{font-family:var(--sans);font-size:.875rem;color:var(--texto-suave);margin-top:4px}
+
+    /* Datos del evento */
+    .datos{margin-top:1.4rem;text-align:left;border-top:1px solid var(--dorado-claro)}
+    .datos > div{display:flex;gap:12px;align-items:flex-start;padding:.7rem 2px;border-bottom:1px solid var(--dorado-claro)}
+    .datos svg{flex-shrink:0;margin-top:4px}
+    .datos dd{font-size:1.2rem;margin-top:2px}
+
+    h2.pregunta{font-weight:500;font-size:1.4rem;margin-top:1.5rem;color:var(--texto)}
+    .ayuda{font-size:1.06rem;color:var(--texto-suave);margin-top:.4rem}
+
+    /* Botones grandes, uno debajo del otro, con texto claro */
+    .acciones{display:flex;flex-direction:column;gap:10px;margin-top:1.25rem}
+    .boton{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;width:100%;
+      border-radius:4px;font-family:var(--sans);font-size:1.06rem;font-weight:600;text-decoration:none;cursor:pointer;
+      background:var(--azul);color:#fff;border:0;padding:.6rem 1rem;transition:background .15s}
+    .boton:hover:not(:disabled){background:var(--azul-hondo)}
+    .boton.secundario{background:transparent;color:var(--azul);border:1px solid var(--dorado)}
+    .boton.secundario:hover:not(:disabled){background:#f3ecdc}
+    .boton:disabled{opacity:.6;cursor:not-allowed}
+    .boton:focus-visible,a:focus-visible{outline:3px solid var(--dorado);outline-offset:3px}
+    /* Los títulos reciben el foco por código (para el lector de pantalla);
+       no necesitan el recuadro, que es para quien navega con teclado. */
+    [tabindex="-1"]:focus{outline:none}
+    a{color:var(--azul)}
+
+    /* QR dentro de un marco dorado */
+    .qr{margin:1.4rem auto 0;width:232px;background:#fff;border:1px solid var(--dorado);padding:14px 14px 12px}
+    .qr .caja{width:200px;height:200px;margin:0 auto}
+    .qr .caja img,.qr .caja canvas{width:200px !important;height:200px !important;display:block}
+    .qr figcaption{font-family:var(--sans);font-size:.75rem;font-weight:600;color:#333;margin-top:10px;word-break:break-all}
+    .nota-qr{font-family:var(--sans);font-size:.875rem;color:var(--texto-suave);max-width:300px;margin:.75rem auto 0}
+
+    .icono{display:block;margin:0 auto .4rem}
+    h1.estado{font-weight:500;font-size:1.75rem;color:var(--azul);line-height:1.2}
+    .estado-texto{font-size:1.125rem;color:#3a3a3a;max-width:320px;margin:.6rem auto 0}
+    .error h1.estado{color:var(--rojo)}
+    .cerrar{font-size:1rem;color:var(--texto-suave);margin-top:.9rem}
+
+    .spinner{width:30px;height:30px;border:3px solid var(--dorado-claro);border-top-color:var(--azul);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion: reduce){.spinner{animation-duration:2.4s}}
+
+    .pie{max-width:560px;margin:.5rem auto 0;padding:1.25rem 1rem 2rem;text-align:center}
+    .pie img{width:100%;max-width:330px;height:auto;display:block;margin:0 auto}
+    .pie p{font-family:var(--sans);font-size:.75rem;color:#4f5866;margin-top:.75rem}
+
+    /* Solo para lectores de pantalla */
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .de-quien{font-size:1.125rem;color:#3a3a3a;margin-top:4px}
+    .en-camino{margin:1.4rem auto 0;max-width:320px;border:1px dashed var(--dorado);padding:1rem;font-size:1.06rem;color:#3a3a3a}
+    .boton.peligro{background:var(--rojo)}
+    .boton.peligro:hover:not(:disabled){background:#6f1f17}
+    .enlace-boton{background:none;border:0;padding:4px;font:inherit;font-size:1.125rem;color:var(--azul);text-decoration:underline;cursor:pointer;min-height:44px}
+    .enlace-boton:focus-visible{outline:3px solid var(--dorado);outline-offset:3px}
   </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🎓 Apolo UDES</h1>
-  <p>Sistema de Gestión de Ceremonia de Grado</p>
-</div>
-<div class="banner">✦ CONFIRMACIÓN DE ASISTENCIA ✦</div>
+<!-- Esquinas art déco y birrete, dibujados una vez y reutilizados. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="esquina" viewBox="0 0 64 64">
+      <g fill="none" stroke="#b8975a" stroke-width="1">
+        <path d="M2 62V2h60"/><path d="M8 62V8h54"/><path d="M14 40V14h26"/><path d="M8 8l12 12"/>
+      </g>
+    </symbol>
+    <symbol id="birrete" viewBox="0 0 34 26">
+      <path d="M9 11.5v6.2c0 2.3 3.6 4.1 8 4.1s8-1.8 8-4.1v-6.2L17 15z" fill="#a6833f"/>
+      <polygon points="17,3 33,9.5 17,16 1,9.5" fill="#c2a05a" stroke="#8f6f33" stroke-width="0.6"/>
+      <circle cx="17" cy="9.5" r="1.1" fill="#8f6f33"/>
+      <path d="M17 9.5 L27.5 13.2 V20" fill="none" stroke="#8f6f33" stroke-width="0.9"/>
+      <path d="M26.3 20h2.4l-0.5 3.6h-1.4z" fill="#8f6f33"/>
+    </symbol>
+    <symbol id="ok" viewBox="0 0 46 46">
+      <circle cx="23" cy="23" r="21" fill="none" stroke="#b8975a" stroke-width="1.2"/>
+      <path d="M14 23.5l6 6 12-13" fill="none" stroke="#004899" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="equis" viewBox="0 0 46 46">
+      <circle cx="23" cy="23" r="21" fill="none" stroke="#b8975a" stroke-width="1.2"/>
+      <path d="M17 17l12 12M29 17L17 29" fill="none" stroke="#8f2a1f" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
 
-<div class="container">
+<header class="encabezado">
+  <div class="marca">UNIVERSIDAD DE SANTANDER</div>
+  <div class="sub">Ceremonias de grado</div>
+</header>
 
-  <div class="card" id="loading">
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>Cargando invitación...</p>
+<main class="contenedor">
+  <!-- Mensajes para lectores de pantalla cuando cambia la vista -->
+  <p class="sr" id="anuncio" role="status" aria-live="polite"></p>
+
+  <!-- 1. Cargando -->
+  <section class="tarjeta" id="vista-cargando">
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+    <div class="spinner" aria-hidden="true"></div>
+    <p class="ayuda" style="margin-top:.9rem">Cargando su invitación…</p>
+  </section>
+
+  <!-- 2. Mi invitación: QR y datos del evento -->
+  <section class="tarjeta" id="vista-invitacion" hidden>
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+    <span class="cinta">SU INVITACIÓN</span>
+    <p class="titulo" aria-hidden="true">Lo <span>esperamos</span></p>
+    <div class="separador"><svg width="34" height="26" aria-hidden="true"><use href="#birrete"/></svg></div>
+
+    <div class="etiqueta">Invitado</div>
+    <h1 class="nombre" id="nombre-invitado" tabindex="-1"></h1>
+    <p class="de-quien" id="de-quien"></p>
+    <p class="cargo" id="programa"></p>
+
+    <!-- Con código: el QR. Sin código todavía: aviso de que llega por correo. -->
+    <div id="bloque-qr" hidden>
+      <figure class="qr">
+        <div class="caja" id="qr" role="img" aria-label="Código QR de acceso"></div>
+        <figcaption id="qr-texto"></figcaption>
+      </figure>
+      <p class="nota-qr">Válido para una sola entrada y solo para usted. Muéstrelo en la entrada desde el celular (suba el brillo) o impreso.</p>
     </div>
-  </div>
+    <p class="en-camino" id="bloque-en-camino" hidden>Su código de acceso está en camino: le llegará por correo en unos minutos. Puede volver a abrir este enlace para verlo aquí.</p>
 
-  <div class="card" id="contenido" style="display:none;">
-    <p style="color:#718096;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Invitación para</p>
-    <div class="invitado-nombre" id="nombre-invitado"></div>
-    <div class="graduando" id="graduando-info"></div>
+    <dl class="datos" id="datos-evento"></dl>
 
-    <div class="evento-info">
-      <div class="evento-row">📅 <span id="fecha-evento">Fecha por confirmar</span></div>
-      <div class="evento-row">🕐 <span id="hora-evento"></span></div>
-      <div class="evento-row">📍 Auditorio Mayor, Campus Lagos del Cacique</div>
-      <div class="evento-row">🎟️ Válido para 1 persona</div>
+    <div class="acciones">
+      <button class="boton" type="button" id="btn-calendario" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg>
+        Agregar al calendario
+      </button>
+      <a class="boton secundario" id="btn-mapa" href="#" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        Cómo llegar
+      </a>
     </div>
 
-    <div class="pregunta">¿Confirmas tu asistencia a la ceremonia?</div>
+    <!-- "No podré asistir" es discreto a propósito: lo normal es ir. -->
+    <p class="ayuda" id="fila-no-asiste" style="margin-top:1.1rem">¿No podrá ir?
+      <button class="enlace-boton" type="button" id="btn-ir-no">Avísenos aquí</button>
+    </p>
+    <p class="ayuda" id="fila-ya-confirmo" hidden style="margin-top:1.1rem">¿Cambió de planes? Comuníquese con la universidad.</p>
+  </section>
 
-    <div class="botones">
-      <button class="btn-confirmar" onclick="confirmar()">✅ Sí, asistiré</button>
-      <button class="btn-rechazar" onclick="rechazar()">❌ No podré asistir</button>
+  <!-- 3. Paso 1 de "no asistiré": confirmar, porque no se puede deshacer -->
+  <section class="tarjeta" id="vista-seguro" hidden>
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+    <h1 class="estado" tabindex="-1">¿Seguro que no podrá asistir?</h1>
+    <p class="estado-texto">Su código de acceso quedará anulado y no podrá usarse en la entrada. Si cambia de opinión, tendrá que comunicarse con la universidad.</p>
+    <div class="acciones">
+      <button class="boton peligro" type="button" id="btn-no">Sí, no podré asistir</button>
+      <button class="boton secundario" type="button" id="btn-volver">Volver a mi invitación</button>
     </div>
-  </div>
+    <p class="ayuda" id="error-guardar" role="alert" hidden style="color:var(--rojo);margin-top:.9rem"></p>
+  </section>
 
-  <div class="success" id="success">
-    <div style="font-size:48px;margin-bottom:12px;">🎉</div>
-    <h2>¡Asistencia confirmada!</h2>
-    <p>Tu asistencia ha sido registrada. Presenta tu código QR el día del evento.</p>
-  </div>
+  <!-- 4. No asistirá -->
+  <section class="tarjeta" id="vista-rechazado" hidden>
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
 
-  <div class="rechazado" id="rechazado">
-    <div style="font-size:48px;margin-bottom:12px;">😔</div>
-    <h2>Asistencia rechazada</h2>
-    <p>Hemos registrado que no podrás asistir. Si cambias de opinión, contacta a la universidad.</p>
-  </div>
+    <svg class="icono" width="46" height="46" aria-hidden="true"><use href="#ok"/></svg>
+    <h1 class="estado" tabindex="-1">Gracias por avisarnos</h1>
+    <p class="estado-texto" id="texto-rechazado">Registramos que no podrá asistir.</p>
+    <div class="acciones">
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
+    </div>
+    <p class="cerrar">Ya puede cerrar esta pestaña.</p>
+  </section>
 
-  <div class="card" id="error-card" style="display:none;">
-    <div style="font-size:32px;margin-bottom:8px;">❌</div>
-    <h3 style="color:#e53e3e;">Enlace inválido</h3>
-    <p style="color:#718096;font-size:14px;margin-top:8px;">Este enlace no es válido o ya fue procesado.</p>
-  </div>
+  <!-- 5. Error -->
+  <section class="tarjeta error" id="vista-error" hidden>
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
 
-</div>
+    <svg class="icono" width="46" height="46" aria-hidden="true"><use href="#equis"/></svg>
+    <h1 class="estado" id="error-titulo" tabindex="-1">Enlace inválido</h1>
+    <p class="estado-texto" id="error-texto">Este enlace no es válido. Revise el correo que recibió.</p>
+    <div class="acciones">
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
+    </div>
+  </section>
+</main>
 
-<div class="footer">
-  Universidad de Santander – UDES | Bucaramanga, Santander<br>
-  Acreditada Alta Calidad por el Ministerio de Educación Nacional | SNIES 2832
-</div>
+<footer class="pie">
+  <img src="assets/logos-udes-azul.png" alt="Universidad de Santander · Acreditación Alta Calidad · EQUAA">
+  <p>Vigilada Mineducación · SNIES 2832 · Bucaramanga, Santander</p>
+</footer>
+
+<!-- QR generado en el propio navegador: el código de acceso nunca se envía a
+     un servicio externo. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
-  import { getFirestore, doc, getDoc, updateDoc }
+  import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -122,109 +258,264 @@
     appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
+  const db = getFirestore(initializeApp(firebaseConfig));
   const params = new URLSearchParams(window.location.search);
   const invitadoId = params.get('id');
-  const respuesta = params.get('r'); // 'si' | 'no'
+  const respuesta = params.get('r'); // 'no' si viene del botón "No podré asistir" del correo
 
-  window.db = db;
-  window.invitadoId = invitadoId;
-  window.updateDoc = updateDoc;
-  window.doc = doc;
+  // Duración que se pone en el calendario. Es un estimado: cámbielo aquí si
+  // la universidad publica otra.
+  const DURACION_HORAS = 3;
 
-  if (!invitadoId) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('error-card').style.display = 'block';
-  } else {
-    const ref = doc(db, 'invitados', invitadoId);
-    getDoc(ref).then(async snap => {
-      document.getElementById('loading').style.display = 'none';
+  let invitado = {};
+  let graduando = {};
+  let evento = {};
 
-      if (!snap.exists()) {
-        document.getElementById('error-card').style.display = 'block';
-        return;
-      }
-
-      const inv = snap.data();
-
-      // Si ya respondió
-      if (inv.confirmacion === 'confirmado') {
-        document.getElementById('success').style.display = 'block';
-        return;
-      }
-      if (inv.confirmacion === 'rechazado') {
-        document.getElementById('rechazado').style.display = 'block';
-        return;
-      }
-
-      // Carga info del graduando
-      const gradRef = doc(db, 'graduandos', inv.graduandoId);
-      const gradSnap = await getDoc(gradRef);
-      const grad = gradSnap.exists() ? gradSnap.data() : {};
-
-      // Carga config del evento
-      const confRef = doc(db, 'configuracion', 'evento');
-      const confSnap = await getDoc(confRef);
-      const conf = confSnap.exists() ? confSnap.data() : {};
-
-      document.getElementById('nombre-invitado').textContent = inv.nombreInvitado;
-      document.getElementById('graduando-info').textContent =
-        'Invitado de ' + (grad.nombreCompleto || '') + ' · ' + (grad.programa || '');
-
-      if (conf.fechaCeremonia) {
-        const fecha = conf.fechaCeremonia.toDate();
-        const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('fecha-evento').textContent =
-          fecha.toLocaleDateString('es-CO', opciones);
-      }
-
-      const horas = conf.horasPorFacultad || {};
-      const hora = horas[grad.facultad] || grad.horaCeremonia || '';
-      document.getElementById('hora-evento').textContent = hora;
-
-      document.getElementById('contenido').style.display = 'block';
-
-      // Si viene la respuesta en la URL, procesa automáticamente
-      if (respuesta === 'si') window.confirmar();
-      else if (respuesta === 'no') window.rechazar();
-
-    }).catch(() => {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error-card').style.display = 'block';
-    });
+  // ── Vistas ──
+  // Solo se ve una tarjeta a la vez. Al cambiar, el foco pasa al título de
+  // la nueva tarjeta y se anuncia a los lectores de pantalla.
+  function mostrar(id, anuncio) {
+    for (const v of ['vista-cargando', 'vista-invitacion', 'vista-seguro', 'vista-rechazado', 'vista-error']) {
+      document.getElementById(v).hidden = v !== id;
+    }
+    const titulo = document.querySelector('#' + id + ' [tabindex="-1"]');
+    if (titulo) titulo.focus();
+    if (anuncio) document.getElementById('anuncio').textContent = anuncio;
+    window.scrollTo({ top: 0 });
   }
+
+  function mostrarError(titulo, texto) {
+    document.getElementById('error-titulo').textContent = titulo;
+    document.getElementById('error-texto').textContent = texto;
+    mostrar('vista-error', titulo);
+  }
+
+  // ── Datos del evento ──
+  // Se arman con DOM y textContent: ningún dato pasa por innerHTML.
+  function filaDato(etiqueta, valor, iconoPath) {
+    const fila = document.createElement('div');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '18'); svg.setAttribute('height', '18');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', '#7a5f2f');
+    svg.setAttribute('stroke-width', '1.6'); svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', iconoPath);
+    svg.appendChild(p);
+    const caja = document.createElement('div');
+    const dt = document.createElement('dt'); dt.className = 'etiqueta'; dt.textContent = etiqueta;
+    const dd = document.createElement('dd'); dd.textContent = valor;
+    caja.append(dt, dd);
+    fila.append(svg, caja);
+    return fila;
+  }
+
+  function pintarDatos() {
+    const filas = [
+      filaDato('Fecha', evento.fechaTexto, 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4'),
+    ];
+    // Sin hora configurada para la facultad no se muestra la fila vacía.
+    if (evento.hora) {
+      filas.push(filaDato('Hora', evento.hora, 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2'));
+    }
+    filas.push(filaDato('Lugar', evento.lugar, 'M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5'));
+    document.getElementById('datos-evento').replaceChildren(...filas);
+  }
+
+  // ── QR ──
+  function pintarQr(codigo) {
+    const caja = document.getElementById('qr');
+    caja.replaceChildren();
+    new QRCode(caja, {
+      text: codigo, width: 200, height: 200,
+      colorDark: '#0F2347', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+    document.getElementById('qr-texto').textContent = codigo;
+  }
+
+  // ── Calendario (.ics) y mapa ──
+  // "09:30 AM", "9:30 a. m." o "14:00" -> [horas, minutos]. null si no se entiende.
+  function leerHora(texto) {
+    const m = /(\d{1,2}):(\d{2})\s*([ap])?/i.exec(texto || '');
+    if (!m) return null;
+    let h = Number(m[1]);
+    const min = Number(m[2]);
+    const sufijo = (m[3] || '').toLowerCase();
+    if (sufijo === 'p' && h < 12) h += 12;
+    if (sufijo === 'a' && h === 12) h = 0;
+    return [h, min];
+  }
+
+  function dosDigitos(n) { return String(n).padStart(2, '0'); }
+
+  function fechaIcs(d) {
+    return d.getFullYear() + dosDigitos(d.getMonth() + 1) + dosDigitos(d.getDate()) +
+      'T' + dosDigitos(d.getHours()) + dosDigitos(d.getMinutes()) + '00';
+  }
+
+  function prepararBotones() {
+    document.getElementById('btn-mapa').href =
+      'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(evento.lugarMapa);
+
+    const hm = leerHora(evento.hora);
+    if (!evento.fecha || !hm) return; // sin fecha y hora reales no hay calendario
+    const inicio = new Date(evento.fecha);
+    inicio.setHours(hm[0], hm[1], 0, 0);
+    const fin = new Date(inicio.getTime() + DURACION_HORAS * 3600 * 1000);
+    const btn = document.getElementById('btn-calendario');
+    btn.hidden = false;
+    btn.onclick = () => {
+      const limpiar = (t) => String(t).replace(/[\\,;]/g, (c) => '\\' + c).replace(/\n/g, ' ');
+      const ics = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UDES//Apolo//ES',
+        'BEGIN:VEVENT',
+        'UID:' + invitadoId + '@apolo-udes',
+        'DTSTAMP:' + fechaIcs(new Date()),
+        'DTSTART;TZID=America/Bogota:' + fechaIcs(inicio),
+        'DTEND;TZID=America/Bogota:' + fechaIcs(fin),
+        'SUMMARY:' + limpiar('Ceremonia de grado UDES'),
+        'LOCATION:' + limpiar(evento.lugarMapa),
+        'END:VEVENT', 'END:VCALENDAR'
+      ].join('\r\n');
+      const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ceremonia-grado-udes.ics';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+  }
+
+  // ── "No podré asistir" ──
+  // Las reglas solo dejan responder UNA vez (confirmacion vacía o
+  // 'pendiente'), cambiando únicamente `confirmacion` y `fechaConfirmacion`,
+  // y la fecha tiene que ser la del servidor.
+  async function noAsistire() {
+    const btn = document.getElementById('btn-no');
+    const error = document.getElementById('error-guardar');
+    btn.disabled = true;
+    error.hidden = true;
+    try {
+      await updateDoc(doc(db, 'invitados', invitadoId), {
+        confirmacion: 'rechazado',
+        fechaConfirmacion: serverTimestamp(),
+      });
+      verRechazado();
+    } catch (e) {
+      console.error(e);
+      error.textContent = 'No se pudo guardar su respuesta. Revise su conexión e intente de nuevo.';
+      error.hidden = false;
+      btn.disabled = false;
+    }
+  }
+
+  function verRechazado(yaAntes) {
+    const quien = graduando.nombreCompleto || invitado.graduandoNombre || '';
+    document.getElementById('texto-rechazado').textContent =
+      (yaAntes ? 'Ya nos había avisado que no podrá asistir.' : 'Registramos que no podrá asistir.') +
+      (quien ? ' ' + quien + ' verá el cambio en su registro de invitados.' : '');
+    mostrar('vista-rechazado', 'Gracias por avisarnos');
+  }
+
+  document.getElementById('btn-ir-no').addEventListener('click', () => mostrar('vista-seguro'));
+  document.getElementById('btn-volver').addEventListener('click', () => mostrar('vista-invitacion'));
+  document.getElementById('btn-no').addEventListener('click', noAsistire);
+
+  // ── Carga ──
+  async function iniciar() {
+    if (!invitadoId) {
+      mostrarError('Enlace inválido', 'Este enlace no es válido. Revise el correo que recibió.');
+      return;
+    }
+    const snap = await getDoc(doc(db, 'invitados', invitadoId));
+    if (!snap.exists()) {
+      mostrarError('Enlace inválido', 'Este enlace no es válido. Revise el correo que recibió.');
+      return;
+    }
+    invitado = snap.data();
+
+    if (invitado.estado === 'anulado') {
+      mostrarError('Invitación anulada', 'Esta invitación ya no es válida. Si cree que es un error, comuníquese con quien lo invitó o con la universidad.');
+      return;
+    }
+
+    // Datos del graduando desde el espejo PÚBLICO (la colección graduandos
+    // solo la lee el personal autenticado).
+    try {
+      const g = await getDoc(doc(db, 'graduandos_publico', invitado.graduandoId));
+      if (g.exists()) graduando = g.data();
+    } catch (e) { /* se usa graduandoNombre del invitado */ }
+
+    if (invitado.confirmacion === 'rechazado') { verRechazado(true); return; }
+
+    let conf = {};
+    try {
+      const c = await getDoc(doc(db, 'configuracion', 'evento'));
+      if (c.exists()) conf = c.data();
+    } catch (e) { /* lectura secundaria */ }
+
+    const fecha = conf.fechaCeremonia && conf.fechaCeremonia.toDate ? conf.fechaCeremonia.toDate() : null;
+    const horas = conf.horasPorFacultad || {};
+    const lugarBase = conf.lugar || 'Auditorio Mayor, Campus Lagos del Cacique';
+    evento = {
+      fecha: fecha,
+      fechaTexto: fecha
+        ? fecha.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        : 'Por confirmar',
+      hora: horas[graduando.facultad] || '',
+      lugar: lugarBase + (conf.direccion ? ', ' + conf.direccion : ''),
+      lugarMapa: lugarBase + (conf.direccion ? ', ' + conf.direccion : '') + ', ' + (conf.ciudad || 'Bucaramanga'),
+    };
+
+    document.getElementById('nombre-invitado').textContent = invitado.nombreInvitado || '';
+    const quien = graduando.nombreCompleto || invitado.graduandoNombre || '';
+    document.getElementById('de-quien').textContent = quien ? 'De parte de ' + quien : '';
+    document.getElementById('programa').textContent =
+      [graduando.programa, graduando.facultad].filter(Boolean).join(' · ');
+
+    if (invitado.codigoQr) {
+      pintarQr(invitado.codigoQr);
+      document.getElementById('bloque-qr').hidden = false;
+    } else {
+      // Recién registrado: Apps Script le asigna el código en unos minutos.
+      document.getElementById('bloque-en-camino').hidden = false;
+    }
+
+    // Quien ya respondió "asistiré" con la página vieja no puede cambiar la
+    // respuesta desde aquí (lo impiden las reglas).
+    const puedeResponder = !invitado.confirmacion || invitado.confirmacion === 'pendiente';
+    document.getElementById('fila-no-asiste').hidden = !puedeResponder;
+    document.getElementById('fila-ya-confirmo').hidden = puedeResponder;
+
+    pintarDatos();
+    prepararBotones();
+    mostrar('vista-invitacion');
+
+    // Botón "No podré asistir" del correo: se pregunta antes, nunca se
+    // responde solo con abrir el enlace.
+    if (respuesta === 'no' && puedeResponder) mostrar('vista-seguro');
+  }
+
+  iniciar().catch((e) => {
+    console.error(e);
+    mostrarError('No se pudo cargar', 'Revise su conexión a internet y vuelva a abrir el enlace.');
+  });
 </script>
 
 <script>
-  async function confirmar() {
-    document.getElementById('contenido').style.display = 'none';
-    try {
-      await window.updateDoc(window.doc(window.db, 'invitados', window.invitadoId), {
-        confirmacion: 'confirmado',
-        fechaConfirmacion: new Date()
-      });
-      document.getElementById('success').style.display = 'block';
-    } catch (e) {
-      alert('Error al confirmar. Intenta de nuevo.');
-      document.getElementById('contenido').style.display = 'block';
-    }
-  }
-
-  async function rechazar() {
-    document.getElementById('contenido').style.display = 'none';
-    try {
-      await window.updateDoc(window.doc(window.db, 'invitados', window.invitadoId), {
-        confirmacion: 'rechazado',
-        fechaConfirmacion: new Date()
-      });
-      document.getElementById('rechazado').style.display = 'block';
-    } catch (e) {
-      alert('Error al procesar. Intenta de nuevo.');
-      document.getElementById('contenido').style.display = 'block';
-    }
-  }
+  // Si a los 20 segundos sigue en "Cargando…" (por ejemplo, la red no dejó
+  // bajar Firebase), se avisa en vez de dejar a la persona esperando sin fin.
+  setTimeout(function () {
+    var cargando = document.getElementById('vista-cargando');
+    if (!cargando || cargando.hidden) return;
+    cargando.hidden = true;
+    document.getElementById('error-titulo').textContent = 'No se pudo cargar';
+    document.getElementById('error-texto').textContent =
+      'Revise su conexión a internet y vuelva a abrir el enlace.';
+    document.getElementById('vista-error').hidden = false;
+    document.getElementById('error-titulo').focus();
+  }, 20000);
 </script>
 
 </body>

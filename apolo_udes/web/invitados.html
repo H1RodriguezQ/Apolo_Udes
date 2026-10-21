@@ -107,6 +107,14 @@
     .lista-final li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--dorado-claro);font-size:16px}
     .lista-final li span{font-family:var(--sans);font-size:11px;color:var(--dorado-texto);letter-spacing:1px;text-transform:uppercase;align-self:center}
 
+    /* Salidas de la pantalla final. No hay botón "Cerrar": los navegadores no
+       dejan que una página cierre una pestaña que no abrió ella misma. */
+    .acciones{display:flex;flex-direction:column;gap:10px;max-width:340px;margin:24px auto 0}
+    .acciones .boton{display:block;margin-top:0;text-align:center;text-decoration:none}
+    .boton.secundario{background:transparent;color:var(--azul);border:1px solid var(--dorado)}
+    .boton.secundario:hover{background:#f3ecdc}
+    .final p.cerrar-nota{font-style:italic;font-size:14px;color:var(--texto-suave);margin-top:14px}
+
     /* Pie con la tira de logos oficiales */
     .pie{max-width:560px;margin:8px auto 0;padding:10px 16px 34px;text-align:center}
     .pie img{width:100%;max-width:420px;height:auto;display:block;margin:0 auto}
@@ -218,6 +226,14 @@
     <h2 id="success-titulo">Invitados registrados</h2>
     <p id="success-texto">En unos minutos cada invitado recibirá su invitación con el código de acceso. Si no la ve, pídale que revise la carpeta de correo no deseado.</p>
     <ul class="lista-final" id="lista-final"></ul>
+
+    <div class="acciones">
+      <!-- Vuelve a abrir el mismo enlace: muestra cuántos invitados lleva y
+           cuántos cupos le quedan (el href lo pone el script). -->
+      <a class="boton" id="btn-volver" href="#">Volver a mi registro</a>
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
+    </div>
+    <p class="cerrar-nota">Ya puede cerrar esta pestaña.</p>
   </section>
 
   <!-- Error (enlace sin id, graduando inexistente, sin cupos o fallo) -->
@@ -231,6 +247,10 @@
     </svg>
     <h2 id="error-titulo">Enlace inválido</h2>
     <p id="error-texto">Este enlace no es válido. Verifica el correo recibido.</p>
+
+    <div class="acciones">
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
+    </div>
   </section>
 
 </div>
@@ -449,6 +469,19 @@
     document.getElementById('btn-enviar').disabled = !e.target.checked;
   });
 
+  // El botón "Registrar invitados" está dentro de un <form>. Sin esto el
+  // navegador hace su envío normal: recarga la página, pierde el ?id= del
+  // enlace y no se registra nadie. Aquí se cancela ese envío y se usa el
+  // registro propio de la página.
+  document.getElementById('formulario').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviarInvitados();
+  });
+
+  // "Volver a mi registro" abre el mismo enlace (con su ?id=).
+  document.getElementById('btn-volver').href =
+    window.location.pathname + window.location.search;
+
   // Sube el contador hasta el último cupo que YA existe. Sirve para migrar
   // registros hechos antes de que hubiera contador y para descartar que el
   // fallo de un lote se deba a un contador atrasado. No puede inflar nada: las
@@ -552,8 +585,8 @@
       // El lote entero fue rechazado: o el contador estaba atrasado, o esa
       // cédula ya estaba registrada para este graduando (índice único).
       const estado = await repararContador();
-      if (!estado.enLinea) return 'error';   // sin conexión
-      if (estado.avance > 0) continue;       // contador atrasado: se sigue
+      if (!estado.enLinea) return 'error'; // sin conexión
+      if (estado.avance > 0) continue; // contador atrasado: se sigue
       fallas++;
       // El cupo está libre y el servidor respondió: la causa es el índice.
       if (fallas >= 2) return 'duplicado';
@@ -589,12 +622,15 @@
     // 2. Registrar cada invitado en el siguiente cupo libre. Cada registro es
     // un lote atómico (invitado + cupo + índice único + contador).
     const r = { ok: 0, duplicado: 0, 'sin-cupos': 0, error: 0 };
-    const registrados = []; // nombres confirmados por el servidor
+    const registrados = []; // invitados que el servidor confirmó (nombre y cupo)
     try {
       for (const inv of invitados) {
         const resultado = await registrarInvitado(inv);
         r[resultado]++;
-        if (resultado === 'ok') registrados.push(inv.nombre);
+        // Se guarda el cupo que ocupó para rotularlo bien en la lista final.
+        if (resultado === 'ok') {
+          registrados.push({ nombre: inv.nombre, cupo: window.cuposUsados });
+        }
         if (resultado === 'sin-cupos') break; // ya no quedan cupos
       }
     } catch (e) {
@@ -635,11 +671,11 @@
     // van con textContent, nunca con innerHTML, porque los escribe el público.
     const lista = document.getElementById('lista-final');
     lista.replaceChildren();
-    registrados.forEach((nombre, idx) => {
+    registrados.forEach((reg) => {
       const li = document.createElement('li');
-      li.textContent = nombre;
+      li.textContent = reg.nombre;
       const tag = document.createElement('span');
-      tag.textContent = idx === 0 ? 'Principal' : 'Adicional';
+      tag.textContent = reg.cupo === 1 ? 'Principal' : 'Adicional';
       li.appendChild(tag);
       lista.appendChild(li);
     });

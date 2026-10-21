@@ -1,101 +1,270 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registrar Invitados - UDES</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de invitados · UDES</title>
+  <!--
+    Tipografía del diseño aprobado: Pinyon Script para el título caligráfico,
+    Cormorant Garamond para el texto y Montserrat para las etiquetas.
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@500;600&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
-    .header { background: linear-gradient(135deg, #0F2347 0%, #1A3A6B 60%, #1E4D8C 100%); padding: 28px 20px; text-align: center; }
-    .header h1 { color: #fff; font-size: 24px; font-weight: 800; }
-    .header p { color: #B8CCE8; font-size: 13px; margin-top: 4px; }
-    .banner { background: linear-gradient(90deg, #C9A84C, #F0D060, #C9A84C); padding: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #3D2B00; letter-spacing: 2px; }
-    .container { max-width: 520px; margin: 32px auto; padding: 0 16px; flex: 1; }
-    .card { background: #fff; border-radius: 16px; padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); margin-bottom: 20px; }
-    .loading { padding: 40px; color: #718096; text-align: center; }
-    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #1A3A6B; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .graduando-nombre { color: #0F2347; font-size: 20px; font-weight: 800; margin: 8px 0 4px; }
-    .graduando-prog { color: #718096; font-size: 13px; }
-    .section-title { font-size: 16px; font-weight: 700; color: #0F2347; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
-    .invitado-card { background: #f8f9fb; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #e2e8f0; }
-    .invitado-num { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 6px; }
-    input, select { width: 100%; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; color: #2d3748; background: #fff; outline: none; transition: border 0.2s; }
-    input:focus, select:focus { border-color: #1A3A6B; box-shadow: 0 0 0 3px rgba(26,58,107,0.08); }
-    .btn-enviar { width: 100%; padding: 16px; background: linear-gradient(135deg, #0F2347, #1E4D8C); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
-    .btn-enviar:hover { opacity: 0.9; }
-    .btn-enviar:disabled { opacity: 0.6; cursor: not-allowed; }
-    .success { background: #F0FFF4; border: 1px solid #9AE6B4; border-radius: 12px; padding: 32px; text-align: center; display: none; }
-    .success h2 { color: #276749; font-size: 20px; margin-bottom: 8px; }
-    .success p { color: #2F855A; font-size: 14px; line-height: 1.6; }
-    .error-card { background: #fff; border-radius: 16px; padding: 28px; text-align: center; display: none; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .aviso { background: #FFF8E1; border: 1px solid #F0D060; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
-    .aviso p { color: #7B5800; font-size: 13px; }
-    .cupo-badge { display: inline-block; background: #EBF8FF; color: #2B6CB0; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-top: 8px; }
-    .footer { text-align: center; padding: 24px; color: #718096; font-size: 12px; }
+    /* Paleta del diseño aprobado (azul institucional, dorado y crema). */
+    :root{
+      --azul:#004899; --azul-hondo:#003a7d;
+      --dorado:#b8975a; --dorado-claro:#e2d6b8; --dorado-texto:#8a6d3b;
+      --crema:#fbf8f1; --fondo:#dfe3ea;
+      --texto:#2a2a2a; --texto-suave:#6b6b6b; --error:#b42318;
+      --serif:'Cormorant Garamond',Georgia,serif;
+      --sans:Montserrat,Arial,sans-serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--fondo);color:var(--texto);font-family:var(--serif);min-height:100vh}
+
+    /* Encabezado */
+    .encabezado{background:var(--azul-hondo);border-top:3px solid var(--dorado);border-bottom:3px solid var(--dorado);
+      padding:18px 16px;text-align:center}
+    .encabezado .marca{font-family:var(--sans);font-size:10px;letter-spacing:4px;color:#d9c597;font-weight:600}
+    .encabezado .sub{font-family:var(--serif);font-style:italic;color:#c9d6ea;font-size:15px;margin-top:2px}
+
+    .contenedor{max-width:560px;margin:28px auto 0;padding:0 16px}
+
+    /* Tarjeta con esquinas art déco */
+    .tarjeta{position:relative;background:var(--crema);border:1px solid var(--dorado);padding:40px 36px 32px;margin-bottom:18px}
+    .esq{position:absolute;width:52px;height:52px;pointer-events:none}
+    .esq.si{top:8px;left:8px}.esq.sd{top:8px;right:8px;transform:scaleX(-1)}
+    .esq.ii{bottom:8px;left:8px;transform:scaleY(-1)}.esq.id{bottom:8px;right:8px;transform:scale(-1,-1)}
+
+    .cinta{display:inline-block;background:#c2a05a;
+      background-image:linear-gradient(100deg,#9c7a3c 0%,#e3c983 35%,#b8954f 60%,#ecd497 80%,#a8853f 100%);
+      font-family:var(--sans);font-size:10px;letter-spacing:4px;font-weight:600;color:#2c2210;padding:6px 18px}
+    .titulo{font-family:'Pinyon Script',cursive;font-weight:400;font-size:46px;line-height:1.15;color:var(--azul);margin-top:10px}
+    .titulo span{color:#a6833f}
+    .centro{text-align:center}
+
+    .separador{display:flex;align-items:center;justify-content:center;gap:12px;margin:22px 0}
+    .separador::before,.separador::after{content:"";width:96px;height:1px;background:#d3bf93}
+    .separador svg{display:block}
+
+    .etiqueta{font-family:var(--sans);font-size:9px;letter-spacing:2px;font-weight:600;color:var(--dorado-texto);text-transform:uppercase}
+    .graduando{font-size:26px;font-weight:500;color:var(--azul);margin-top:4px}
+    .programa{font-family:var(--sans);font-size:11px;color:#7d7d7d;margin-top:4px}
+
+    .cupos{display:flex;justify-content:center;margin-top:20px}
+    .cupos div{padding:2px 22px;text-align:center}
+    .cupos div+div{border-left:1px solid var(--dorado-claro)}
+    .cupos b{display:block;font-family:var(--serif);font-weight:500;font-size:24px;color:var(--azul);margin-top:2px}
+
+    .nota{font-style:italic;font-size:15px;color:var(--texto-suave);line-height:1.5;max-width:400px;margin:18px auto 0}
+
+    /* Carga: mismo giro de siempre, con la paleta del diseño */
+    .spinner{width:30px;height:30px;border:3px solid var(--dorado-claro);border-top-color:var(--azul);
+      border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .cargando{font-style:italic;font-size:15px;color:var(--texto-suave);margin-top:14px}
+
+    /* Bloque de cada invitado */
+    .invitado{padding-top:4px}
+    .invitado+.invitado{border-top:1px solid var(--dorado-claro);margin-top:26px;padding-top:26px}
+    .invitado h2{font-family:var(--serif);font-weight:500;font-size:21px;color:var(--azul);margin:4px 0 16px}
+    .invitado h2 small{font-family:var(--sans);font-size:10px;letter-spacing:1px;color:var(--texto-suave);font-weight:500;margin-left:6px;text-transform:uppercase}
+
+    .campo{margin-bottom:14px}
+    .campo label{display:block;margin-bottom:6px}
+    .campo input{width:100%;font-family:var(--sans);font-size:14px;font-weight:500;color:var(--texto);
+      background:#fff;border:1px solid var(--dorado-claro);border-radius:4px;padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s}
+    .campo input::placeholder{color:#b4b4b4;font-weight:500}
+    .campo input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,72,153,.12)}
+    .campo .ayuda{font-family:var(--sans);font-size:11px;color:#8d8d8d;margin-top:5px}
+    .campo.con-error input{border-color:var(--error)}
+    .campo .msj{display:none;font-family:var(--sans);font-size:11px;color:var(--error);margin-top:5px}
+    .campo.con-error .msj{display:block}
+    .campo.con-error .ayuda{display:none}
+
+    /* Autorización Ley 1581: sin ella no se envía nada */
+    .autorizacion{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+    .autorizacion input{appearance:none;flex:0 0 18px;width:18px;height:18px;margin-top:2px;border:1px solid var(--dorado);background:#fff;border-radius:2px;cursor:pointer;display:grid;place-content:center}
+    .autorizacion input:checked{background:var(--azul);border-color:var(--azul)}
+    .autorizacion input:checked::after{content:"";width:9px;height:5px;border:solid #fff;border-width:0 0 2px 2px;transform:rotate(-45deg) translate(1px,-1px)}
+    .autorizacion input:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+    .autorizacion span{font-size:15px;line-height:1.45}
+    .detalle-datos{font-family:var(--sans);font-size:11px;color:#8d8d8d;line-height:1.6;margin:10px 0 0 30px}
+
+    .boton{width:100%;margin-top:22px;background:var(--azul);color:#fff;border:0;border-radius:4px;padding:15px;
+      font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:background .15s}
+    .boton:hover:not(:disabled){background:var(--azul-hondo)}
+    .boton:disabled{background:#a9b8cf;cursor:not-allowed}
+    .boton:focus-visible{outline:2px solid var(--dorado);outline-offset:3px}
+
+    /* Estados finales (confirmación y error): ocultos hasta que ocurran */
+    .final{display:none}
+    .final .icono{margin:0 auto 6px;display:block}
+    .final h2{font-family:var(--serif);font-weight:500;font-size:28px;color:var(--azul)}
+    #error-card h2{color:var(--error)}
+    .final p{font-size:16px;color:#4a4a4a;line-height:1.55;max-width:380px;margin:10px auto 0}
+    .lista-final{list-style:none;margin:20px auto 0;max-width:340px;text-align:left}
+    .lista-final li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--dorado-claro);font-size:16px}
+    .lista-final li span{font-family:var(--sans);font-size:11px;color:var(--dorado-texto);letter-spacing:1px;text-transform:uppercase;align-self:center}
+
+    /* Salidas de la pantalla final. No hay botón "Cerrar": los navegadores no
+       dejan que una página cierre una pestaña que no abrió ella misma. */
+    .acciones{display:flex;flex-direction:column;gap:10px;max-width:340px;margin:24px auto 0}
+    .acciones .boton{display:block;margin-top:0;text-align:center;text-decoration:none}
+    .boton.secundario{background:transparent;color:var(--azul);border:1px solid var(--dorado)}
+    .boton.secundario:hover{background:#f3ecdc}
+    .final p.cerrar-nota{font-style:italic;font-size:14px;color:var(--texto-suave);margin-top:14px}
+
+    /* Pie con la tira de logos oficiales */
+    .pie{max-width:560px;margin:8px auto 0;padding:10px 16px 34px;text-align:center}
+    .pie img{width:100%;max-width:420px;height:auto;display:block;margin:0 auto}
+    .pie p{font-family:var(--sans);font-size:10px;letter-spacing:.5px;color:#76808f;margin-top:12px}
+
+    @media (max-width:520px){
+      .tarjeta{padding:34px 20px 26px}
+      .esq{width:38px;height:38px}
+      .titulo{font-size:38px}
+      .separador::before,.separador::after{width:60px}
+      .cupos div{padding:2px 14px}
+    }
+    @media (max-width:360px){
+      .titulo{font-size:32px}
+      .cupos{flex-direction:column;align-items:center;gap:8px}
+      .cupos div+div{border-left:0}
+    }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🎓 Apolo UDES</h1>
-  <p>Sistema de Gestión de Ceremonia de Grado</p>
-</div>
-<div class="banner">✦ REGISTRO DE INVITADOS ✦</div>
+<!-- Esquinas art déco y birrete: SVG en línea (el correo no los puede usar,
+     pero en la página sí). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="esquina" viewBox="0 0 64 64">
+      <g fill="none" stroke="#b8975a" stroke-width="1">
+        <path d="M2 62V2h60"/><path d="M8 62V8h54"/><path d="M14 40V14h26"/><path d="M8 8l12 12"/>
+      </g>
+    </symbol>
+    <symbol id="birrete" viewBox="0 0 34 26">
+      <path d="M9 11.5v6.2c0 2.3 3.6 4.1 8 4.1s8-1.8 8-4.1v-6.2L17 15z" fill="#a6833f"/>
+      <polygon points="17,3 33,9.5 17,16 1,9.5" fill="#c2a05a" stroke="#8f6f33" stroke-width="0.6"/>
+      <circle cx="17" cy="9.5" r="1.1" fill="#8f6f33"/>
+      <path d="M17 9.5 L27.5 13.2 V20" fill="none" stroke="#8f6f33" stroke-width="0.9"/>
+      <path d="M26.3 20h2.4l-0.5 3.6h-1.4z" fill="#8f6f33"/>
+    </symbol>
+  </defs>
+</svg>
 
-<div class="container">
+<header class="encabezado">
+  <div class="marca">UNIVERSIDAD DE SANTANDER</div>
+  <div class="sub">Ceremonias de grado</div>
+</header>
 
-  <div class="card" id="loading">
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>Cargando información...</p>
+<div class="contenedor">
+
+  <main id="vista-registro">
+
+    <!-- Carga -->
+    <section class="tarjeta centro" id="loading">
+      <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+      <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+      <div class="spinner" role="status" aria-label="Cargando"></div>
+      <p class="cargando">Cargando información…</p>
+    </section>
+
+    <!-- Bienvenida y datos del graduando (se llena con Firestore) -->
+    <section class="tarjeta centro" id="info-graduando" style="display:none;">
+      <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+      <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+      <span class="cinta">REGISTRO</span>
+      <h1 class="titulo">Sus <span>invitados</span></h1>
+
+      <div class="separador"><svg width="34" height="26"><use href="#birrete"/></svg></div>
+
+      <div class="etiqueta">Graduando</div>
+      <div class="graduando" id="grad-nombre"></div>
+      <div class="programa" id="grad-prog"></div>
+
+      <div class="cupos">
+        <div><span class="etiqueta">Cupos</span><b id="stat-cupos">—</b></div>
+        <div><span class="etiqueta">Registrados</span><b id="stat-registrados">—</b></div>
+        <div><span class="etiqueta">Ceremonia</span><b id="stat-ceremonia">—</b></div>
+      </div>
+
+      <p class="nota" id="cupo-badge">Cada invitado recibirá en su correo una invitación con un código de acceso personal, válido para una sola entrada.</p>
+    </section>
+
+    <!-- Formulario: un bloque por cupo libre (lo construye el script) -->
+    <form class="tarjeta" id="formulario" style="display:none;" novalidate>
+      <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+      <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+      <div id="invitados-container"></div>
+
+      <div class="separador"><svg width="34" height="26"><use href="#birrete"/></svg></div>
+
+      <label class="autorizacion" for="autoriza">
+        <input type="checkbox" id="autoriza">
+        <span>Autorizo a la Universidad de Santander a tratar los datos personales aquí registrados para gestionar la asistencia a la ceremonia de grado, conforme a su Política de Tratamiento de Datos.</span>
+      </label>
+      <p class="detalle-datos">Se solicitan nombre, correo y documento únicamente para enviar la invitación y validar el ingreso. Los datos se eliminan al terminar la ceremonia (Ley 1581 de 2012).</p>
+
+      <button class="boton" type="submit" id="btn-enviar" disabled>Registrar invitados</button>
+    </form>
+  </main>
+
+  <!-- Confirmación (también lista a los registrados) -->
+  <section class="tarjeta centro final" id="success" aria-live="polite">
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+    <svg class="icono" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+      <circle cx="23" cy="23" r="21" fill="none" stroke="#b8975a" stroke-width="1.2"/>
+      <path d="M14 23.5l6 6 12-13" fill="none" stroke="#004899" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h2 id="success-titulo">Invitados registrados</h2>
+    <p id="success-texto">En unos minutos cada invitado recibirá su invitación con el código de acceso. Si no la ve, pídale que revise la carpeta de correo no deseado.</p>
+    <ul class="lista-final" id="lista-final"></ul>
+
+    <div class="acciones">
+      <!-- Vuelve a abrir el mismo enlace: muestra cuántos invitados lleva y
+           cuántos cupos le quedan (el href lo pone el script). -->
+      <a class="boton" id="btn-volver" href="#">Volver a mi registro</a>
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
     </div>
-  </div>
+    <p class="cerrar-nota">Ya puede cerrar esta pestaña.</p>
+  </section>
 
-  <div id="formulario" style="display:none;">
-    <div class="card" style="text-align:center;margin-bottom:16px;">
-      <p style="color:#718096;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Graduando</p>
-      <div class="graduando-nombre" id="grad-nombre"></div>
-      <div class="graduando-prog" id="grad-prog"></div>
-      <div class="cupo-badge" id="cupo-badge"></div>
+  <!-- Error (enlace sin id, graduando inexistente, sin cupos o fallo) -->
+  <section class="tarjeta centro final" id="error-card" aria-live="polite">
+    <svg class="esq si"><use href="#esquina"/></svg><svg class="esq sd"><use href="#esquina"/></svg>
+    <svg class="esq ii"><use href="#esquina"/></svg><svg class="esq id"><use href="#esquina"/></svg>
+
+    <svg class="icono" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+      <circle cx="23" cy="23" r="21" fill="none" stroke="#b8975a" stroke-width="1.2"/>
+      <path d="M17 17l12 12M29 17L17 29" fill="none" stroke="#b42318" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <h2 id="error-titulo">Enlace inválido</h2>
+    <p id="error-texto">Este enlace no es válido. Verifica el correo recibido.</p>
+
+    <div class="acciones">
+      <a class="boton secundario" href="https://www.udes.edu.co" rel="noopener">Ir al sitio de la UDES</a>
     </div>
-
-    <div class="aviso">
-      <p>⚠️ Cada invitado recibirá un correo con su código QR de acceso. El ingreso es personal e intransferible.</p>
-    </div>
-
-    <div id="invitados-container"></div>
-
-    <button class="btn-enviar" id="btn-enviar" onclick="enviarInvitados()">
-      Enviar invitaciones →
-    </button>
-  </div>
-
-  <div class="success" id="success">
-    <div style="font-size:48px;margin-bottom:12px;">🎉</div>
-    <h2>¡Invitados registrados!</h2>
-    <p>Cada invitado recibirá un correo con su código QR de acceso a la ceremonia.</p>
-  </div>
-
-  <div class="error-card" id="error-card">
-    <div style="font-size:32px;margin-bottom:8px;">❌</div>
-    <h3 style="color:#e53e3e;">Enlace inválido</h3>
-    <p style="color:#718096;font-size:14px;margin-top:8px;">Este enlace no es válido. Verifica el correo recibido.</p>
-  </div>
+  </section>
 
 </div>
 
-<div class="footer">
-  Universidad de Santander – UDES | Bucaramanga, Santander<br>
-  Acreditada Alta Calidad por el Ministerio de Educación Nacional | SNIES 2832
-</div>
+<footer class="pie">
+  <!-- Tira de los tres logos oficiales (UDES + MEN + EQUAA). El archivo vive
+       en assets/ junto a esta página y se publica con el hosting. -->
+  <img src="assets/logos-udes-azul.png" alt="Universidad de Santander · Acreditación Alta Calidad · EQUAA">
+  <p>Vigilada Mineducación · SNIES 2832 · Bucaramanga, Santander</p>
+</footer>
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
-  import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp }
+  import { getFirestore, doc, getDoc, collection, writeBatch, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -113,128 +282,416 @@
   const params = new URLSearchParams(window.location.search);
   const graduandoId = params.get('id');
 
-  window.db = db;
-  window.graduandoId = graduandoId;
-  window.addDoc = addDoc;
-  window.collection = collection;
-  window.serverTimestamp = serverTimestamp;
+  // Funciones que usa el script de registro (más abajo).
+  window.apolo = { db, doc, collection, getDoc, writeBatch, serverTimestamp, graduandoId };
+
+  // Límite por defecto. El real lo define el administrador por graduando
+  // (2, o 3 si autorizó un invitado adicional) y lo hacen cumplir las
+  // reglas de Firestore; este valor solo sirve para dibujar el formulario.
+  const INVITADOS_BASE = 2;
+
+  // El error se ve igual venga de donde venga (sin id, graduando inexistente,
+  // sin cupos o fallo al registrar): se esconde toda la vista del registro.
+  function mostrarError(titulo, texto) {
+    document.getElementById('vista-registro').style.display = 'none';
+    document.getElementById('error-titulo').textContent = titulo;
+    document.getElementById('error-texto').textContent = texto;
+    document.getElementById('error-card').style.display = 'block';
+  }
+  window.mostrarError = mostrarError;
 
   if (!graduandoId) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('error-card').style.display = 'block';
+    mostrarError('Enlace inválido', 'Este enlace no es válido. Verifica el correo recibido.');
   } else {
-    // Carga datos del graduando
-    const gradRef = doc(db, 'graduandos', graduandoId);
-    getDoc(gradRef).then(async snap => {
+    getDoc(doc(db, 'graduandos_publico', graduandoId)).then(async snap => {
       document.getElementById('loading').style.display = 'none';
 
       if (!snap.exists()) {
-        document.getElementById('error-card').style.display = 'block';
+        mostrarError('Enlace inválido', 'Este enlace no es válido. Verifica el correo recibido.');
         return;
       }
 
       const grad = snap.data();
-      window.graduandoData = grad;
+      const permitidos = Number.isInteger(grad.invitadosPermitidos)
+        ? grad.invitadosPermitidos
+        : INVITADOS_BASE;
 
-      // Carga configuración del evento
-      const confRef = doc(db, 'configuracion', 'evento');
-      const confSnap = await getDoc(confRef);
-      const conf = confSnap.exists() ? confSnap.data() : {};
-      const maxInvitados = conf.maxInvitadosPorGraduando || 2;
-      window.maxInvitados = maxInvitados;
+      window.graduandoData = grad;
+      window.maxInvitados = permitidos;
+
+      // Cupos ya ocupados. El contador lo sube esta página en el MISMO lote
+      // de cada registro (y las reglas solo permiten subirlo si el cupo existe
+      // y no salta por encima de cupos libres), así que es confiable.
+      window.cuposUsados = Number.isInteger(grad.cuposUsados) ? grad.cuposUsados : 0;
+
+      // Registros hechos antes de que existiera el contador dejan cupos
+      // ocupados sin contar. Aquí se pone el contador al día y, con él, la
+      // cantidad real de cupos libres.
+      await repararContador();
+
+      const usados = window.cuposUsados;
+      const disponibles = Math.max(0, permitidos - usados);
+
+      // Número de ceremonia: vive en configuracion/evento, que las reglas
+      // dejan leer a cualquiera. Si no se puede leer, la casilla se queda
+      // en "—" y el registro sigue funcionando igual.
+      let ceremonia = '—';
+      try {
+        const evento = await getDoc(doc(db, 'configuracion', 'evento'));
+        const n = evento.exists() ? evento.data().numeroCeremonia : null;
+        if (Number.isInteger(n)) ceremonia = 'N.º ' + n;
+      } catch (e) { /* lectura secundaria: no bloquea el registro */ }
 
       document.getElementById('grad-nombre').textContent = grad.nombreCompleto || '';
       document.getElementById('grad-prog').textContent = (grad.programa || '') + ' · ' + (grad.facultad || '');
-      document.getElementById('cupo-badge').textContent = `Puedes registrar hasta ${maxInvitados} invitado${maxInvitados > 1 ? 's' : ''}`;
+      document.getElementById('stat-cupos').textContent = String(permitidos);
+      document.getElementById('stat-registrados').textContent = String(usados);
+      document.getElementById('stat-ceremonia').textContent = ceremonia;
 
-      // Genera formularios de invitados
-      const container = document.getElementById('invitados-container');
-      for (let i = 1; i <= maxInvitados; i++) {
-        const isFirst = i === 1;
-        container.innerHTML += `
-          <div class="card invitado-card">
-            <div class="invitado-num">Invitado ${i} ${isFirst ? '(Principal)' : '(Adicional)'}</div>
-            <div class="form-group">
-              <label>Nombre completo *</label>
-              <input type="text" id="nombre-${i}" placeholder="Ej: María García" required />
-            </div>
-            <div class="form-group">
-              <label>Correo electrónico *</label>
-              <input type="email" id="correo-${i}" placeholder="correo@ejemplo.com" required />
-            </div>
-            <div class="form-group">
-              <label>Número de documento *</label>
-              <input type="text" id="documento-${i}" placeholder="Cédula o pasaporte" required />
-            </div>
-          </div>
-        `;
+      // Sin cupos libres: ni siquiera se piden los datos.
+      if (disponibles === 0) {
+        mostrarError(
+          'No quedan cupos',
+          `Ya se registraron los ${permitidos} invitados permitidos para este graduando. ` +
+          'Si necesitas un cambio, comunícate con la universidad.'
+        );
+        return;
       }
 
+      document.getElementById('cupo-badge').textContent =
+        `Quedan ${disponibles} cupo${disponibles === 1 ? '' : 's'}. Cada invitado recibirá en su ` +
+        'correo una invitación con un código de acceso personal, válido para una sola entrada.';
+
+      // Formularios: uno por cupo libre (se numeran como el cupo que van a
+      // ocupar). El innerHTML solo lleva texto fijo (el número del cupo, las
+      // etiquetas y los títulos): ningún dato del usuario pasa por aquí, así
+      // que no hay riesgo de que se interprete como HTML.
+      const container = document.getElementById('invitados-container');
+      window.formularios = [];
+      for (let i = usados + 1; i <= permitidos; i++) {
+        window.formularios.push(i);
+        const card = document.createElement('div');
+        card.className = 'invitado';
+        const titulo = i === 1 ? 'Principal' : (i > INVITADOS_BASE ? 'Adicional autorizado' : 'Adicional');
+        const ac = i === 1 ? 'name' : 'off';
+        const acCorreo = i === 1 ? 'email' : 'off';
+        card.innerHTML = `
+          <div class="etiqueta">Invitado ${i}</div>
+          <h2>Datos del invitado <small>${titulo}</small></h2>
+          <div class="campo">
+            <label class="etiqueta" for="nombre-${i}">Nombre completo</label>
+            <input id="nombre-${i}" maxlength="80" autocomplete="${ac}" placeholder="María García Rojas" aria-describedby="nombre-${i}-msj">
+            <div class="msj" id="nombre-${i}-msj">Escriba solo letras, espacios, apóstrofes o guiones.</div>
+          </div>
+          <div class="campo">
+            <label class="etiqueta" for="correo-${i}">Correo electrónico</label>
+            <input id="correo-${i}" type="email" maxlength="254" autocomplete="${acCorreo}" placeholder="correo@ejemplo.com" aria-describedby="correo-${i}-msj">
+            <div class="msj" id="correo-${i}-msj">Revise el correo: allí llegará la invitación.</div>
+          </div>
+          <div class="campo">
+            <label class="etiqueta" for="documento-${i}">Número de documento</label>
+            <input id="documento-${i}" maxlength="20" autocomplete="off" placeholder="1098765432" aria-describedby="documento-${i}-ayuda documento-${i}-msj">
+            <div class="ayuda" id="documento-${i}-ayuda">Cédula o pasaporte, sin puntos ni espacios.</div>
+            <div class="msj" id="documento-${i}-msj">Entre 6 y 15 caracteres, sin empezar por 0 y sin valores de relleno.</div>
+          </div>`;
+        container.appendChild(card);
+      }
+
+      document.getElementById('info-graduando').style.display = 'block';
       document.getElementById('formulario').style.display = 'block';
 
     }).catch((e) => {
       console.error(e);
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error-card').style.display = 'block';
+      mostrarError('Enlace inválido', 'Este enlace no es válido. Verifica el correo recibido.');
     });
   }
 </script>
 
 <script>
+  // Las mismas validaciones que exigen las reglas de Firestore, para dar un
+  // mensaje claro antes de enviar. Los patrones son los de
+  // lib/core/validators/validadores_graduando.dart y de firestore.rules: si
+  // cambia uno, cambian los tres (capa 1 aquí, capa 2 en las reglas).
+  const RE_CORREO = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+  const RE_DOCUMENTO = /^[1-9A-Za-z][A-Za-z0-9]{5,14}$/;
+  const RE_NOMBRE = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]*$/;
+
+  // Cédulas de relleno: un dígito repetido (1111111111) o una secuencia
+  // simple (123456789). Esto solo se puede comprobar aquí: RE2, el motor de
+  // Firestore, no admite las referencias retroactivas que harían falta.
+  function esDocumentoFicticio(t) {
+    if (/^(\d)\1+$/.test(t)) return true;
+    return '01234567890123456789'.slice(0, t.length) === t ||
+           '98765432109876543210'.slice(0, t.length) === t;
+  }
+
+  // El error se marca en el campo (borde rojo + mensaje), como en el diseño
+  // aprobado, y además se informa con aria-invalid para lectores de pantalla.
+  function marcarCampo(el, ok) {
+    el.closest('.campo').classList.toggle('con-error', !ok);
+    el.setAttribute('aria-invalid', String(!ok));
+  }
+
+  function leerInvitado(i) {
+    const nombreEl = document.getElementById(`nombre-${i}`);
+    const correoEl = document.getElementById(`correo-${i}`);
+    const docEl = document.getElementById(`documento-${i}`);
+    [nombreEl, correoEl, docEl].forEach(el => marcarCampo(el, true));
+
+    const nombre = nombreEl.value.trim();
+    const correo = correoEl.value.trim().toLowerCase();
+    // Se quitan puntos, espacios y guiones: "1.098.765.432" -> "1098765432"
+    const documento = docEl.value.replace(/[\s.\-]/g, '');
+
+    const vacio = !nombre && !correo && !documento;
+    if (vacio) return { vacio: true };
+
+    const errores = [];
+    if (!RE_NOMBRE.test(nombre) || nombre.length > 80) {
+      errores.push('nombre (solo letras, espacios, apóstrofes y guiones)');
+      marcarCampo(nombreEl, false);
+    }
+    if (!RE_CORREO.test(correo) || correo.includes('..')) {
+      errores.push('correo');
+      marcarCampo(correoEl, false);
+    }
+    if (!RE_DOCUMENTO.test(documento) || esDocumentoFicticio(documento)) {
+      errores.push('documento (6 a 15 caracteres, sin empezar por 0 y sin valores de relleno)');
+      marcarCampo(docEl, false);
+    }
+
+    return { vacio: false, nombre, correo, documento, errores };
+  }
+
+  // El botón de envío solo se habilita con la autorización de Ley 1581
+  // marcada; si el envío falla y hay que habilitarlo otra vez, se respeta.
+  document.getElementById('autoriza').addEventListener('change', (e) => {
+    document.getElementById('btn-enviar').disabled = !e.target.checked;
+  });
+
+  // El botón "Registrar invitados" está dentro de un <form>. Sin esto el
+  // navegador hace su envío normal: recarga la página, pierde el ?id= del
+  // enlace y no se registra nadie. Aquí se cancela ese envío y se usa el
+  // registro propio de la página.
+  document.getElementById('formulario').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviarInvitados();
+  });
+
+  // "Volver a mi registro" abre el mismo enlace (con su ?id=).
+  document.getElementById('btn-volver').href =
+    window.location.pathname + window.location.search;
+
+  // Sube el contador hasta el último cupo que YA existe. Sirve para migrar
+  // registros hechos antes de que hubiera contador y para descartar que el
+  // fallo de un lote se deba a un contador atrasado. No puede inflar nada: las
+  // reglas solo dejan subirlo si ese cupo existe y está entre 1 y el máximo
+  // permitido. Devuelve { avance, enLinea }; `enLinea` es false solo cuando el
+  // servidor ni siquiera respondió (sin conexión).
+  async function repararContador() {
+    const { db, doc, writeBatch, graduandoId } = window.apolo;
+    const max = window.maxInvitados || 2;
+    const pubRef = doc(db, 'graduandos_publico', graduandoId);
+    let avance = 0;
+    let enLinea = true;
+
+    while (window.cuposUsados < max) {
+      const siguiente = window.cuposUsados + 1;
+      const lote = writeBatch(db);
+      lote.update(pubRef, { cuposUsados: siguiente });
+      try {
+        await lote.commit();
+        window.cuposUsados = siguiente;
+        avance++;
+      } catch (e) {
+        // permission-denied = el servidor respondió y ese cupo está libre
+        // (el contador ya estaba al día). Cualquier otro error es conexión.
+        enLinea = !e || e.code === 'permission-denied';
+        break;
+      }
+    }
+    return { avance: avance, enLinea: enLinea };
+  }
+
+  // Escribe invitado + cupo + índice de documento + contador en UN solo lote.
+  // Las reglas de Firestore evalúan el estado FINAL del lote: o entra todo o
+  // no entra nada. Así no puede quedar un invitado sin cupo, ni un cupo sin
+  // invitado, ni el contador desfasado.
+  async function intentarRegistro(inv, numero) {
+    const { db, doc, collection, writeBatch, serverTimestamp, graduandoId } = window.apolo;
+    const grad = window.graduandoData || {};
+
+    const invRef = doc(collection(db, 'invitados')); // ID aleatorio
+    const cupoRef = doc(db, 'cupos', `${graduandoId}_${numero}`);
+    // Índice único: ID = graduandoId_documento. Mientras exista, esa cédula no
+    // puede volver a registrarse para el mismo graduando (ni ocupar otro cupo).
+    const indiceRef = doc(db, 'invitados_documentos', `${graduandoId}_${inv.documento}`);
+    const pubRef = doc(db, 'graduandos_publico', graduandoId);
+
+    const lote = writeBatch(db);
+    lote.set(invRef, {
+      id: invRef.id,
+      graduandoId: graduandoId,
+      graduandoNombre: grad.nombreCompleto || '',
+      nombreInvitado: inv.nombre,
+      correoInvitado: inv.correo,
+      documento: inv.documento,
+      tipo: numero === 1 ? 'principal' : 'secundaria',
+      estado: 'pendiente',
+      fechaRegistro: serverTimestamp(),
+      cupo: numero,
+    });
+    lote.set(cupoRef, {
+      graduandoId: graduandoId,
+      invitadoId: invRef.id,
+      numero: numero,
+    });
+    lote.set(indiceRef, {
+      graduandoId: graduandoId,
+      documento: inv.documento,
+      invitadoId: invRef.id,
+    });
+    // El contador sube hasta el cupo que se acaba de crear en este mismo lote:
+    // las reglas solo lo dejan subir si ese cupo existe, así que no se puede
+    // inflar ni dejar cupos huérfanos.
+    lote.update(pubRef, { cuposUsados: numero });
+
+    try {
+      await lote.commit();
+      return { ok: true, indiceRef: indiceRef };
+    } catch (e) {
+      return { ok: false, error: e, indiceRef: indiceRef };
+    }
+  }
+
+  // Registra un invitado en el primer cupo libre. Si el lote se rechaza, se
+  // repara el contador (otra persona pudo registrar al mismo tiempo) y se
+  // reintenta con el cupo siguiente.
+  // Devuelve: 'ok' | 'duplicado' | 'sin-cupos' | 'error'.
+  async function registrarInvitado(inv) {
+    const max = window.maxInvitados || 2;
+    let fallas = 0;
+
+    for (let intento = 0; intento < 5; intento++) {
+      const numero = window.cuposUsados + 1;
+      if (numero > max) return 'sin-cupos';
+
+      const res = await intentarRegistro(inv, numero);
+      if (res.ok) {
+        window.cuposUsados = numero; // el servidor ya lo confirmó
+        return 'ok';
+      }
+
+      // El lote entero fue rechazado: o el contador estaba atrasado, o esa
+      // cédula ya estaba registrada para este graduando (índice único).
+      const estado = await repararContador();
+      if (!estado.enLinea) return 'error'; // sin conexión
+      if (estado.avance > 0) continue; // contador atrasado: se sigue
+      fallas++;
+      // El cupo está libre y el servidor respondió: la causa es el índice.
+      if (fallas >= 2) return 'duplicado';
+    }
+    return 'error';
+  }
+
   async function enviarInvitados() {
     const btn = document.getElementById('btn-enviar');
     const max = window.maxInvitados || 2;
-    const grad = window.graduandoData || {};
-    const graduandoId = window.graduandoId;
-    const db = window.db;
 
-    // Validar al menos el primero
-    const nombre1 = document.getElementById('nombre-1')?.value.trim();
-    const correo1 = document.getElementById('correo-1')?.value.trim();
-    const doc1 = document.getElementById('documento-1')?.value.trim();
+    // 1. Leer y validar todos los formularios antes de escribir nada.
+    const invitados = [];
+    for (const i of window.formularios) {
+      const inv = leerInvitado(i);
+      if (inv.vacio) continue;
+      if (inv.errores.length) {
+        alert(`Revisa los datos del Invitado ${i}: ${inv.errores.join(', ')}.`);
+        document.querySelector('.con-error input')?.focus();
+        return;
+      }
+      invitados.push(inv);
+    }
 
-    if (!nombre1 || !correo1 || !doc1) {
-      alert('Por favor completa los datos del Invitado 1.');
+    if (invitados.length === 0) {
+      alert('Por favor completa los datos de al menos un invitado.');
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Registrando...';
+    btn.textContent = 'Registrando…';
 
+    // 2. Registrar cada invitado en el siguiente cupo libre. Cada registro es
+    // un lote atómico (invitado + cupo + índice único + contador).
+    const r = { ok: 0, duplicado: 0, 'sin-cupos': 0, error: 0 };
+    const registrados = []; // invitados que el servidor confirmó (nombre y cupo)
     try {
-      const tipos = ['principal', 'secundaria', 'secundaria', 'secundaria'];
-
-      for (let i = 1; i <= max; i++) {
-        const nombre = document.getElementById(`nombre-${i}`)?.value.trim();
-        const correo = document.getElementById(`correo-${i}`)?.value.trim();
-        const documento = document.getElementById(`documento-${i}`)?.value.trim();
-
-        if (!nombre || !correo || !documento) continue;
-
-        const id = 'INV' + Date.now() + i;
-        await window.addDoc(window.collection(db, 'invitados'), {
-          id: id,
-          graduandoId: graduandoId,
-          graduandoNombre: grad.nombreCompleto || '',
-          nombreInvitado: nombre,
-          correoInvitado: correo,
-          documento: documento,
-          tipo: tipos[i - 1] || 'secundaria',
-          estado: 'pendiente',
-          codigoQr: 'QR-' + id,
-          fechaRegistro: window.serverTimestamp(),
-        });
+      for (const inv of invitados) {
+        const resultado = await registrarInvitado(inv);
+        r[resultado]++;
+        // Se guarda el cupo que ocupó para rotularlo bien en la lista final.
+        if (resultado === 'ok') {
+          registrados.push({ nombre: inv.nombre, cupo: window.cuposUsados });
+        }
+        if (resultado === 'sin-cupos') break; // ya no quedan cupos
       }
-
-      document.getElementById('formulario').style.display = 'none';
-      document.getElementById('success').style.display = 'block';
-
     } catch (e) {
       console.error(e);
       alert('Error al registrar. Intenta de nuevo.');
-      btn.disabled = false;
-      btn.textContent = 'Enviar invitaciones →';
+      // Se reactiva el botón solo si la autorización sigue marcada.
+      btn.disabled = !document.getElementById('autoriza').checked;
+      btn.textContent = 'Registrar invitados';
+      return;
     }
+
+    // 3. Resultado.
+    document.getElementById('vista-registro').style.display = 'none';
+
+    if (r.ok === 0) {
+      if (r.duplicado > 0) {
+        window.mostrarError(
+          'Documento ya registrado',
+          'Ese documento ya fue registrado para este graduando y no puede ocupar ' +
+          'dos cupos. Si necesitas corregir algo, comunícate con la universidad.'
+        );
+      } else if (r['sin-cupos'] > 0) {
+        window.mostrarError(
+          'No quedan cupos',
+          `Ya se registraron los ${max} invitados permitidos para este graduando. ` +
+          'Si necesitas un cambio, comunícate con la universidad.'
+        );
+      } else {
+        window.mostrarError(
+          'No se pudo registrar',
+          'No se pudo completar el registro. Revisa los datos e intenta de nuevo.'
+        );
+      }
+      return;
+    }
+
+    // Lista de los registrados: solo los que el servidor confirmó. Los nombres
+    // van con textContent, nunca con innerHTML, porque los escribe el público.
+    const lista = document.getElementById('lista-final');
+    lista.replaceChildren();
+    registrados.forEach((reg) => {
+      const li = document.createElement('li');
+      li.textContent = reg.nombre;
+      const tag = document.createElement('span');
+      tag.textContent = reg.cupo === 1 ? 'Principal' : 'Adicional';
+      li.appendChild(tag);
+      lista.appendChild(li);
+    });
+
+    const detalles = [];
+    if (r.duplicado > 0) detalles.push(`${r.duplicado} ya registrado(s)`);
+    if (r.error > 0) detalles.push(`${r.error} no se pudo(ron) registrar`);
+
+    if (detalles.length) {
+      document.getElementById('success-titulo').textContent = 'Registro parcial';
+      document.getElementById('success-texto').textContent =
+        `Se registraron ${r.ok} de ${invitados.length} invitados. ` +
+        detalles.join(' · ') + '.';
+    }
+    document.getElementById('success').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 </script>
 
