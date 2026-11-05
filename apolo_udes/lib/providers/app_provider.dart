@@ -149,9 +149,10 @@ class AppProvider extends ChangeNotifier {
   int get accesosHoy => _codigosUsados.length;
 
   /// Cierre de la jornada (fin de turno). Deja constancia en la bitácora de
-  /// cuántos accesos se llevaron hoy y cierra la sesión para que el siguiente
-  /// turno entre con su propio usuario. No borra nada: `validaciones` guarda
-  /// el histórico del día y Firestore sigue siendo la fuente de verdad.
+  /// cuántos accesos se llevaron hoy, cierra la sesión y borra los datos
+  /// personales que quedaron guardados en esta tablet. En el servidor no se
+  /// borra nada: `validaciones` guarda el histórico del día y Firestore sigue
+  /// siendo la fuente de verdad.
   Future<void> cerrarJornada() async {
     final autor = _usuarioActual;
     final accesos = _codigosUsados.length;
@@ -161,10 +162,35 @@ class AppProvider extends ChangeNotifier {
         autor,
         'Cerro la jornada con $accesos acceso(s) validado(s)',
         tipo: 'jornada',
-        detalle: 'Cierre de turno; el detalle del día queda en validaciones',
+        detalle: 'Cierre de turno; datos locales de la tablet borrados',
       );
     }
     logout();
+    await _borrarDatosLocales();
+  }
+
+  /// Borra lo que la tablet guardó en disco durante la jornada: la copia de
+  /// graduandos en SQLite y la caché de Firestore (invitados con nombre,
+  /// cédula y correo). Antes esos datos quedaban en la tablet aunque se
+  /// cerrara la sesión, y cualquiera que la tomara después podía leerlos.
+  Future<void> _borrarDatosLocales() async {
+    _graduandos = [];
+    _directivos = [];
+    notifyListeners();
+    if (kIsWeb) return; // en la web la sesión ya no guarda datos en disco
+    try {
+      await DatabaseService.instance.deleteAllGraduandos();
+    } catch (e) {
+      debugPrint('No se pudo borrar SQLite: $e');
+    }
+    try {
+      // clearPersistence() solo funciona con Firestore detenido, por eso
+      // primero terminate(). La siguiente sesión crea una instancia nueva.
+      await FirebaseFirestore.instance.terminate();
+      await FirebaseFirestore.instance.clearPersistence();
+    } catch (e) {
+      debugPrint('No se pudo borrar la caché de Firestore: $e');
+    }
   }
 
   void logout() {
@@ -767,8 +793,55 @@ class AppProvider extends ChangeNotifier {
     }, onError: (e) => debugPrint('Error escuchando validaciones: $e'));
   }
 
+  // ── Uso único del código, controlado por el servidor ──
+  // Antes cada tablet revisaba solo su propia lista de códigos usados. Si dos
+  // tablets leían el mismo QR casi al mismo tiempo, las dos lo aceptaban,
+  // porque ninguna se había enterado todavía de la otra.
+  // Ahora, antes de dejar pasar a alguien, la tablet crea el documento
+  // usos/{codigo}. Las reglas de Firestore solo dejan CREARLO, nunca
+  // modificarlo: si la otra tablet ya lo creó, el servidor responde
+  // permission-denied y esta tablet sabe que el código ya se usó.
+  //
+  // Devuelve true si el código quedó reservado para este ingreso (o si no hay
+  // internet y no se puede preguntar), y false si el servidor dice que ya se
+  // había usado.
+  Future<bool> _reservarUso(String codigo) async {
+    final usuario = _usuarioActual;
+    if (usuario == null || codigo.isEmpty) return false;
+
+    final ref = FirebaseFirestore.instance.collection('usos').doc(codigo);
+    final datos = {
+      'codigo': codigo,
+      'puntoValidacion': (usuario.puntoValidacion ?? '').trim().isEmpty
+          ? 'Administracion'
+          : (usuario.puntoValidacion ?? '').trim(),
+      'operadorId': usuario.id,
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+
+    // Sin internet no se puede preguntar al servidor: la escritura queda en
+    // cola y se envía al volver la conexión. Mientras tanto se deja pasar,
+    // igual que antes (la pantalla avisa que está sin conexión).
+    if (!_enLinea) {
+      ref.set(datos).catchError((e) => debugPrint('Uso sin conexión: $e'));
+      return true;
+    }
+
+    try {
+      await ref.set(datos).timeout(const Duration(seconds: 4));
+      return true;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return false; // ya se usó
+      debugPrint('Error reservando el uso del código: $e');
+      return true;
+    } on TimeoutException {
+      // El servidor no respondió a tiempo: se trata como sin conexión.
+      return true;
+    }
+  }
+
   // ── Acceso QR (invitados + directivos) ──
-  RegistroAcceso? verificarAcceso(String codigoODocumento) {
+  Future<RegistroAcceso?> verificarAcceso(String codigoODocumento) async {
     if (_codigosUsados.contains(codigoODocumento)) {
       // Ya se usó esta invitación (por QR o por documento). Se guarda el
       // código QR si se puede identificar al invitado: el documento digitado
@@ -784,6 +857,15 @@ class AppProvider extends ChangeNotifier {
 
     if (confirmacion != null &&
         confirmacion.estado == EstadoConfirmacion.confirmado) {
+      // Primero se le pregunta al servidor si el código sigue libre.
+      final libre = await _reservarUso(confirmacion.codigoQr ?? '');
+      if (!libre) {
+        _marcarComoUsado([confirmacion.codigoQr ?? '', confirmacion.documento]);
+        _guardarValidacionFirestore(
+            confirmacion.codigoQr ?? '', confirmacion.invitado, 'invitado', 'usado');
+        notifyListeners();
+        return null;
+      }
       // Se bloquean juntos el código QR y el documento: si alguien entró
       // digitando la cédula, el QR de esa misma invitación queda usado
       // (y al revés). Antes cada uno se validaba por su lado y daba dos
@@ -811,6 +893,14 @@ class AppProvider extends ChangeNotifier {
     );
 
     if (directivo.id.isNotEmpty && directivo.estado == EstadoDirectivo.confirmado) {
+      final libre = await _reservarUso(directivo.codigoQr ?? '');
+      if (!libre) {
+        _marcarComoUsado([directivo.codigoQr ?? '']);
+        _guardarValidacionFirestore(
+            directivo.codigoQr ?? '', directivo.nombre, 'directivo', 'usado');
+        notifyListeners();
+        return null;
+      }
       _marcarComoUsado([directivo.codigoQr ?? '', codigoODocumento]);
       final registro = RegistroAcceso(
         id: 'ACC${DateTime.now().millisecondsSinceEpoch}',

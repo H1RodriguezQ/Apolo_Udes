@@ -270,6 +270,24 @@ Comprobar 'la segunda confirmacion se rechaza' (Commit (@{ update = @{ name = "$
 Comprobar 'al confirmar no se puede cambiar otro campo' (Commit (@{ update = @{ name = "$ruta/invitados/$invA"; fields = @{ nombreInvitado = S 'Otro Nombre' } }; updateMask = @{ fieldPaths = @('nombreInvitado') } }) $anon) 403
 
 # ============================================================================
+# I. Uso unico del codigo (usos/{codigo}): un QR = una sola entrada
+#    Simula dos tablets que leen el mismo QR: la primera crea el documento y
+#    la segunda choca con el, porque las reglas solo dejan CREARLO.
+# ============================================================================
+''
+'I. Uso unico del codigo QR'
+$codigoUso = "INV-PRUEBA-$run"
+$camposUso = @{ codigo = S $codigoUso; puntoValidacion = S 'Puerta 1'; operadorId = S $uidOp }
+Comprobar 'la primera tablet registra el uso del codigo' (Commit (ConFecha usos $codigoUso $camposUso 'timestamp') $tOp) 200
+Comprobar 'la segunda lectura del MISMO codigo se rechaza' (Commit (ConFecha usos $codigoUso $camposUso 'timestamp') $tOp) 403
+Comprobar 'ni el admin puede volver a usar el codigo' (Commit (ConFecha usos $codigoUso (Mas $camposUso @{ operadorId = S $uidAdmin }) 'timestamp') $tAdmin) 403
+Comprobar 'nadie borra un uso (no se puede "devolver" una entrada)' (Borrar usos $codigoUso $tAdmin) 403
+Comprobar 'el codigo guardado debe ser igual al ID del documento' (Commit (ConFecha usos "INV-OTRO-$run" (Mas $camposUso @{ codigo = S 'INV-DISTINTO' }) 'timestamp') $tOp) 403
+Comprobar 'operador no registra usos en un punto ajeno' (Commit (ConFecha usos "INV-AJENO-$run" (Mas $camposUso @{ codigo = S "INV-AJENO-$run"; puntoValidacion = S 'Otro punto' }) 'timestamp') $tOp) 403
+Comprobar 'rol consulta no registra usos' (Commit (ConFecha usos "INV-CON-$run" (Mas $camposUso @{ codigo = S "INV-CON-$run"; operadorId = S $uidCon }) 'timestamp') $tCon) 403
+Comprobar 'anonimo no lee los usos' (Leer usos $codigoUso $anon) 403
+
+# ============================================================================
 ''
 "[RESUMEN] $hechos comprobaciones, $fallos fallos"
 if ($fallos -gt 0) { exit 1 }

@@ -77,6 +77,7 @@ function seQueda(coleccion, d) {
     case 'graduandos':
     case 'graduandos_publico':
     case 'validaciones':
+    case 'usos':
       return false; // datos de prueba
     case 'cupos':
       return texto(d.fields.graduandoId) === PROTEGIDO;
@@ -91,7 +92,7 @@ function seQueda(coleccion, d) {
 
 (async () => {
   const tok = await token();
-  const colecciones = ['graduandos', 'graduandos_publico', 'cupos', 'invitados', 'invitados_documentos', 'validaciones'];
+  const colecciones = ['graduandos', 'graduandos_publico', 'cupos', 'invitados', 'invitados_documentos', 'validaciones', 'usos'];
   const borrables = [];
 
   for (const c of colecciones) {

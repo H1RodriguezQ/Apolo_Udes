@@ -348,6 +348,32 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // --------------------------------------------------------------------- usos
+    // UN código = UNA entrada. El ID del documento es el propio código QR.
+    // Solo se puede CREAR y nunca modificar ni borrar: si dos tablets leen el
+    // mismo código a la vez, la segunda intenta crear un documento que ya
+    // existe, eso cuenta como "update" y se rechaza. Así el servidor decide
+    // quién llegó primero, no la lista local de cada tablet.
+
+    match /usos/{codigo} {
+      allow get: if esStaff();
+      allow list: if esAdmin();
+
+      allow create: if
+           (esOperador() || esAdmin())
+        && request.resource.data.keys().hasOnly([
+             'codigo', 'puntoValidacion', 'operadorId', 'timestamp'
+           ])
+        && request.resource.data.codigo == codigo
+        && codigo.matches("^[A-Za-z0-9_-]{1,64}$")
+        && request.resource.data.operadorId == request.auth.uid
+        && request.resource.data.timestamp == request.time
+        && esTexto(request.resource.data.puntoValidacion, 60)
+        && (esAdmin() || request.resource.data.puntoValidacion == puntoAsignado());
+
+      allow update, delete: if false;
+    }
+
     // ------------------------------------------------------------------ usuarios
 
     match /usuarios/{usuarioId} {

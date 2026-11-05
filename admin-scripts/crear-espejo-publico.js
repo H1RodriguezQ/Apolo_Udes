@@ -2,7 +2,7 @@ const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const path = require("path");
 
-const RUTA_CREDENCIAL = path.join("C:", "apolo_udes_fix", "claves", "serviceAccount.json");
+const RUTA_CREDENCIAL = path.join("C:", "Apolo-Udes", "claves", "serviceAccount.json");
 
 let serviceAccount;
 try {

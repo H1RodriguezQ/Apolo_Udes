@@ -60,7 +60,10 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     if (!mounted) return;
 
     final provider = context.read<AppProvider>();
-    final resultado = provider.verificarAcceso(codigo);
+    // Ahora es asíncrono: la tablet le pregunta al servidor si el código
+    // sigue libre antes de dejar pasar a la persona.
+    final resultado = await provider.verificarAcceso(codigo);
+    if (!mounted) return;
 
     String mensajeDenegado = 'Código no válido';
     if (resultado == null) {

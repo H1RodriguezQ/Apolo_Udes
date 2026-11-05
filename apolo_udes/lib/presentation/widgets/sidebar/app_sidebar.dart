@@ -538,8 +538,9 @@ Future<void> _cerrarJornada(BuildContext context) async {
   final confirm = await showConfirmDialog(
     context,
     title: 'Cerrar jornada',
-    content: 'Se dejará constancia del cierre en la bitácora y se cerrará la '
-        'sesión para que el siguiente turno inicie con su propio usuario. '
+    content: 'Se dejará constancia del cierre en la bitácora, se cerrará la '
+        'sesión y se borrarán los datos guardados en esta tablet. Las '
+        'lecturas ya están en el servidor y no se pierden. '
         'Accesos validados hoy: $accesos. ¿Continuar?',
     confirmLabel: 'Cerrar jornada',
     isDangerous: true,
