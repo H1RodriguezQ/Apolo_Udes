@@ -4,7 +4,11 @@ const { getFirestore } = require("firebase-admin/firestore");
 const path = require("path");
 const crypto = require("crypto");
 
-const RUTA_CREDENCIAL = path.join("C:", "Apolo-Udes", "claves", "serviceAccount.json");
+// Por defecto la llave está en C:\Apolo-Udes\claves (carpeta que nunca se sube).
+const i = process.argv.indexOf("--credencial");
+const RUTA_CREDENCIAL = i > -1
+  ? process.argv[i + 1]
+  : path.join("C:", "Apolo-Udes", "claves", "serviceAccount.json");
 
 let serviceAccount;
 try {
@@ -19,14 +23,17 @@ const auth = getAuth();
 const db = getFirestore();
 
 async function main() {
-  const args = process.argv.slice(2);
+  // Se quitan --credencial y su ruta para que no se confundan con el correo.
+  const args = process.argv.slice(2).filter((a, n, todos) =>
+    a !== "--credencial" && todos[n - 1] !== "--credencial");
 
   if (args.includes("--listar")) {
     const snap = await db.collection("usuarios").get();
     console.log("\n  Usuarios registrados:\n");
     for (const doc of snap.docs) {
       const d = doc.data();
-      console.log("  " + d.correo.padEnd(35) + d.rol.padEnd(12) + (d.puntoValidacion || ""));
+      console.log("  " + String(d.correo || "").padEnd(35) + String(d.rol || "").padEnd(12) +
+        String(d.estado || "activo").padEnd(10) + (d.puntoValidacion || ""));
     }
     console.log("");
     process.exit(0);
@@ -36,7 +43,7 @@ async function main() {
     console.log("\n  Uso:");
     console.log("    node asignar-rol.js --listar");
     console.log("    node asignar-rol.js <correo> <rol> [punto]\n");
-    console.log("  Roles: admin, operador, visualizador\n");
+    console.log("  Roles: admin, operador, consulta\n");
     process.exit(1);
   }
 
@@ -44,8 +51,11 @@ async function main() {
   const rol = args[1];
   const punto = args[2] || null;
 
-  if (!["admin", "operador", "visualizador"].includes(rol)) {
-    console.log("\n[X] Rol invalido. Use: admin, operador, visualizador\n");
+  // Deben ser los mismos roles que acepta firestore.rules (perfilValido).
+  // Antes decía 'visualizador', que las reglas no reconocen: ese usuario
+  // quedaba sin acceso a nada.
+  if (!["admin", "operador", "consulta"].includes(rol)) {
+    console.log("\n[X] Rol invalido. Use: admin, operador, consulta\n");
     process.exit(1);
   }
 
@@ -82,6 +92,7 @@ async function main() {
       correo: correo,
       rol: rol,
       puntoValidacion: punto || null,
+      estado: "activo",
       creadoEn: new Date(),
       ultimaActualizacion: new Date()
     };

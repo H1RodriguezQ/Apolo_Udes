@@ -1,0 +1,57 @@
+{
+  "manualSeg": 23.825750544667244,
+  "limite": 9.090027257800102,
+  "filas": [
+    {
+      "nombre": "Manual (lista impresa)",
+      "seg": 23.825750544667244,
+      "puntos": 2,
+      "formula": {
+        "rho": 4.368054266522328,
+        "estable": false
+      },
+      "sim": {
+        "esperaPromedioMin": 25.082273331187764,
+        "esperaP95Min": 48.40126257165707,
+        "esperaMaxMin": 61.9397866528199,
+        "duracionIngresoMin": 65.84524617685246,
+        "porcentajeEnMeta": 10.57939393939394
+      }
+    },
+    {
+      "nombre": "Apolo QR",
+      "seg": 8,
+      "puntos": 2,
+      "formula": {
+        "rho": 1.4666666666666666,
+        "estable": false
+      },
+      "sim": {
+        "esperaPromedioMin": 3.5595726471618487,
+        "esperaP95Min": 7.341160143226606,
+        "esperaMaxMin": 12.632637327042366,
+        "duracionIngresoMin": 22.242743069900495,
+        "porcentajeEnMeta": 71.40484848484849
+      }
+    },
+    {
+      "nombre": "Apolo QR, 2 tablets por entrada",
+      "seg": 8,
+      "puntos": 4,
+      "formula": {
+        "rho": 0.7333333333333333,
+        "estable": true,
+        "probEsperar": 0.48180004524793807,
+        "wqMin": 0.06022500565599226,
+        "lq": 1.3249501244318296
+      },
+      "sim": {
+        "esperaPromedioMin": 0.0535800114518957,
+        "esperaP95Min": 0.2556037886817213,
+        "esperaMaxMin": 1.1323411301079829,
+        "duracionIngresoMin": 15.265739462722385,
+        "porcentajeEnMeta": 100
+      }
+    }
+  ]
+}

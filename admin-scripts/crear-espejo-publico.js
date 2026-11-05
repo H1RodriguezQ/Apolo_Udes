@@ -2,7 +2,11 @@ const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const path = require("path");
 
-const RUTA_CREDENCIAL = path.join("C:", "Apolo-Udes", "claves", "serviceAccount.json");
+// Por defecto la llave está en C:\Apolo-Udes\claves (carpeta que nunca se sube).
+const i = process.argv.indexOf("--credencial");
+const RUTA_CREDENCIAL = i > -1
+  ? process.argv[i + 1]
+  : path.join("C:", "Apolo-Udes", "claves", "serviceAccount.json");
 
 let serviceAccount;
 try {
@@ -43,14 +47,20 @@ async function main() {
       continue;
     }
 
+    // invitadosPermitidos tiene que ir en el espejo: las reglas lo leen para
+    // dejar ocupar el tercer cupo cuando hay un invitado adicional autorizado.
     const publico = {
       nombreCompleto: nombreCompleto,
       programa: d.programa || "",
-      facultad: d.facultad || ""
+      facultad: d.facultad || "",
+      invitadosPermitidos: Number.isInteger(d.invitadosPermitidos) ? d.invitadosPermitidos : 2
     };
 
     if (aplicar) {
-      lote.set(db.collection("graduandos_publico").doc(doc.id), publico);
+      // merge: no se borra cuposUsados, que lo lleva la página pública.
+      // Sin merge, volver a correr el script dejaba los cupos en cero y
+      // permitía registrar más invitados de la cuenta.
+      lote.set(db.collection("graduandos_publico").doc(doc.id), publico, { merge: true });
       enLote++;
       if (enLote === 450) {
         await lote.commit();
@@ -58,7 +68,7 @@ async function main() {
         enLote = 0;
       }
     } else {
-      console.log("  " + doc.id.padEnd(22) + nombreCompleto);
+      console.log("  " + doc.id.padEnd(22) + nombreCompleto + "  (cupos: " + publico.invitadosPermitidos + ")");
     }
     total++;
   }

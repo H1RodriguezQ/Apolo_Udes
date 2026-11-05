@@ -1,0 +1,66 @@
+[
+  {
+    "escenario": "A. Flujo normal (2 tablets)",
+    "asistentes": 110,
+    "permitidos": 110,
+    "errores": 0,
+    "duracionSeg": 3.06,
+    "lecturasPorSeg": 35.9,
+    "latenciaMs": {
+      "promedio": 55.4,
+      "p50": 34.2,
+      "p95": 62.5,
+      "maximo": 1018.5
+    }
+  },
+  {
+    "escenario": "A. Flujo normal (2 tablets)",
+    "asistentes": 500,
+    "permitidos": 500,
+    "errores": 0,
+    "duracionSeg": 4.72,
+    "lecturasPorSeg": 105.9,
+    "latenciaMs": {
+      "promedio": 18.8,
+      "p50": 17.7,
+      "p95": 25.5,
+      "maximo": 42.6
+    }
+  },
+  {
+    "escenario": "A. Flujo normal (2 tablets)",
+    "asistentes": 1000,
+    "permitidos": 1000,
+    "errores": 0,
+    "duracionSeg": 6.52,
+    "lecturasPorSeg": 153.4,
+    "latenciaMs": {
+      "promedio": 13,
+      "p50": 12.4,
+      "p95": 18.1,
+      "maximo": 37.2
+    }
+  },
+  {
+    "escenario": "B. Doble escaneo simultáneo",
+    "codigos": 200,
+    "entradasUnicas": 200,
+    "entradasDobles": 0,
+    "ninguna": 0,
+    "correcto": true
+  },
+  {
+    "escenario": "C. Estrés (50 lecturas a la vez)",
+    "asistentes": 1000,
+    "permitidos": 1000,
+    "errores": 0,
+    "duracionSeg": 2.11,
+    "lecturasPorSeg": 473.7,
+    "latenciaMs": {
+      "promedio": 104.6,
+      "p50": 96.6,
+      "p95": 144.7,
+      "maximo": 248.8
+    }
+  }
+]

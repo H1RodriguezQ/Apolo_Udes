@@ -1,0 +1,10 @@
+{
+  "name": "apolo-pruebas-carga",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pruebas de carga y modelo de colas de Apolo UDES (solo contra el emulador, nunca contra la base real)",
+  "scripts": {
+    "carga": "powershell -NoProfile -ExecutionPolicy Bypass -File ejecutar.ps1",
+    "colas": "node colas.js"
+  }
+}
