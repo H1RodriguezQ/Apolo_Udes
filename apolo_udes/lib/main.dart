@@ -23,6 +23,16 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Modo de pruebas: con `--dart-define=EMULADOR=true` la app se conecta a
+  // los emuladores locales de Auth y Firestore en vez de la base real. Sirve
+  // para probar y tomar capturas con datos inventados. En la versión que se
+  // publica esta constante es false y estas líneas no hacen nada.
+  const usarEmulador = bool.fromEnvironment('EMULADOR');
+  if (usarEmulador) {
+    await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+    FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+  }
+
   // En la web la sesión dura solo mientras la pestaña esté abierta: al
   // cerrarla, la próxima vez pide correo y contraseña. En la tablet Android
   // la sesión se sigue recordando para que el operador no la escriba a cada rato.

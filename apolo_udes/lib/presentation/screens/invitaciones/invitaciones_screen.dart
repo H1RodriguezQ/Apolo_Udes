@@ -47,9 +47,7 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
                   onPressed: () => _borrarTodas(context, provider),
                   icon: const Icon(Icons.delete_sweep_rounded, size: 18),
                   label: const Text('Borrar todas'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
                 ),
                 const SizedBox(width: 10),
               ],

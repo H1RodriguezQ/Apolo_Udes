@@ -519,7 +519,7 @@ class _BotonCerrarJornada extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () => _cerrarJornada(context),
+      onPressed: () => confirmarCierreJornada(context),
       icon: const Icon(Icons.event_busy_rounded,
           color: AppColors.sidebarText, size: 16),
       tooltip: 'Cerrar jornada',
@@ -529,7 +529,7 @@ class _BotonCerrarJornada extends StatelessWidget {
   }
 }
 
-Future<void> _cerrarJornada(BuildContext context) async {
+Future<void> confirmarCierreJornada(BuildContext context) async {
   // El proveedor se captura ANTES del await: después del cierre ya no hay
   // contexto de sesión válido (la app vuelve a la pantalla de login).
   final provider = context.read<AppProvider>();

@@ -90,7 +90,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
 
     await Future.delayed(const Duration(milliseconds: 2500));
     if (mounted && _camaraActiva) {
-      setState(() => _ultimoResultado = null);
+      // En el celular el resultado tapa la cámara y se quita; en la tablet
+      // queda a la derecha hasta la siguiente lectura.
+      if (MediaQuery.sizeOf(context).width < 900) setState(() => _ultimoResultado = null);
       _recrearController();
     }
   }
@@ -126,225 +128,121 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 900;
 
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
+    if (isMobile) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (!provider.enLinea) ...[const _AvisoSinConexion(), const SizedBox(height: 12)],
+            Expanded(child: _buildMobileLayout(registros)),
+          ],
+        ),
+      );
+    }
+
+    // Tablet (rediseño): a la izquierda el lector y la búsqueda manual; a la
+    // derecha el resultado en grande, los contadores y las últimas lecturas.
+    final ingresosAqui = registros.where((r) => r.valido).length;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Mientras esta tablet está sin internet no se entera de lo que
+          // validó la otra entrada, así que el mismo QR podría aceptarse en
+          // las dos hasta reconectar. Se avisa siempre que pase.
+          if (!provider.enLinea) ...[const _AvisoSinConexion(), const SizedBox(height: 20)],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(height: 380, child: _buildCameraArea(mostrarResultado: false)),
+                    ),
+                    const SizedBox(height: 16),
+                    _tarjetaManual(),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ResultadoGrande(
+                      registro: _ultimoResultado,
+                      valido: _resultadoValido,
+                      mensajeDenegado: _mensajeDenegado,
+                      procesando: _procesando,
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: _ultimoResultado == null ? null : () => setState(() => _ultimoResultado = null),
+                      child: const Text('Leer el siguiente código'),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _Contador(etiqueta: 'Ingresos por esta entrada', valor: '$ingresosAqui')),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _Contador(
+                            etiqueta: 'Total en el auditorio',
+                            valor: '${provider.accesosHoy}',
+                            de: '${provider.aforoDisponible}',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _UltimasLecturas(registros: registros),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tarjetaManual() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
-            title: 'Control de Acceso',
-            subtitle: 'Verificación de asistencia mediante código QR',
-          ),
-          // Aviso de una limitación de diseño: mientras esta tablet está sin
-          // internet no se entera de lo que validó la otra entrada, así que
-          // el mismo QR podría aceptarse en ambas hasta reconectar.
-          if (!provider.enLinea) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.warningLight,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.6)),
+          Text('Si el QR no lee, digite la cédula o el código',
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _codigoController,
+                  style: AppTextStyles.mono(size: 16),
+                  decoration: const InputDecoration(hintText: 'Número de documento'),
+                  onSubmitted: (_) => _verificarManual(),
+                ),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.wifi_off_rounded,
-                      color: AppColors.warning, size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Sin conexión: los accesos se validan con la información '
-                      'guardada en esta tablet y se sincronizarán al reconectar. '
-                      'Mientras tanto, el otro punto de entrada no ve estos registros.',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _procesando ? null : _verificarManual,
+                  child: const Text('Validar'),
+                ),
               ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          Expanded(
-            child: isMobile
-                ? _buildMobileLayout(registros)
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 340,
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: SingleChildScrollView(
-                              child: Column(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: 240,
-                                      child: _buildCameraArea(),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: _toggleCamara,
-                                          icon: Icon(
-                                            _camaraActiva
-                                                ? Icons.videocam_off_rounded
-                                                : Icons.qr_code_scanner_rounded,
-                                            size: 18,
-                                          ),
-                                          label: Text(_camaraActiva
-                                              ? 'Detener'
-                                              : 'Activar'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: _camaraActiva
-                                                ? AppColors.error
-                                                : AppColors.primaryLight,
-                                          ),
-                                        ),
-                                      ),
-                                      if (_camaraActiva) ...[
-                                        const SizedBox(width: 8),
-                                        IconButton.filled(
-                                          onPressed: _toggleLinterna,
-                                          icon: Icon(_linternaActiva
-                                              ? Icons.flash_off_rounded
-                                              : Icons.flash_on_rounded),
-                                          tooltip: 'Linterna',
-                                          style: IconButton.styleFrom(
-                                            backgroundColor: _linternaActiva
-                                                ? AppColors.warning
-                                                : AppColors.surfaceVariant,
-                                            foregroundColor: _linternaActiva
-                                                ? Colors.white
-                                                : AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      const Expanded(child: Divider()),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                        child: Text('o ingresa manualmente',
-                                            style: AppTextStyles.caption),
-                                      ),
-                                      const Expanded(child: Divider()),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  TextField(
-                                    controller: _codigoController,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Documento o código QR',
-                                      prefixIcon: Icon(Icons.badge_outlined),
-                                    ),
-                                    onSubmitted: (_) => _verificarManual(),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _procesando ? null : _verificarManual,
-                                      icon: const Icon(Icons.search_rounded, size: 18),
-                                      label: const Text('Verificar'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.infoLight,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Icon(Icons.info_outline_rounded,
-                                            color: AppColors.info, size: 16),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            'Apunta al QR para registrar el acceso.',
-                                            style: TextStyle(
-                                                color: AppColors.info,
-                                                fontSize: 12),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Wrap(
-                                  spacing: 10,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text('Registro en tiempo real',
-                                        style: AppTextStyles.h4),
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.success,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    Text('${registros.length} accesos registrados',
-                                        style: AppTextStyles.bodySmall),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                const Divider(height: 1),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: registros.isEmpty
-                                      ? const EmptyState(
-                                          icon: Icons.no_accounts_rounded,
-                                          title: 'Sin registros aún',
-                                          subtitle:
-                                              'Los accesos aparecerán aquí en tiempo real',
-                                        )
-                                      : ListView.separated(
-                                          itemCount: registros.length,
-                                          separatorBuilder: (_, __) =>
-                                              const Divider(height: 1),
-                                          itemBuilder: (context, i) =>
-                                              _RegistroTile(registro: registros[i]),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+            ],
           ),
         ],
       ),
@@ -489,8 +387,8 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     );
   }
 
-  Widget _buildCameraArea() {
-    if (_ultimoResultado != null) {
+  Widget _buildCameraArea({bool mostrarResultado = true}) {
+    if (mostrarResultado && _ultimoResultado != null) {
       return _ResultadoOverlay(
         valido: _resultadoValido,
         nombre: _ultimoResultado!.nombre,
@@ -531,6 +429,25 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
             ),
           ),
           const _ScanLine(),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Row(
+              children: [
+                IconButton.filledTonal(
+                  onPressed: _toggleLinterna,
+                  tooltip: 'Linterna',
+                  icon: Icon(_linternaActiva ? Icons.flash_off_rounded : Icons.flash_on_rounded),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: _toggleCamara,
+                  tooltip: 'Apagar cámara',
+                  icon: const Icon(Icons.videocam_off_outlined),
+                ),
+              ],
+            ),
+          ),
           const Positioned(
             bottom: 12,
             left: 0,
@@ -548,21 +465,30 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
       );
     }
 
+    // Cámara apagada: recuadro con esquinas, como en el diseño, y el botón
+    // para encenderla (la cámara se pide solo cuando hace falta).
     return Container(
-      color: AppColors.sidebarBg,
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.qr_code_scanner_rounded, color: Colors.white38, size: 64),
-            SizedBox(height: 10),
-            Text('Cámara inactiva',
-                style: TextStyle(color: Colors.white38, fontSize: 13)),
-            SizedBox(height: 4),
-            Text('Presiona "Activar cámara"',
-                style: TextStyle(color: Colors.white24, fontSize: 11)),
-          ],
-        ),
+      color: const Color(0xFF0E1B33),
+      child: Stack(
+        children: [
+          const Center(child: _Esquinas(tamano: 230)),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Acerque el código QR\nal recuadro',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 15, height: 1.8)),
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: _toggleCamara,
+                  icon: const Icon(Icons.videocam_outlined, size: 18),
+                  label: const Text('Encender cámara'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -765,6 +691,246 @@ class _ScanLineState extends State<_ScanLine>
           ),
         );
       },
+    );
+  }
+}
+
+/// Esquinas blancas del recuadro de lectura.
+class _Esquinas extends StatelessWidget {
+  final double tamano;
+  const _Esquinas({required this.tamano});
+
+  @override
+  Widget build(BuildContext context) {
+    const lado = BorderSide(color: Colors.white, width: 2);
+    Widget esquina(Alignment a, Border b) => Align(
+          alignment: a,
+          child: Container(width: 36, height: 36, decoration: BoxDecoration(border: b)),
+        );
+    return SizedBox(
+      width: tamano,
+      height: tamano,
+      child: Stack(children: [
+        esquina(Alignment.topLeft, const Border(top: lado, left: lado)),
+        esquina(Alignment.topRight, const Border(top: lado, right: lado)),
+        esquina(Alignment.bottomLeft, const Border(bottom: lado, left: lado)),
+        esquina(Alignment.bottomRight, const Border(bottom: lado, right: lado)),
+      ]),
+    );
+  }
+}
+
+/// Aviso cuando la tablet no tiene internet.
+class _AvisoSinConexion extends StatelessWidget {
+  const _AvisoSinConexion();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warningLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off_rounded, color: AppColors.warningText, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Sin conexión: los accesos se validan con la información guardada en esta '
+              'tablet y se sincronizan al reconectar. Mientras tanto, la otra entrada no ve estas lecturas.',
+              style: TextStyle(color: AppColors.warningText, fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Resultado de la última lectura en letra grande, para que el operador lo
+/// vea de un vistazo: verde si puede ingresar, ámbar si el código ya se usó
+/// y rojo si no es válido.
+class _ResultadoGrande extends StatelessWidget {
+  final RegistroAcceso? registro;
+  final bool valido;
+  final String mensajeDenegado;
+  final bool procesando;
+  const _ResultadoGrande({required this.registro, required this.valido, required this.mensajeDenegado, required this.procesando});
+
+  @override
+  Widget build(BuildContext context) {
+    final yaUsado = mensajeDenegado.contains('utilizado');
+    final (fondo, texto, icono, titulo) = procesando
+        ? (AppColors.infoLight, AppColors.infoText, Icons.hourglass_top_rounded, 'Verificando…')
+        : registro == null
+            ? (AppColors.surfaceVariant, AppColors.textSecondary, Icons.qr_code_2_rounded, 'Esperando lectura')
+            : valido
+                ? (AppColors.successLight, AppColors.successText, Icons.check_rounded, 'Puede ingresar')
+                : yaUsado
+                    ? (AppColors.warningLight, AppColors.warningText, Icons.warning_amber_rounded, 'Código ya utilizado')
+                    : (AppColors.errorLight, AppColors.errorText, Icons.close_rounded, 'No puede ingresar');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: fondo,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Icon(icono, color: texto, size: 26),
+                const SizedBox(width: 12),
+                Text(titulo, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: texto)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            child: registro == null || procesando
+                ? Text('Lea un código QR o digite el documento. El resultado aparece aquí.',
+                    style: AppTextStyles.label.copyWith(fontSize: 14))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(valido ? registro!.nombre : mensajeDenegado,
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(child: _Dato(etiqueta: valido ? 'Documento' : 'Código leído', valor: _ocultar(registro!.documento))),
+                          Expanded(child: _Dato(etiqueta: 'Hora de lectura', valor: DateFormat('hh:mm a', 'es_CO').format(registro!.horaAcceso))),
+                        ],
+                      ),
+                      if (valido) ...[
+                        const SizedBox(height: 12),
+                        Text('Este código queda marcado como usado en las dos entradas.',
+                            style: AppTextStyles.body),
+                      ],
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Solo se muestran los primeros y últimos dígitos: quien esté al lado del
+  // operador no alcanza a leer la cédula completa.
+  static String _ocultar(String doc) {
+    if (doc.length <= 7) return doc;
+    return '${doc.substring(0, 4)} ••• ${doc.substring(doc.length - 3)}';
+  }
+}
+
+class _Dato extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  const _Dato({required this.etiqueta, required this.valor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(etiqueta, style: AppTextStyles.bodySmall),
+        const SizedBox(height: 2),
+        Text(valor, style: AppTextStyles.mono(size: 15)),
+      ],
+    );
+  }
+}
+
+class _Contador extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final String? de;
+  const _Contador({required this.etiqueta, required this.valor, this.de});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(etiqueta, style: AppTextStyles.bodySmall),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(valor, style: AppTextStyles.mono(size: 28, peso: FontWeight.w500)),
+              if (de != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 4),
+                  child: Text('/  $de', style: AppTextStyles.mono(size: 15, color: AppColors.textSecondary)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UltimasLecturas extends StatelessWidget {
+  final List<RegistroAcceso> registros;
+  const _UltimasLecturas({required this.registros});
+
+  @override
+  Widget build(BuildContext context) {
+    final ultimas = registros.take(5).toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+            child: Text('Últimas lecturas', style: AppTextStyles.h4),
+          ),
+          Divider(height: 1, color: AppColors.border),
+          if (ultimas.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Text('Todavía no hay lecturas en esta tablet.', style: AppTextStyles.label),
+            ),
+          for (final r in ultimas)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+              child: Row(
+                children: [
+                  Text(DateFormat('HH:mm').format(r.horaAcceso), style: AppTextStyles.mono(size: 14)),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(r.nombre, style: AppTextStyles.body, overflow: TextOverflow.ellipsis)),
+                  StatusBadge(
+                    label: r.valido ? 'Válido' : 'No válido',
+                    backgroundColor: r.valido ? AppColors.successLight : AppColors.errorLight,
+                    textColor: r.valido ? AppColors.success : AppColors.error,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1,11 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
-import '../bitacora/bitacora_screen.dart';
+import '../../widgets/common/tarjeta.dart';
+
+/// Pantalla de Inicio (rediseño). Responde lo que el administrador necesita
+/// saber antes del grado: cuándo y dónde es la ceremonia, cómo van las
+/// invitaciones, qué requiere atención y qué se hizo hace poco.
+///
+/// Índices del menú del administrador (ver home_screen.dart) a los que
+/// llevan los enlaces de "Requiere atención".
+const _irGraduandos = 1;
+const _irCorreos = 5;
+const _irBitacora = 6;
+const _irAjustes = 7;
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -13,837 +25,403 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final ancho = MediaQuery.sizeOf(context).width;
+    final dosColumnas = ancho >= 1100;
 
-    final graduandosPorFacultad = <String, int>{};
-    for (final g in provider.graduandos) {
-      graduandosPorFacultad[g.facultad] =
-          (graduandosPorFacultad[g.facultad] ?? 0) + 1;
-    }
-
-    final confirmados = provider.confirmaciones
-        .where((c) => c.estado.name == 'confirmado').length;
-    final rechazados = provider.confirmaciones
-        .where((c) => c.estado.name == 'rechazado').length;
-    final pendientes = provider.invitaciones
-        .where((i) => i.estado.name == 'pendiente' || i.estado.name == 'enviada').length;
-
-    final estadoConfirmaciones = {
-      'Confirmados': confirmados,
-      'Pendientes': pendientes,
-      'Rechazados': rechazados,
-    };
-
-    // Ocupación del Aforo
-    final totalGraduandos = provider.graduandos.length;
-    final totalInvitados = provider.invitaciones.length;
-    final totalDirectivos = provider.directivos
-        .where((d) => d.estado.name == 'confirmado').length;
-    final aforoTotal = provider.aforoDisponible;
-    final ocupado = totalGraduandos + totalInvitados + totalDirectivos;
-    final disponible = (aforoTotal - ocupado).clamp(0, aforoTotal);
-
-    final ocupacionAforo = {
-      'Graduandos': totalGraduandos,
-      'Invitados': totalInvitados,
-      'Directivos': totalDirectivos,
-      'Disponible': disponible,
-    };
-
-    final directivosConfirmados = provider.directivos
-        .where((d) => d.estado.name == 'confirmado').length;
-    final directivosPendientes = provider.directivos
-        .where((d) => d.estado.name == 'pendiente').length;
-    final directivosRechazados = provider.directivos
-        .where((d) => d.estado.name == 'rechazado').length;
-
-    final estadoDirectivos = {
-      'Confirmados': directivosConfirmados,
-      'Pendientes': directivosPendientes,
-      'Rechazados': directivosRechazados,
-    };
-
-    final padding = isMobile ? 16.0 : 28.0;
+    final izquierda = [
+      const _TarjetaEvento(),
+      const SizedBox(height: 20),
+      _TarjetaAvance(provider: provider),
+      const SizedBox(height: 20),
+      _TarjetaAtencion(provider: provider),
+    ];
+    final derecha = [
+      _TarjetaPorDia(invitaciones: provider.invitaciones),
+      const SizedBox(height: 20),
+      provider.isAdmin
+          ? const _TarjetaBitacora()
+          : _TarjetaUltimasLecturas(registros: provider.registrosAcceso),
+    ];
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(padding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Dashboard', style: AppTextStyles.h1),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+      padding: EdgeInsets.all(ancho < 600 ? 16 : 32),
+      child: dosColumnas
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: Column(children: izquierda)),
+                const SizedBox(width: 24),
+                Expanded(flex: 2, child: Column(children: derecha)),
+              ],
+            )
+          : Column(children: [...izquierda, const SizedBox(height: 20), ...derecha]),
+    );
+  }
+}
+
+// ── Próxima ceremonia ──────────────────────────────────────────────────────
+
+class _TarjetaEvento extends StatelessWidget {
+  const _TarjetaEvento();
+
+  @override
+  Widget build(BuildContext context) {
+    final esAdmin = context.watch<AppProvider>().isAdmin;
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('configuracion').doc('evento').snapshots(),
+      builder: (context, snap) {
+        final datos = snap.data?.data() ?? {};
+        final fecha = datos['fechaCeremonia'] is Timestamp
+            ? DateFormat("EEEE d 'de' MMMM", 'es_CO').format((datos['fechaCeremonia'] as Timestamp).toDate())
+            : null;
+        final lugar = (datos['lugarCeremonia'] ?? datos['lugar'] ?? '') as String;
+        final aforo = datos['aforoDisponible'];
+
+        return Tarjeta(
+          child: Wrap(
+            spacing: 28,
+            runSpacing: 16,
             children: [
-              Text(
-                DateFormat("d 'de' MMMM, yyyy", 'es_CO').format(DateTime.now()),
-                style: AppTextStyles.label,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              SizedBox(
+                width: 180,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 6, height: 6,
-                      decoration: const BoxDecoration(
-                          color: AppColors.success, shape: BoxShape.circle),
+                    DatoEtiquetado(
+                      etiqueta: 'Próxima ceremonia',
+                      valor: fecha == null ? 'Fecha por confirmar' : _mayuscula(fecha),
                     ),
-                    const SizedBox(width: 5),
-                    const Text('Sistema activo',
-                        style: TextStyle(
-                            color: AppColors.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600)),
+                    if (fecha == null && esAdmin)
+                      TextButton(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        onPressed: () => context.read<AppProvider>().setSelectedIndex(_irAjustes),
+                        child: const Text('Configurar fecha'),
+                      ),
                   ],
+                ),
+              ),
+              SizedBox(
+                width: 220,
+                child: DatoEtiquetado(etiqueta: 'Lugar', valor: lugar.isEmpty ? 'Por definir' : lugar),
+              ),
+              SizedBox(
+                width: 150,
+                child: DatoEtiquetado(
+                  etiqueta: 'Sillas del auditorio',
+                  valor: aforo == null ? '—' : '$aforo',
+                  nota: '2 invitados por graduando',
+                  mono: true,
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
 
-          const SizedBox(height: 20),
+  String _mayuscula(String t) => t.isEmpty ? t : t[0].toUpperCase() + t.substring(1);
+}
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = screenWidth < 850 ? 2 : 4;
-              final spacing = isMobile ? 10.0 : 16.0;
-              final itemWidth = (constraints.maxWidth - (spacing * (columns - 1))) / columns;
-              const targetHeight = 145.0;
-              final computedAspectRatio = itemWidth / targetHeight;
+// ── Avance de las invitaciones ──────────────────────────────────────────────
 
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: columns,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-                childAspectRatio: computedAspectRatio,
+class _TarjetaAvance extends StatelessWidget {
+  final AppProvider provider;
+  const _TarjetaAvance({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final graduandos = provider.graduandos.length;
+    final conInvitados = provider.invitaciones.map((i) => i.graduandoId).toSet().length;
+    final vivas = provider.invitaciones.where((i) => i.estado != EstadoInvitacion.anulada).toList();
+    final cupos = graduandos * 2;
+    final confirmadas = vivas.where((i) => i.estado == EstadoInvitacion.confirmada).length;
+
+    return Tarjeta(
+      titulo: 'Avance de las invitaciones',
+      child: Column(
+        children: [
+          BarraAvance(nombre: 'Graduandos con invitados', valor: conInvitados, total: graduandos),
+          BarraAvance(nombre: 'Cupos de invitado ocupados', valor: vivas.length, total: cupos),
+          BarraAvance(nombre: 'Asistencias confirmadas', valor: confirmadas, total: vivas.length),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Requiere atención ──────────────────────────────────────────────────────
+
+class _TarjetaAtencion extends StatelessWidget {
+  final AppProvider provider;
+  const _TarjetaAtencion({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final conInvitados = provider.invitaciones.map((i) => i.graduandoId).toSet();
+    final sinInvitados = provider.graduandos.where((g) => !conInvitados.contains(g.id)).length;
+    final correosConError = provider.graduandos.where((g) => g.correoRegistro == 'error').length +
+        provider.directivos.where((d) => d.correoInvitacion == 'error').length;
+    final sinConfirmar = provider.invitaciones
+        .where((i) => i.estado == EstadoInvitacion.enviada || i.estado == EstadoInvitacion.pendiente)
+        .length;
+
+    final filas = [
+      (sinInvitados, 'Graduandos que no han registrado invitados', 'Ver graduandos', _irGraduandos,
+          AppColors.warningLight, AppColors.warningText),
+      (correosConError, 'Correos que no se pudieron enviar', 'Revisar', _irGraduandos,
+          AppColors.errorLight, AppColors.errorText),
+      (sinConfirmar, 'Invitados sin confirmar asistencia', 'Enviar recordatorio', _irCorreos,
+          AppColors.infoLight, AppColors.infoText),
+    ];
+
+    return Tarjeta(
+      titulo: 'Requiere atención',
+      lineaBajoTitulo: true,
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (final f in filas)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+              child: Row(
                 children: [
-                  _LocalMetricCard(
-                    title: 'Graduandos',
-                    value: provider.totalGraduandos.toString(),
-                    icon: Icons.school_rounded,
-                    color: AppColors.primaryLight,
+                  Container(
+                    width: 60,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: f.$5, borderRadius: BorderRadius.circular(4)),
+                    child: Text('${f.$1}', style: AppTextStyles.mono(size: 15, peso: FontWeight.w500, color: f.$6)),
                   ),
-                  _LocalMetricCard(
-                    title: 'Invitaciones',
-                    value: provider.totalInvitaciones.toString(),
-                    icon: Icons.mail_rounded,
-                    color: AppColors.success,
-                  ),
-                  _LocalMetricCard(
-                    title: 'Aforo',
-                    value: provider.aforoDisponible.toString(),
-                    icon: Icons.event_seat_rounded,
-                    color: AppColors.warning,
-                  ),
-                  _LocalMetricCard(
-                    title: 'Directivos',
-                    value: provider.totalDirectivos.toString(),
-                    icon: Icons.person_outline_rounded,
-                    color: AppColors.pending,
-                  ),
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 20),
-
-          if (isMobile || isTablet) ...[
-            _chartCard(
-              title: 'Estado de Confirmaciones',
-              subtitle: confirmados + rechazados + pendientes > 0
-                  ? '${(confirmados / (confirmados + rechazados + pendientes) * 100).round()}% confirmados'
-                  : 'Sin datos aún',
-              child: confirmados + rechazados + pendientes == 0
-                  ? Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
-                  : _ConfirmacionDonutChart(data: estadoConfirmaciones),
-            ),
-            const SizedBox(height: 16),
-            _chartCard(
-              title: 'Ocupación del Aforo',
-              subtitle: aforoTotal > 0
-                  ? '$ocupado de $aforoTotal ocupados (${(ocupado / aforoTotal * 100).round()}%)'
-                  : 'Sin aforo configurado',
-              child: aforoTotal == 0
-                  ? Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
-                  : _AforoOcupacionDonutChart(data: ocupacionAforo),
-            ),
-            const SizedBox(height: 16),
-            _chartCard(
-              title: 'Confirmación de Directivos',
-              subtitle: directivosConfirmados + directivosRechazados + directivosPendientes > 0
-                  ? '${(directivosConfirmados / (directivosConfirmados + directivosRechazados + directivosPendientes) * 100).round()}% confirmados'
-                  : 'Sin datos aún',
-              child: directivosConfirmados + directivosRechazados + directivosPendientes == 0
-                  ? Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
-                  : _DirectivosDonutChart(data: estadoDirectivos),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Graduandos por Facultad', style: AppTextStyles.h4),
-                    const SizedBox(height: 4),
-                    Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 220,
-                      child: graduandosPorFacultad.isEmpty
-                          ? Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
-                          : _FacultadBarChart(data: graduandosPorFacultad),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(f.$2, style: AppTextStyles.body.copyWith(fontSize: 15))),
+                  if (provider.isAdmin && f.$1 > 0)
+                    TextButton(
+                      onPressed: () => provider.setSelectedIndex(f.$4),
+                      child: Text(f.$3, style: const TextStyle(decoration: TextDecoration.underline)),
                     ),
-                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Invitados registrados por día (últimos 7 días) ──────────────────────────
+
+class _TarjetaPorDia extends StatelessWidget {
+  final List<Invitacion> invitaciones;
+  const _TarjetaPorDia({required this.invitaciones});
+
+  @override
+  Widget build(BuildContext context) {
+    final hoy = DateTime.now();
+    final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
+    final conteo = List<int>.filled(7, 0);
+    for (final inv in invitaciones) {
+      final f = inv.fechaEnvio;
+      if (f == null) continue;
+      final dia = DateTime(f.year, f.month, f.day);
+      final hace = inicioHoy.difference(dia).inDays;
+      if (hace >= 0 && hace < 7) conteo[6 - hace]++;
+    }
+    final maximo = conteo.fold<int>(0, (a, b) => a > b ? a : b);
+    final tope = maximo < 4 ? 4.0 : (maximo * 1.15).ceilToDouble();
+
+    return Tarjeta(
+      titulo: 'Invitados registrados por día',
+      accion: Text('7 días', style: AppTextStyles.label),
+      child: SizedBox(
+        height: 180,
+        child: BarChart(
+          BarChartData(
+            maxY: tope,
+            alignment: BarChartAlignment.spaceAround,
+            borderData: FlBorderData(show: false),
+            gridData: FlGridData(
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (_) => FlLine(color: AppColors.divider, strokeWidth: 1),
+            ),
+            barTouchData: BarTouchData(enabled: false),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 28,
+                  getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: AppTextStyles.mono(size: 11, color: AppColors.textSecondary)),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (v, _) {
+                    final i = v.toInt();
+                    final dia = inicioHoy.subtract(Duration(days: 6 - i));
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(i == 6 ? 'hoy' : '${dia.day}',
+                          style: AppTextStyles.mono(size: 11, color: AppColors.textSecondary)),
+                    );
+                  },
                 ),
               ),
             ),
-          ] else ...[
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Graduandos por Facultad', style: AppTextStyles.h4),
-                            const SizedBox(height: 4),
-                            Text('Distribución por facultad académica', style: AppTextStyles.bodySmall),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              height: 200,
-                              child: graduandosPorFacultad.isEmpty
-                                  ? Center(child: Text('Sin datos aún', style: AppTextStyles.bodySmall))
-                                  : _FacultadBarChart(data: graduandosPorFacultad),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+            barGroups: [
+              for (var i = 0; i < 7; i++)
+                BarChartGroupData(x: i, barRods: [
+                  BarChartRodData(
+                    toY: conteo[i].toDouble(),
+                    width: 28,
+                    color: AppColors.isDark ? const Color(0xFF5F97E2) : AppColors.serie1,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 4,
-                    child: _chartCard(
-                      title: 'Estado de Confirmaciones',
-                      subtitle: confirmados + rechazados + pendientes > 0
-                          ? '${(confirmados / (confirmados + rechazados + pendientes) * 100).round()}% confirmados'
-                          : 'Sin datos aún',
-                      child: confirmados + rechazados + pendientes == 0
-                          ? Center(child: Text('Sin confirmaciones aún', style: AppTextStyles.bodySmall))
-                          : _ConfirmacionDonutChart(data: estadoConfirmaciones),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: _chartCard(
-                      title: 'Ocupación del Aforo',
-                      subtitle: aforoTotal > 0
-                          ? '$ocupado de $aforoTotal (${(ocupado / aforoTotal * 100).round()}%)'
-                          : 'Sin aforo configurado',
-                      child: aforoTotal == 0
-                          ? Center(child: Text('Configura el aforo en Configuración', style: AppTextStyles.bodySmall))
-                          : _AforoOcupacionDonutChart(data: ocupacionAforo),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 4,
-                    child: _chartCard(
-                      title: 'Confirmación de Directivos',
-                      subtitle: directivosConfirmados + directivosRechazados + directivosPendientes > 0
-                          ? '${(directivosConfirmados / (directivosConfirmados + directivosRechazados + directivosPendientes) * 100).round()}% confirmados'
-                          : 'Sin datos aún',
-                      child: directivosConfirmados + directivosRechazados + directivosPendientes == 0
-                          ? Center(child: Text('Sin registros de directivos', style: AppTextStyles.bodySmall))
-                          : _DirectivosDonutChart(data: estadoDirectivos),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 20),
+// ── Bitácora (solo administrador: las reglas no dejan que el operador la lea) ─
 
-          _ActividadCard(
-            isAdmin: provider.isAdmin,
-            actividades: provider.actividades,
-            isMobile: isMobile,
+class _TarjetaBitacora extends StatelessWidget {
+  const _TarjetaBitacora();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tarjeta(
+      titulo: 'Bitácora',
+      lineaBajoTitulo: true,
+      padding: EdgeInsets.zero,
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('auditoria')
+            .orderBy('fecha', descending: true)
+            .limit(5)
+            .snapshots(),
+        builder: (context, snap) {
+          final docs = snap.data?.docs ?? [];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (docs.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('Todavía no hay movimientos.', style: AppTextStyles.label),
+                ),
+              for (final d in docs) _FilaBitacora(datos: d.data()),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => context.read<AppProvider>().setSelectedIndex(_irBitacora),
+                    child: const Text('Ver toda la bitácora',
+                        style: TextStyle(decoration: TextDecoration.underline)),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FilaBitacora extends StatelessWidget {
+  final Map<String, dynamic> datos;
+  const _FilaBitacora({required this.datos});
+
+  @override
+  Widget build(BuildContext context) {
+    final fecha = datos['fecha'] is Timestamp ? (datos['fecha'] as Timestamp).toDate() : null;
+    final hora = fecha == null ? '' : DateFormat('HH:mm').format(fecha);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${datos['accion'] ?? ''}', style: AppTextStyles.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text(hora, style: AppTextStyles.mono(size: 12, color: AppColors.textSecondary)),
+              Flexible(
+                child: Text(' · ${datos['autorCorreo'] ?? ''}',
+                    style: AppTextStyles.bodySmall, overflow: TextOverflow.ellipsis),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-
-  Widget _chartCard({required String title, required String subtitle, required Widget child}) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: AppTextStyles.h4),
-            const SizedBox(height: 4),
-            Text(subtitle, style: AppTextStyles.bodySmall),
-            const SizedBox(height: 16),
-            SizedBox(height: 220, child: child),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-// ── Actividad: bitácora (admin) o sesión actual (operador) ──
+// ── Para el operador: sus últimas lecturas en lugar de la bitácora ──────────
 
-class _ActividadCard extends StatefulWidget {
-  final bool isAdmin;
-  final List<ActividadReciente> actividades;
-  final bool isMobile;
-  const _ActividadCard({
-    required this.isAdmin,
-    required this.actividades,
-    required this.isMobile,
-  });
-
-  @override
-  State<_ActividadCard> createState() => _ActividadCardState();
-}
-
-class _ActividadCardState extends State<_ActividadCard> {
-  Stream<List<BitacoraEntrada>>? _stream;
-
-  @override
-  void initState() {
-    super.initState();
-    // El stream se crea una sola vez: si se creara en build(), cada
-    // actualizacion del dashboard abriria una nueva conexion.
-    if (widget.isAdmin) _stream = streamBitacora(limite: 6);
-  }
-
-  void _abrirBitacora() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Bitácora'),
-          backgroundColor: AppColors.sidebarBg,
-          foregroundColor: Colors.white,
-        ),
-        body: const BitacoraScreen(),
-      ),
-    ));
-  }
-
-  Widget _vacio(String texto) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(texto, style: AppTextStyles.bodySmall),
-        ),
-      );
+class _TarjetaUltimasLecturas extends StatelessWidget {
+  final List<RegistroAcceso> registros;
+  const _TarjetaUltimasLecturas({required this.registros});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(widget.isMobile ? 16 : 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.isAdmin ? 'Bitácora reciente' : 'Actividad de esta sesión',
-                    style: AppTextStyles.h4,
-                  ),
-                ),
-                if (widget.isAdmin)
-                  TextButton.icon(
-                    onPressed: _abrirBitacora,
-                    icon: const Icon(Icons.history_rounded, size: 16),
-                    label: const Text('Ver bitácora completa'),
-                  ),
-              ],
+    final ultimos = registros.take(6).toList();
+    return Tarjeta(
+      titulo: 'Últimas lecturas',
+      lineaBajoTitulo: true,
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (ultimos.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Aún no se ha leído ningún código en este turno.', style: AppTextStyles.label),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            if (widget.isAdmin)
-              StreamBuilder<List<BitacoraEntrada>>(
-                stream: _stream,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return _vacio('No fue posible cargar la bitácora');
-                  }
-                  if (!snap.hasData) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final lista = snap.data!;
-                  if (lista.isEmpty) return _vacio('Sin registros todavía');
-                  return Column(
-                    children: lista.map((e) => BitacoraRow(entrada: e)).toList(),
-                  );
-                },
-              )
-            else if (widget.actividades.isEmpty)
-              _vacio('Sin actividad reciente')
-            else
-              Column(
-                children: widget.actividades
-                    .take(5)
-                    .map((a) => _ActividadRow(actividad: a))
-                    .toList(),
+          for (final r in ultimos)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+              child: Row(
+                children: [
+                  Text(DateFormat('HH:mm').format(r.horaAcceso), style: AppTextStyles.mono(size: 14)),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(r.nombre.isEmpty ? 'Sin identificar' : r.nombre, style: AppTextStyles.body)),
+                  _Etiqueta(valido: r.valido),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 }
 
-class _LocalMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _LocalMetricCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+class _Etiqueta extends StatelessWidget {
+  final bool valido;
+  const _Etiqueta({required this.valido});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surface, // antes: Colors.white fijo
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: AppColors.border, width: 1),
+        color: valido ? AppColors.successLight : AppColors.errorLight,
+        borderRadius: BorderRadius.circular(4),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const Spacer(),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-                height: 1.1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AforoOcupacionDonutChart extends StatefulWidget {
-  final Map<String, int> data;
-  const _AforoOcupacionDonutChart({required this.data});
-
-  @override
-  State<_AforoOcupacionDonutChart> createState() =>
-      _AforoOcupacionDonutChartState();
-}
-
-class _AforoOcupacionDonutChartState extends State<_AforoOcupacionDonutChart> {
-  int _touchedIndex = -1;
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = widget.data.entries.toList();
-    final total = widget.data.values.reduce((a, b) => a + b);
-
-    final colors = [
-      const Color(0xFF3B82F6), // Graduandos
-      const Color(0xFF10B981), // Invitados
-      const Color(0xFF8B5CF6), // Directivos
-      // Disponible: gris más oscuro en modo oscuro para que no deslumbre
-      AppColors.isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
-    ];
-
-    return Row(
-      children: [
-        Expanded(
-          flex: 3,
-          child: PieChart(PieChartData(
-            pieTouchData: PieTouchData(touchCallback: (event, res) {
-              setState(() {
-                _touchedIndex =
-                    (!event.isInterestedForInteractions || res == null || res.touchedSection == null)
-                        ? -1
-                        : res.touchedSection!.touchedSectionIndex;
-              });
-            }),
-            sections: List.generate(entries.length, (i) {
-              final isTouched = i == _touchedIndex;
-              final percentage = total > 0 ? (entries[i].value / total * 100) : 0;
-              return PieChartSectionData(
-                color: colors[i],
-                value: entries[i].value.toDouble(),
-                title: percentage >= 5 ? '${percentage.round()}%' : '',
-                radius: isTouched ? 70 : 60,
-                titleStyle: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: i == 3 ? AppColors.textSecondary : Colors.white,
-                ),
-              );
-            }),
-            centerSpaceRadius: 35,
-            sectionsSpace: 2,
-          )),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(entries.length, (i) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(entries[i].key,
-                            style: AppTextStyles.caption,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        Text(entries[i].value.toString(),
-                            style: AppTextStyles.h4.copyWith(fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            )),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FacultadBarChart extends StatelessWidget {
-  final Map<String, int> data;
-  const _FacultadBarChart({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = data.entries.toList();
-    final maxVal = data.values.reduce((a, b) => a > b ? a : b).toDouble();
-
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxVal * 1.3,
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            tooltipRoundedRadius: 8,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              return BarTooltipItem(
-                '${entries[group.x].key}\n${rod.toY.toInt()} graduandos',
-                const TextStyle(color: Colors.white, fontSize: 12),
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= entries.length) return const SizedBox.shrink();
-                final label = entries[index].key;
-                final shortLabel = label.contains('Salud') ? 'C. Salud'
-                    : label.contains('Económ') ? 'C. Econ.'
-                    : label.contains('Ingen') ? 'Ing.'
-                    : label.substring(0, label.length > 8 ? 8 : label.length);
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(shortLabel, style: AppTextStyles.caption, textAlign: TextAlign.center),
-                );
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 36,
-              getTitlesWidget: (value, meta) =>
-                  Text(value.toInt().toString(), style: AppTextStyles.caption),
-            ),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) =>
-              FlLine(color: AppColors.divider, strokeWidth: 1),
-        ),
-        barGroups: List.generate(entries.length, (i) {
-          final colors = [AppColors.primaryLight, AppColors.success, AppColors.warning, AppColors.error, AppColors.pending];
-          return BarChartGroupData(
-            x: i,
-            barRods: [
-              BarChartRodData(
-                toY: entries[i].value.toDouble(),
-                color: colors[i % colors.length],
-                width: 30,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-              ),
-            ],
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _ConfirmacionDonutChart extends StatefulWidget {
-  final Map<String, int> data;
-  const _ConfirmacionDonutChart({required this.data});
-  @override
-  State<_ConfirmacionDonutChart> createState() => _ConfirmacionDonutChartState();
-}
-
-class _ConfirmacionDonutChartState extends State<_ConfirmacionDonutChart> {
-  int _touchedIndex = -1;
-  @override
-  Widget build(BuildContext context) {
-    final entries = widget.data.entries.toList();
-    final total = widget.data.values.reduce((a, b) => a + b);
-    final colors = [AppColors.success, AppColors.warning, AppColors.error];
-    return Row(
-      children: [
-        Expanded(
-          child: PieChart(PieChartData(
-            pieTouchData: PieTouchData(touchCallback: (event, res) {
-              setState(() {
-                _touchedIndex = (!event.isInterestedForInteractions || res == null || res.touchedSection == null)
-                    ? -1 : res.touchedSection!.touchedSectionIndex;
-              });
-            }),
-            sections: List.generate(entries.length, (i) => PieChartSectionData(
-              color: colors[i],
-              value: entries[i].value.toDouble(),
-              title: total > 0 ? '${(entries[i].value / total * 100).round()}%' : '0%',
-              radius: i == _touchedIndex ? 70 : 60,
-              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-            )),
-            centerSpaceRadius: 35,
-            sectionsSpace: 2,
-          )),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(entries.length, (i) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle)),
-              const SizedBox(width: 5),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(entries[i].key, style: AppTextStyles.caption),
-                Text(entries[i].value.toString(), style: AppTextStyles.h4.copyWith(fontSize: 14)),
-              ]),
-            ]),
-          )),
-        ),
-      ],
-    );
-  }
-}
-
-class _DirectivosDonutChart extends StatefulWidget {
-  final Map<String, int> data;
-  const _DirectivosDonutChart({required this.data});
-  @override
-  State<_DirectivosDonutChart> createState() => _DirectivosDonutChartState();
-}
-
-class _DirectivosDonutChartState extends State<_DirectivosDonutChart> {
-  int _touchedIndex = -1;
-  @override
-  Widget build(BuildContext context) {
-    final entries = widget.data.entries.toList();
-    final total = widget.data.values.reduce((a, b) => a + b);
-    final colors = [AppColors.success, AppColors.warning, AppColors.error];
-    return Row(
-      children: [
-        Expanded(
-          child: PieChart(PieChartData(
-            pieTouchData: PieTouchData(touchCallback: (event, res) {
-              setState(() {
-                _touchedIndex = (!event.isInterestedForInteractions || res == null || res.touchedSection == null)
-                    ? -1 : res.touchedSection!.touchedSectionIndex;
-              });
-            }),
-            sections: List.generate(entries.length, (i) => PieChartSectionData(
-              color: colors[i],
-              value: entries[i].value.toDouble(),
-              title: total > 0 ? '${(entries[i].value / total * 100).round()}%' : '0%',
-              radius: i == _touchedIndex ? 70 : 60,
-              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-            )),
-            centerSpaceRadius: 35,
-            sectionsSpace: 2,
-          )),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List.generate(entries.length, (i) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[i], shape: BoxShape.circle)),
-              const SizedBox(width: 5),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(entries[i].key, style: AppTextStyles.caption),
-                Text(entries[i].value.toString(), style: AppTextStyles.h4.copyWith(fontSize: 14)),
-              ]),
-            ]),
-          )),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActividadRow extends StatelessWidget {
-  final ActividadReciente actividad;
-  const _ActividadRow({required this.actividad});
-
-  IconData get _icon {
-    switch (actividad.tipo) {
-      case 'email': return Icons.mail_rounded;
-      case 'confirm': return Icons.check_circle_rounded;
-      case 'user': return Icons.person_add_rounded;
-      case 'qr': return Icons.qr_code_scanner_rounded;
-      case 'notification': return Icons.notifications_rounded;
-      default: return Icons.info_rounded;
-    }
-  }
-
-  Color get _color {
-    switch (actividad.tipo) {
-      case 'email': return AppColors.info;
-      case 'confirm': return AppColors.success;
-      case 'user': return AppColors.primaryLight;
-      case 'qr': return AppColors.warning;
-      case 'notification': return AppColors.pending;
-      default: return AppColors.textHint;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hora = actividad.hora;
-    final horaStr = '${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: _color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(_icon, color: _color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(actividad.detalle, style: AppTextStyles.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(actividad.usuario, style: AppTextStyles.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-          Text(horaStr, style: AppTextStyles.caption),
-        ],
+      child: Text(
+        valido ? 'Válido' : 'No válido',
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: valido ? AppColors.successText : AppColors.errorText),
       ),
     );
   }

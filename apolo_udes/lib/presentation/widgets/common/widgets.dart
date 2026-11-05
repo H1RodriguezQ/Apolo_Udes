@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
+import '../shell/barra_superior.dart';
 
 // ---- Metric Card (Optimizado para pantallas estrechas) ----
 class MetricCard extends StatelessWidget {
@@ -21,74 +22,38 @@ class MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Detectamos si la pantalla es muy angosta (como un celular en modo vertical)
-    final bool isSmallScreen = MediaQuery.of(context).size.width < 360;
-
+    // Estilo del rediseño: etiqueta pequeña arriba, número grande en letra
+    // de ancho fijo y el icono discreto a la derecha.
     return Card(
       child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 12 : 20), // Padding dinámico
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
+                Expanded(
+                  child: Text(title,
+                      style: AppTextStyles.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ),
-                const Spacer(),
-                if (subtitle != null)
-                  Flexible( // Evita que un subtítulo largo rompa el Row
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.success,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
+                Icon(icon, size: 18, color: color),
               ],
             ),
-            const SizedBox(height: 16),
-            // Ajuste Responsivo para números muy grandes (FittedBox evita el overflow)
+            const SizedBox(height: 10),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 28, // Bajado ligeramente de 30 para mejor ajuste
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
+              child: Text(value, style: AppTextStyles.mono(size: 30, peso: FontWeight.w500)),
             ),
-            const SizedBox(height: 4),
-            Text(
-              title, 
-              style: AppTextStyles.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis, // Si el título es largo, añade '...'
-            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(subtitle!,
+                  style: AppTextStyles.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ],
           ],
         ),
       ),
@@ -235,20 +200,31 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
+  /// Con el rediseño, el texto de cada etiqueta usa el tono oscuro del mismo
+  /// color (verde oscuro sobre verde claro, etc.), que se lee mejor que el
+  /// color vivo de antes. Se traduce aquí para no tocar cada pantalla.
+  Color get _textoLegible {
+    if (textColor == AppColors.success) return AppColors.successText;
+    if (textColor == AppColors.error) return AppColors.errorText;
+    if (textColor == AppColors.warning) return AppColors.warningText;
+    if (textColor == AppColors.info || textColor == AppColors.primaryLight) return AppColors.infoText;
+    return textColor;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: textColor,
-          fontSize: 11, // Bajado sutilmente de 12 para pantallas pequeñas
-          fontWeight: FontWeight.w600,
+          color: _textoLegible,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -270,6 +246,21 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Dentro del armazón nuevo el título ya sale en la barra superior: aquí
+    // solo queda la descripción a la izquierda y los botones a la derecha.
+    if (EnShell.de(context)) {
+      return Row(
+        children: [
+          Expanded(
+            child: subtitle == null
+                ? const SizedBox.shrink()
+                : Text(subtitle!, style: AppTextStyles.label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+          if (action != null) ...[const SizedBox(width: 16), action!],
+        ],
+      );
+    }
+
     // Verificamos si la pantalla es de tamaño móvil
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -389,17 +380,9 @@ class UserAvatar extends StatelessWidget {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
-  Color get _bgColor {
-    if (backgroundColor != null) return backgroundColor!;
-    final colors = [
-      const Color(0xFF2563EB),
-      const Color(0xFF10B981),
-      const Color(0xFFF59E0B),
-      const Color(0xFFEF4444),
-      const Color(0xFF8B5CF6),
-    ];
-    return colors[name.length % colors.length];
-  }
+  // Con el rediseño las iniciales van en un círculo azul suave en vez de
+  // colores al azar: la lista se ve más ordenada y se lee mejor.
+  Color get _bgColor => backgroundColor ?? AppColors.infoLight;
 
   @override
   Widget build(BuildContext context) {
@@ -414,9 +397,9 @@ class UserAvatar extends StatelessWidget {
         child: Text(
           _initials,
           style: TextStyle(
-            color: Colors.white,
+            color: backgroundColor == null ? AppColors.infoText : Colors.white,
             fontSize: size * 0.35,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -436,7 +419,6 @@ Future<bool?> showConfirmDialog(
   return showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(title, style: AppTextStyles.h3),
       content: Text(content, style: AppTextStyles.body),
       actions: [

@@ -231,7 +231,17 @@ class AppProvider extends ChangeNotifier {
   // conectividad porque lo que importa en la entrada es exactamente eso:
   // poder consultar Firestore y subir las validaciones.
   void _escucharEstadoConexion() {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      // En la web no se mide la conexión, pero sí hace falta el aforo.
+      FirebaseFirestore.instance.collection('configuracion').doc('evento').get().then((snap) {
+        final aforo = snap.data()?['aforoDisponible'];
+        if (aforo is int && aforo > 0 && aforo != _aforoDisponible) {
+          _aforoDisponible = aforo;
+          notifyListeners();
+        }
+      }).catchError((e) => debugPrint('No se pudo leer el aforo: $e'));
+      return;
+    }
     _conexionSubscription?.cancel();
     _conexionSubscription = FirebaseFirestore.instance
         .collection('configuracion')
@@ -241,6 +251,13 @@ class AppProvider extends ChangeNotifier {
         .snapshots(includeMetadataChanges: true)
         .listen((snap) {
       _actualizarConexion(snap.metadata.isFromCache);
+      // Aforo guardado en Ajustes. Antes no se leía al abrir la app y se
+      // quedaba en el valor por defecto (145) hasta entrar a Configuración.
+      final aforo = snap.data()?['aforoDisponible'];
+      if (aforo is int && aforo > 0 && aforo != _aforoDisponible) {
+        _aforoDisponible = aforo;
+        notifyListeners();
+      }
     }, onError: (e) {
       debugPrint('Error midiendo la conexión: $e');
       _actualizarConexion(true);

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/app_provider.dart';
-import '../widgets/sidebar/app_sidebar.dart';
+import '../widgets/shell/app_rail.dart';
+import '../widgets/shell/barra_superior.dart';
+import '../widgets/sidebar/app_sidebar.dart' show confirmarCierreJornada;
 import 'dashboard/dashboard_screen.dart';
 import 'graduandos/graduandos_screen.dart';
 import 'invitaciones/invitaciones_screen.dart';
@@ -11,113 +13,145 @@ import 'control_acceso/control_acceso_screen.dart';
 import 'notificaciones/notificaciones_screen.dart';
 import 'usuarios/usuarios_screen.dart';
 import 'directivos/directivos_screen.dart';
+import 'bitacora/bitacora_screen.dart';
 import 'configuracion_screen.dart';
 
+/// Armazón de la app después de iniciar sesión: menú lateral a la izquierda,
+/// barra con el título arriba y la pantalla elegida debajo.
+///
+/// Cada opción del menú tiene su pantalla en la MISMA posición de la lista
+/// (`_admin` y `_operador`): el menú envía el índice y aquí se usa ese
+/// índice para elegir qué mostrar.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // IMPORTANTE: este orden debe coincidir exactamente con el de
-  // `_allItems` en app_sidebar.dart. El menu envia un indice y aqui se
-  // usa ese mismo indice para elegir la pantalla.
-  static final List<Widget> _adminScreens = [
-    const DashboardScreen(),        // 0
-    const GraduandosScreen(),       // 1
-    const InvitacionesScreen(),     // 2
-    const ConfirmacionScreen(),     // 3
-    const ControlAccesoScreen(),    // 4
-    const NotificacionesScreen(),   // 5
-    const DirectivosScreen(),       // 6
-    const UsuariosScreen(),         // 7
-    const ConfiguracionScreen(),    // 8
+  // ── Administrador ──
+  static const _menuAdmin = [
+    OpcionMenu('Inicio', 'Inicio', Icons.home_outlined),
+    OpcionMenu('Graduandos', 'Graduandos', Icons.school_outlined),
+    OpcionMenu('Invitados', 'Invitados', Icons.people_outline),
+    OpcionMenu('Directivos', 'Directivos', Icons.person_outline),
+    OpcionMenu('Acceso', 'Control de acceso', Icons.qr_code_scanner_rounded),
+    OpcionMenu('Correos', 'Correos y recordatorios', Icons.mail_outline),
+    OpcionMenu('Bitácora', 'Bitácora', Icons.list_alt_rounded),
+    OpcionMenu('Ajustes', 'Ajustes', Icons.tune_rounded),
   ];
 
-  static final List<Widget> _operadorScreens = [
-    const DashboardScreen(),        // 0
-    const InvitacionesScreen(),     // 1
-    const ConfirmacionScreen(),     // 2
-    const ControlAccesoScreen(),    // 3
-    const NotificacionesScreen(),   // 4
-    const DirectivosScreen(),       // 5
+  static final List<Widget> _admin = [
+    const DashboardScreen(),
+    const GraduandosScreen(),
+    const PantallaConPestanas(pestanas: [
+      ('Invitaciones', InvitacionesScreen()),
+      ('Confirmaciones', ConfirmacionScreen()),
+    ]),
+    const DirectivosScreen(),
+    const ControlAccesoScreen(),
+    const NotificacionesScreen(),
+    const BitacoraScreen(),
+    const PantallaConPestanas(pestanas: [
+      ('Ceremonia', ConfiguracionScreen()),
+      ('Usuarios', UsuariosScreen()),
+    ]),
   ];
 
-  static final List<String> _adminTitles = [
-    'Dashboard',
-    'Graduandos',
-    'Invitaciones',
-    'Confirmación',
-    'Control de Acceso',
-    'Notificaciones',
-    'Directivos',
-    'Usuarios',
-    'Configuración',
+  // ── Operador de entrada: lo primero que ve es el control de acceso ──
+  static const _menuOperador = [
+    OpcionMenu('Acceso', 'Control de acceso', Icons.qr_code_scanner_rounded),
+    OpcionMenu('Inicio', 'Inicio', Icons.home_outlined),
+    OpcionMenu('Invitados', 'Invitados', Icons.people_outline),
+    OpcionMenu('Directivos', 'Directivos', Icons.person_outline),
   ];
 
-  static final List<String> _operadorTitles = [
-    'Dashboard',
-    'Invitaciones',
-    'Confirmación',
-    'Control de Acceso',
-    'Notificaciones',
-    'Directivos',
+  static final List<Widget> _operador = [
+    const ControlAccesoScreen(),
+    const DashboardScreen(),
+    const PantallaConPestanas(pestanas: [
+      ('Invitaciones', InvitacionesScreen()),
+      ('Confirmaciones', ConfirmacionScreen()),
+    ]),
+    const DirectivosScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final selectedIndex = provider.selectedIndex;
-    final screens = provider.isAdmin ? _adminScreens : _operadorScreens;
-    final titles = provider.isAdmin ? _adminTitles : _operadorTitles;
-    final safeIndex = selectedIndex.clamp(0, screens.length - 1);
+    final menu = provider.isAdmin ? _menuAdmin : _menuOperador;
+    final pantallas = provider.isAdmin ? _admin : _operador;
+    final i = provider.selectedIndex.clamp(0, pantallas.length - 1);
 
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-    final isMobile = screenWidth < 800;
+    final contenido = EnShell(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        // Que cada pantalla ocupe todo el espacio y empiece arriba (por
+        // defecto la animación centra el contenido que es más bajo).
+        layoutBuilder: (actual, anteriores) => Stack(
+          fit: StackFit.expand,
+          children: [...anteriores, if (actual != null) actual],
+        ),
+        child: KeyedSubtree(key: ValueKey(i), child: pantallas[i]),
+      ),
+    );
 
-    if (isMobile) {
+    // Celular: barra arriba y el menú en un panel que se desliza.
+    if (MediaQuery.sizeOf(context).width < 800) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: Text(
-            titles[safeIndex],
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Colors.white,
-            ),
-          ),
-          backgroundColor: AppColors.sidebarBg,
+          title: Text(menu[i].titulo),
+          backgroundColor: AppColors.rail,
           foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          elevation: 1,
         ),
-        // enDrawer: el menú se cierra solo al elegir una opción
-        drawer: const Drawer(
-          child: AppSidebar(enDrawer: true),
-        ),
-        body: Container(
-          color: AppColors.background, // antes: Color(0xFFF3F4F6) fijo
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: screens[safeIndex],
+        drawer: Drawer(
+          backgroundColor: AppColors.rail,
+          child: SafeArea(
+            child: ListView(
+              children: [
+                for (var k = 0; k < menu.length; k++)
+                  ListTile(
+                    leading: Icon(menu[k].icono, color: Colors.white),
+                    title: Text(menu[k].titulo, style: const TextStyle(color: Colors.white)),
+                    selected: k == i,
+                    selectedTileColor: AppColors.boton,
+                    onTap: () {
+                      provider.setSelectedIndex(k);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                const Divider(color: Colors.white24),
+                ListTile(
+                  leading: const Icon(Icons.event_busy_rounded, color: Colors.white),
+                  title: const Text('Cerrar jornada', style: TextStyle(color: Colors.white)),
+                  onTap: () => confirmarCierreJornada(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: Colors.white),
+                  title: const Text('Cerrar sesión', style: TextStyle(color: Colors.white)),
+                  onTap: () => provider.logout(),
+                ),
+              ],
+            ),
           ),
         ),
-      );
-    } else {
-      return Scaffold(
-        body: Row(
-          children: [
-            const AppSidebar(),
-            Expanded(
-              // Aísla el repintado del contenido mientras el sidebar se anima
-              child: RepaintBoundary(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: screens[safeIndex],
-                ),
-              ),
-            ),
-          ],
-        ),
+        body: contenido,
       );
     }
+
+    // Tablet y computador: menú lateral fijo de 100 px.
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Row(
+        children: [
+          AppRail(opciones: menu),
+          Expanded(
+            child: Column(
+              children: [
+                BarraSuperior(titulo: menu[i].titulo),
+                Expanded(child: RepaintBoundary(child: contenido)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

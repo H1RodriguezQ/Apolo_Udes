@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../widgets/shell/barra_superior.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/validators/validadores_graduando.dart';
 import '../../../data/models/models.dart';
@@ -344,7 +345,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Graduandos', style: AppTextStyles.h1),
+                          if (!EnShell.de(context)) Text('Graduandos', style: AppTextStyles.h1),
                           Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
                         ],
                       ),
@@ -362,7 +363,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Graduandos', style: AppTextStyles.h1),
+                        if (!EnShell.de(context)) Text('Graduandos', style: AppTextStyles.h1),
                         Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
                       ],
                     ),
@@ -428,8 +429,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               )
             : const Icon(Icons.upload_file_rounded, size: 18),
-        label: Text(_importando ? 'Importando...' : 'Subir Excel'),
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+        label: Text(_importando ? 'Importando...' : 'Importar Excel'),
       ),
       const SizedBox(width: 8),
       ElevatedButton.icon(
@@ -443,7 +443,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
           onPressed: _importando ? null : _borrarTodo,
           icon: const Icon(Icons.delete_sweep_rounded, size: 18),
           label: const Text('Borrar'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
         ),
       ],
     ];

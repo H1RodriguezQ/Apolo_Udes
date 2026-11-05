@@ -38,7 +38,7 @@ class ConfirmacionScreen extends StatelessWidget {
                   onPressed: () => _limpiar(context, provider),
                   icon: const Icon(Icons.delete_sweep_rounded, size: 18),
                   label: Text(isMobile ? 'Limpiar' : 'Limpiar registros'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
                 ),
             ],
           ),

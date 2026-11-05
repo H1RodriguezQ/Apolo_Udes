@@ -174,8 +174,7 @@ class DirectivosScreen extends StatelessWidget {
                           onPressed: () => _limpiarTodo(context, provider),
                           icon: const Icon(Icons.delete_sweep_rounded, size: 18),
                           label: const Text('Limpiar'),
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.error),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
                         ),
                       ),
                   ])
@@ -204,8 +203,7 @@ class DirectivosScreen extends StatelessWidget {
                       onPressed: () => _limpiarTodo(context, provider),
                       icon: const Icon(Icons.delete_sweep_rounded, size: 18),
                       label: const Text('Limpiar'),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.error),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
                     ),
                 ] else
                   const _SoloLectura(),

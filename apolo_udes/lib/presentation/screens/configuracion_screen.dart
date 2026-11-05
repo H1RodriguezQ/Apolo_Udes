@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../providers/app_provider.dart';
 import '../widgets/common/selector_tema.dart';
+import 'package:apolo_udes/presentation/widgets/shell/barra_superior.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});
@@ -318,8 +319,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Configuración del Evento', style: AppTextStyles.h1),
-                    const SizedBox(height: 4),
+                    if (!EnShell.de(context)) ...[
+                      Text('Configuración del Evento', style: AppTextStyles.h1),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
                       'Fecha, hora, aforo, lugar y facultades',
                       style: TextStyle(

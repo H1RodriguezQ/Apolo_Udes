@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../providers/app_provider.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -107,481 +108,234 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 900;
+    // Rediseño: a la izquierda la identidad de la universidad y para qué
+    // sirve Apolo; a la derecha el formulario. En pantallas angostas solo
+    // se muestra el formulario con el logo encima.
+    final ancho = MediaQuery.sizeOf(context).width;
+    final angosto = ancho < 900;
 
-    if (isMobile) {
-      return _buildMobile();
-    } else {
-      return _buildDesktop();
-    }
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: Row(
+          children: [
+            if (!angosto) const Expanded(flex: 13, child: _PanelInstitucional()),
+            Expanded(
+              flex: 21,
+              child: Stack(
+                children: [
+                  Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: Column(
+                          children: [
+                            if (angosto) ...[
+                              const _LogoUdes(),
+                              const SizedBox(height: 24),
+                            ],
+                            _formulario(),
+                            const SizedBox(height: 16),
+                            Text(AppConstants.appVersion, style: AppTextStyles.caption),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(top: 24, right: 28, child: _BotonTemaLogin()),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Widget _buildMobile() {
-    return Scaffold(
-      // Mismo color del panel: así el espacio debajo del formulario no
-      // queda de otro color (antes se veía una franja negra abajo).
-      backgroundColor: AppColors.surface,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F2347), Color(0xFF1A3A6B)],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/udes_logo.png',
-                            width: 56,
-                            height: 56,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Apolo UDES',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800)),
-                            Text('Sistema de Gestión',
-                                style: TextStyle(
-                                    color: Color(0xFFB8CCE8), fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ],
+  Widget _formulario() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 520),
+      padding: const EdgeInsets.fromLTRB(40, 40, 40, 40),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Form(
+        key: _formKey,
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Iniciar sesión', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+              const SizedBox(height: 6),
+              Text('Use la cuenta que le asignó el administrador.', style: AppTextStyles.label.copyWith(fontSize: 14)),
+              const SizedBox(height: 28),
+              Text('Correo', style: _etiqueta),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _correoController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(hintText: _emailHint),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Escriba su correo' : null,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: Text('Contraseña', style: _etiqueta)),
+                  InkWell(
+                    onTap: _isLoading ? null : _recuperarContrasena,
+                    child: Text('¿Olvidó su contraseña?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.primary,
+                        )),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                autofillHints: const [AutofillHints.password],
+                onFieldSubmitted: (_) => _login(),
+                decoration: InputDecoration(
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        color: AppColors.textSecondary),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
+                validator: (v) => (v == null || v.isEmpty) ? 'Escriba su contraseña' : null,
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
                 Container(
-                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.surface, // antes: Colors.white fijo
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(28),
-                      topRight: Radius.circular(28),
-                    ),
+                    color: AppColors.errorLight,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppColors.errorLight,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color:
-                                        AppColors.error.withValues(alpha: 0.3)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock_rounded,
-                                      size: 12, color: AppColors.error),
-                                  SizedBox(width: 6),
-                                  Text('ACCESO RESTRINGIDO',
-                                      style: TextStyle(
-                                          color: AppColors.error,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.8)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text('Iniciar Sesión',
-                                style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.5)),
-                            const SizedBox(height: 6),
-                            Text(
-                                'Ingresa tus credenciales institucionales',
-                                style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 13)),
-                            const SizedBox(height: 20),
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Correo Institucional',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary)),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _correoController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    decoration: const InputDecoration(
-                                        hintText: _emailHint,
-                                        prefixIcon:
-                                            Icon(Icons.email_outlined)),
-                                    validator: (v) => v == null || v.isEmpty
-                                        ? 'Ingresa tu correo'
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text('Contraseña',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary)),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _passwordController,
-                                    obscureText: _obscurePassword,
-                                    decoration: InputDecoration(
-                                      hintText: '••••••••',
-                                      prefixIcon:
-                                          const Icon(Icons.lock_outlined),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(_obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
-                                      ),
-                                    ),
-                                    validator: (v) => v == null || v.isEmpty
-                                        ? 'Ingresa tu contraseña'
-                                        : null,
-                                    onFieldSubmitted: (_) => _login(),
-                                  ),
-                                  if (_errorMessage != null) ...[
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.errorLight,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.error_outline,
-                                              color: AppColors.error, size: 16),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(_errorMessage!,
-                                                style: const TextStyle(
-                                                    color: AppColors.error,
-                                                    fontSize: 13)),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 24),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50,
-                                    child: ElevatedButton(
-                                      onPressed: _isLoading ? null : _login,
-                                      child: _isLoading
-                                          ? const SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(
-                                                  color: Colors.white,
-                                                  strokeWidth: 2.5))
-                                          : const FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text('Ingresar'),
-                                            ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Center(
-                              child: Text(AppConstants.appVersion,
-                                  style: AppTextStyles.caption),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: Text(_errorMessage!, style: TextStyle(color: AppColors.errorText, fontSize: 13)),
                 ),
               ],
-            ),
+              const SizedBox(height: 28),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                      : const Text('Ingresar', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDesktop() {
-    return Scaffold(
-      // antes: AppColors.primary, que en modo oscuro es un azul claro
-      backgroundColor: AppColors.sidebarBg,
-      body: Row(
+  TextStyle get _etiqueta => TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary);
+}
+
+/// Mitad izquierda del login: logo, línea dorada y para qué sirve Apolo.
+class _PanelInstitucional extends StatelessWidget {
+  const _PanelInstitucional();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.isDark ? AppColors.header : const Color(0xFFFAFAF8),
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      padding: const EdgeInsets.fromLTRB(58, 56, 58, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 5,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F2347),
-                    Color(0xFF1A3A6B),
-                    Color(0xFF1E4D8C),
-                  ],
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(48),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/udes_logo.png',
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    const Text('Apolo UDES',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 40,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1)),
-                    const SizedBox(height: 12),
-                    const Text('Sistema de Gestión de\nCeremonia de Grado',
-                        style: TextStyle(
-                            color: Color(0xFFB8CCE8),
-                            fontSize: 18,
-                            height: 1.5)),
-                  ],
-                ),
-              ),
+          // En modo oscuro el logo va sobre un recuadro blanco para que se lea.
+          Container(
+            padding: AppColors.isDark ? const EdgeInsets.all(10) : EdgeInsets.zero,
+            decoration: BoxDecoration(
+              color: AppColors.isDark ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: const _LogoUdes(),
           ),
-          Expanded(
-            flex: 4,
-            child: Container(
-              color: AppColors.background,
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(48),
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 400),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppColors.errorLight,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color:
-                                        AppColors.error.withValues(alpha: 0.3)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.lock_rounded,
-                                      size: 12, color: AppColors.error),
-                                  SizedBox(width: 6),
-                                  Text(AppConstants.accessRestricted,
-                                      style: TextStyle(
-                                          color: AppColors.error,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.8)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text('Iniciar Sesión',
-                                style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.5)),
-                            const SizedBox(height: 8),
-                            Text(
-                                'Ingresa tus credenciales institucionales',
-                                style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 14)),
-                            const SizedBox(height: 24),
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Correo Institucional',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary)),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _correoController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    decoration: const InputDecoration(
-                                        hintText: _emailHint,
-                                        prefixIcon:
-                                            Icon(Icons.email_outlined)),
-                                    validator: (v) => v == null || v.isEmpty
-                                        ? 'Ingresa tu correo'
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Text('Contraseña',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary)),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _passwordController,
-                                    obscureText: _obscurePassword,
-                                    decoration: InputDecoration(
-                                      hintText: '••••••••',
-                                      prefixIcon:
-                                          const Icon(Icons.lock_outlined),
-                                      suffixIcon: IconButton(
-                                        icon: Icon(_obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined),
-                                        onPressed: () => setState(() =>
-                                            _obscurePassword =
-                                                !_obscurePassword),
-                                      ),
-                                    ),
-                                    validator: (v) => v == null || v.isEmpty
-                                        ? 'Ingresa tu contraseña'
-                                        : null,
-                                    onFieldSubmitted: (_) => _login(),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: _recuperarContrasena,
-                                      child: const Text(
-                                          '¿Olvidaste tu contraseña?',
-                                          style: TextStyle(
-                                              color: AppColors.primaryLight,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500)),
-                                    ),
-                                  ),
-                                  if (_errorMessage != null) ...[
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.errorLight,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.error_outline,
-                                              color: AppColors.error, size: 16),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(_errorMessage!,
-                                                style: const TextStyle(
-                                                    color: AppColors.error,
-                                                    fontSize: 13)),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 28),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50,
-                                    child: ElevatedButton(
-                                      onPressed: _isLoading ? null : _login,
-                                      child: _isLoading
-                                          ? const SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(
-                                                  color: Colors.white,
-                                                  strokeWidth: 2.5))
-                                          : const FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text('Ingresar'),
-                                            ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 48),
-                            Center(
-                              child: Text(AppConstants.appVersion,
-                                  style: AppTextStyles.caption),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          const Spacer(),
+          Container(width: 58, height: 4, color: AppColors.accent),
+          const SizedBox(height: 28),
+          Text('Apolo UDES',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          const SizedBox(height: 12),
+          Text('Registro de graduandos y control de acceso a las ceremonias de grado.',
+              style: TextStyle(fontSize: 30, height: 1.3, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+          const SizedBox(height: 18),
+          Text('Uso exclusivo del personal de la universidad en las tablets de registro y de las entradas.',
+              style: AppTextStyles.label.copyWith(fontSize: 15, height: 1.6)),
+          const Spacer(),
+          Divider(color: AppColors.border),
+          const SizedBox(height: 16),
+          Text('Universidad de Santander · Campus Lagos del Cacique, Bucaramanga',
+              style: AppTextStyles.bodySmall.copyWith(fontSize: 13)),
         ],
       ),
+    );
+  }
+}
+
+class _BotonTemaLogin extends StatelessWidget {
+  const _BotonTemaLogin();
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = context.watch<ThemeProvider>();
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(44, 44)),
+        onPressed: tema.siguiente,
+        child: Icon(AppColors.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            size: 20, color: AppColors.textPrimary),
+      ),
+    );
+  }
+}
+
+/// Escudo y nombre de la universidad.
+class _LogoUdes extends StatelessWidget {
+  const _LogoUdes();
+
+  @override
+  Widget build(BuildContext context) {
+    const azul = Color(0xFF0B4A99);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset('assets/images/udes_escudo.png', height: 78),
+        const SizedBox(width: 14),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Universidad', style: TextStyle(fontSize: 26, height: 1.05, fontWeight: FontWeight.w700, color: azul)),
+            Text('de Santander', style: TextStyle(fontSize: 26, height: 1.05, fontWeight: FontWeight.w700, color: azul)),
+            SizedBox(height: 4),
+            Text('UDES', style: TextStyle(fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w600, color: azul)),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -1,72 +1,121 @@
 import 'package:flutter/material.dart';
 
+// ============================================================================
+// Tema de Apolo UDES (rediseño para tablets, noviembre de 2026).
+//
+// Los colores salen del lienzo de diseño: azul institucional de la UDES,
+// fondo gris cálido y tarjetas blancas con borde fino. Cada color que cambia
+// entre modo claro y oscuro está en `_Paleta`; las pantallas los leen con
+// `AppColors.<nombre>` y así no tienen que preguntar en qué modo están.
+// ============================================================================
+
 /// Colores que cambian entre modo claro y oscuro.
 class _Paleta {
-  final Color primary;
-  final Color background;
-  final Color surface;
-  final Color surfaceVariant;
+  final Color primary; // enlaces y textos de acento
+  final Color boton; // fondo de los botones principales
+  final Color background; // fondo de la pantalla
+  final Color header; // barra superior de cada pantalla
+  final Color surface; // tarjetas
+  final Color surfaceVariant; // encabezados de tabla, campos de solo lectura
   final Color textPrimary;
   final Color textSecondary;
   final Color textHint;
   final Color border;
+  final Color borderFuerte; // borde de los botones secundarios
   final Color divider;
   final Color successLight;
+  final Color successText;
   final Color errorLight;
+  final Color errorText;
   final Color warningLight;
+  final Color warningText;
   final Color infoLight;
+  final Color infoText;
   final Color pendingLight;
+  final Color pista; // fondo de las barras de progreso
+  final Color rail; // menú lateral
+  final Color railBorde;
 
   const _Paleta({
     required this.primary,
+    required this.boton,
     required this.background,
+    required this.header,
     required this.surface,
     required this.surfaceVariant,
     required this.textPrimary,
     required this.textSecondary,
     required this.textHint,
     required this.border,
+    required this.borderFuerte,
     required this.divider,
     required this.successLight,
+    required this.successText,
     required this.errorLight,
+    required this.errorText,
     required this.warningLight,
+    required this.warningText,
     required this.infoLight,
+    required this.infoText,
     required this.pendingLight,
+    required this.pista,
+    required this.rail,
+    required this.railBorde,
   });
 }
 
 const _claro = _Paleta(
-  primary: Color(0xFF1A3A6B),
-  background: Color(0xFFF0F4F8),
+  primary: Color(0xFF0A4A98),
+  boton: Color(0xFF0B4A99),
+  background: Color(0xFFECEEE9),
+  header: Color(0xFFFFFFFF),
   surface: Color(0xFFFFFFFF),
-  surfaceVariant: Color(0xFFE8EFF7),
-  textPrimary: Color(0xFF1E293B),
-  textSecondary: Color(0xFF64748B),
-  textHint: Color(0xFF94A3B8),
-  border: Color(0xFFE2E8F0),
-  divider: Color(0xFFF1F5F9),
-  successLight: Color(0xFFD1FAE5),
-  errorLight: Color(0xFFFEE2E2),
-  warningLight: Color(0xFFFEF3C7),
-  infoLight: Color(0xFFDBEAFE),
-  pendingLight: Color(0xFFEDE9FE),
+  surfaceVariant: Color(0xFFF5F6F3),
+  textPrimary: Color(0xFF1B2433),
+  textSecondary: Color(0xFF5B6472),
+  textHint: Color(0xFF8A919C),
+  border: Color(0xFFDCDFD8),
+  borderFuerte: Color(0xFFC9CDC5),
+  divider: Color(0xFFE5E7E2),
+  successLight: Color(0xFFDCEFE2),
+  successText: Color(0xFF1D5E37),
+  errorLight: Color(0xFFF8DCD8),
+  errorText: Color(0xFF8F2A1F),
+  warningLight: Color(0xFFFBE6CC),
+  warningText: Color(0xFF80460D),
+  infoLight: Color(0xFFE4E9F1),
+  infoText: Color(0xFF2B3C5C),
+  pendingLight: Color(0xFFE9E4F3),
+  pista: Color(0xFFE7E9E4),
+  rail: Color(0xFF06387A),
+  railBorde: Color(0xFF5D7FB0),
 );
 
 const _oscuro = _Paleta(
-  primary: Color(0xFF93B4F0),
-  background: Color(0xFF0B1220),
-  surface: Color(0xFF131C2E),
-  surfaceVariant: Color(0xFF1B2640),
-  textPrimary: Color(0xFFE2E8F0),
-  textSecondary: Color(0xFF94A3B8),
-  textHint: Color(0xFF64748B),
-  border: Color(0xFF26324A),
-  divider: Color(0xFF1C2740),
-  successLight: Color(0xFF0F3B2E),
-  errorLight: Color(0xFF4A1D1D),
-  warningLight: Color(0xFF4A3510),
-  infoLight: Color(0xFF172B54),
-  pendingLight: Color(0xFF2E2352),
+  primary: Color(0xFF8FB4EA),
+  boton: Color(0xFF2F6BC4),
+  background: Color(0xFF0F141C),
+  header: Color(0xFF141B25),
+  surface: Color(0xFF171E29),
+  surfaceVariant: Color(0xFF1E2733),
+  textPrimary: Color(0xFFE6EBF2),
+  textSecondary: Color(0xFFA3ADBB),
+  textHint: Color(0xFF7D8796),
+  border: Color(0xFF2B3442),
+  borderFuerte: Color(0xFF3A4556),
+  divider: Color(0xFF263040),
+  successLight: Color(0xFF173828),
+  successText: Color(0xFF8FE0B4),
+  errorLight: Color(0xFF3D1C19),
+  errorText: Color(0xFFF5B0A6),
+  warningLight: Color(0xFF3A2B14),
+  warningText: Color(0xFFF3CC8A),
+  infoLight: Color(0xFF1F2B3D),
+  infoText: Color(0xFFB8C9E6),
+  pendingLight: Color(0xFF2A2440),
+  pista: Color(0xFF252F3D),
+  rail: Color(0xFF0A1426),
+  railBorde: Color(0xFF3B4A63),
 );
 
 class AppColors {
@@ -76,59 +125,75 @@ class AppColors {
 
   // ── Cambian según el modo ──
   static Color get primary => _p.primary;
+  static Color get boton => _p.boton;
   static Color get background => _p.background;
+  static Color get header => _p.header;
   static Color get surface => _p.surface;
   static Color get surfaceVariant => _p.surfaceVariant;
   static Color get textPrimary => _p.textPrimary;
   static Color get textSecondary => _p.textSecondary;
   static Color get textHint => _p.textHint;
   static Color get border => _p.border;
+  static Color get borderFuerte => _p.borderFuerte;
   static Color get divider => _p.divider;
   static Color get successLight => _p.successLight;
+  static Color get successText => _p.successText;
   static Color get errorLight => _p.errorLight;
+  static Color get errorText => _p.errorText;
   static Color get warningLight => _p.warningLight;
+  static Color get warningText => _p.warningText;
   static Color get infoLight => _p.infoLight;
+  static Color get infoText => _p.infoText;
   static Color get pendingLight => _p.pendingLight;
+  static Color get pista => _p.pista;
+  static Color get rail => _p.rail;
+  static Color get railBorde => _p.railBorde;
 
   // ── Iguales en ambos modos ──
-  static const Color primaryLight = Color(0xFF2563EB);
-  static const Color primaryDark = Color(0xFF0F2347);
-  static const Color accent = Color(0xFFF59E0B);
-  static const Color accentLight = Color(0xFFFBBF24);
+  // Se dejan los mismos nombres de antes para no tener que tocar cada
+  // pantalla; solo cambian los tonos a los del diseño nuevo.
+  static const Color primaryLight = Color(0xFF0B4A99);
+  static const Color primaryDark = Color(0xFF06387A);
+  static const Color accent = Color(0xFFC4956A); // línea dorada del login
+  static const Color accentLight = Color(0xFFE0BE96);
 
-  static const Color sidebarBg = Color(0xFF0F2347);
-  static const Color sidebarActive = Color(0xFF2563EB);
-  static const Color sidebarText = Color(0xFFB8CCE8);
+  static const Color sidebarBg = Color(0xFF06387A);
+  static const Color sidebarActive = Color(0xFF0B4A99);
+  static const Color sidebarText = Color(0xFFC7D4E8);
   static const Color sidebarTextActive = Color(0xFFFFFFFF);
 
-  static const Color success = Color(0xFF10B981);
-  static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color info = Color(0xFF3B82F6);
-  static const Color pending = Color(0xFF8B5CF6);
+  // Colores de estado para iconos, gráficos y textos sobre fondo claro.
+  static const Color success = Color(0xFF2E7D4F);
+  static const Color error = Color(0xFFB3382B);
+  static const Color warning = Color(0xFFB26A16);
+  static const Color info = Color(0xFF0B4A99);
+  static const Color pending = Color(0xFF6A5AA8);
+
+  // Serie de los gráficos (entradas, facultades): tonos del mismo azul.
+  static const Color serie1 = Color(0xFF0B4A99);
+  static const Color serie2 = Color(0xFF9DB5DC);
 
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 }
 
 class AppTextStyles {
-  static const String fontFamily = 'Roboto';
+  static const String fontFamily = 'IBMPlexSans';
+  static const String fontMono = 'IBMPlexMono';
 
   static TextStyle get h1 => TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-        letterSpacing: -0.5,
-      );
-
-  static TextStyle get h2 => TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
-        letterSpacing: -0.3,
+      );
+
+  static TextStyle get h2 => TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
       );
 
   static TextStyle get h3 => TextStyle(
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       );
@@ -153,7 +218,7 @@ class AppTextStyles {
 
   static TextStyle get label => TextStyle(
         fontSize: 13,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       );
 
@@ -161,7 +226,15 @@ class AppTextStyles {
         fontSize: 11,
         fontWeight: FontWeight.w400,
         color: AppColors.textHint,
-        letterSpacing: 0.2,
+      );
+
+  /// Números, horas y códigos: letra de ancho fijo para que no "bailen".
+  static TextStyle mono({double size = 14, FontWeight peso = FontWeight.w400, Color? color}) =>
+      TextStyle(
+        fontFamily: fontMono,
+        fontSize: size,
+        fontWeight: peso,
+        color: color ?? AppColors.textPrimary,
       );
 }
 
@@ -170,15 +243,17 @@ class AppTheme {
   static ThemeData get dark => _build(_oscuro, Brightness.dark);
 
   static ThemeData _build(_Paleta p, Brightness brillo) {
+    final redondeo = BorderRadius.circular(8);
     return ThemeData(
       useMaterial3: true,
       brightness: brillo,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: _claro.primary, // mismo seed original (0xFF1A3A6B)
+        seedColor: _claro.boton,
         brightness: brillo,
       ).copyWith(
-        primary: p.primary,
-        secondary: AppColors.primaryLight,
+        primary: p.boton,
+        onPrimary: Colors.white,
+        secondary: p.primary,
         surface: p.surface,
         onSurface: p.textPrimary,
         onSurfaceVariant: p.textSecondary,
@@ -190,48 +265,102 @@ class AppTheme {
       fontFamily: AppTextStyles.fontFamily,
       cardTheme: CardThemeData(
         color: p.surface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: p.border, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
-      dialogTheme: DialogThemeData(backgroundColor: p.surface),
+      dialogTheme: DialogThemeData(
+        backgroundColor: p.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: p.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: p.border),
+          borderRadius: redondeo,
+          borderSide: BorderSide(color: p.borderFuerte),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: p.border),
+          borderRadius: redondeo,
+          borderSide: BorderSide(color: p.borderFuerte),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide:
-              const BorderSide(color: AppColors.primaryLight, width: 2),
+          borderRadius: redondeo,
+          borderSide: BorderSide(color: p.boton, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         hintStyle: TextStyle(fontSize: 14, color: p.textHint),
+        labelStyle: TextStyle(fontSize: 14, color: p.textSecondary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryLight,
+          backgroundColor: p.boton,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: redondeo),
           textStyle: const TextStyle(
+            fontFamily: AppTextStyles.fontFamily,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: p.textPrimary,
+          backgroundColor: p.surface,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          side: BorderSide(color: p.borderFuerte),
+          shape: RoundedRectangleBorder(borderRadius: redondeo),
+          textStyle: const TextStyle(
+            fontFamily: AppTextStyles.fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: p.primary,
+          textStyle: const TextStyle(
+            fontFamily: AppTextStyles.fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: p.surfaceVariant,
+        side: BorderSide(color: p.border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        labelStyle: TextStyle(fontSize: 13, color: p.textPrimary),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: WidgetStatePropertyAll(p.surfaceVariant),
+        headingTextStyle: TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: p.textSecondary,
+        ),
+        dataTextStyle: TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 14,
+          color: p.textPrimary,
+        ),
+        dividerThickness: 1,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: redondeo),
       ),
       dividerTheme: DividerThemeData(
         color: p.divider,
