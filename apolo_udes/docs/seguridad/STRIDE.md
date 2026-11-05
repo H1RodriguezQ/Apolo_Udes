@@ -1,4 +1,4 @@
-# Análisis de amenazas de Apolo UDES (STRIDE)
+﻿# Análisis de amenazas de Apolo UDES (STRIDE)
 
 Revisión hecha en noviembre de 2026 sobre la versión del repositorio con los
 arreglos de seguridad (QR de un solo uso, borrado local al cerrar jornada,
@@ -36,7 +36,7 @@ Storage cerrado y regeneración de códigos).
 | S-06 | Suplantación | Llaves de API web y Android sin restricciones | Restringir por dominio (`apolo-udes.web.app`) y por paquete y huella SHA-1 de la app Android en Google Cloud | Captura de las restricciones | Pendiente |
 | S-07 | Manipulación | Volver a correr `crear-espejo-publico.js` reiniciaba `cuposUsados` y borraba `invitadosPermitidos`, lo que dejaba registrar más invitados de la cuenta o bloqueaba el tercer cupo | El script escribe con `merge` y copia `invitadosPermitidos` | Revisión del código | Corregido |
 | S-08 | Denegación de servicio | `asignar-rol.js` asignaba el rol `visualizador`, que las reglas no reconocen: la cuenta quedaba sin acceso | Roles iguales a las reglas: `admin`, `operador`, `consulta` | Revisión del código | Corregido |
-| S-09 | Divulgación de información | Diez documentos de prueba tienen IDs que se pueden adivinar (hora en milisegundos o `XLSX...`) | Borrarlos antes de la ceremonia de enero | Lista que imprime `regenerar-codigos.js` | Pendiente |
+| S-09 | Divulgación de información | Diez documentos de prueba tienen IDs que se pueden adivinar (hora en milisegundos o `XLSX...`) | Se borraron con `borrar-pruebas.js` (29 documentos, con respaldo y registro en la bitácora) | Salida del script antes (29) y después (0) | Corregido |
 | S-10 | Repudio | Un operador niega haber validado una entrada | `validaciones` y `auditoria` son de solo inserción, con `operadorId == uid` y hora del servidor | Pruebas de reglas secciones E y F | Controlado desde el diseño |
 | S-11 | Divulgación de información | Alguien descarga la lista completa de graduandos o invitados | `list` negado a anónimos; solo el personal con perfil activo lista | Pruebas de reglas sección A | Controlado desde el diseño |
 | S-12 | Denegación de servicio | Se cae internet durante la ceremonia | La tablet sigue validando con su caché y envía los usos al volver la conexión | Prueba en la tablet en modo avión | Por probar |
