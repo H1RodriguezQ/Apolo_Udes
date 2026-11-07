@@ -5,6 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
+import '../../widgets/common/apolo_ui.dart';
+import '../../navegacion.dart';
 
 class InvitacionesScreen extends StatefulWidget {
   const InvitacionesScreen({super.key});
@@ -17,234 +19,153 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
   final Set<String> _enviando = {};
   bool _enviandoRecordatorios = false;
 
+  String _filtro = 'todos';
+  String _busqueda = '';
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final invitaciones = provider.invitaciones;
     final isAdmin = provider.isAdmin;
 
-    final confirmadas =
-        invitaciones.where((i) => i.estado == EstadoInvitacion.confirmada).length;
-    final rechazadas =
-        invitaciones.where((i) => i.estado == EstadoInvitacion.rechazada).length;
+    // La cédula está en la lista de confirmaciones (mismo id de documento).
+    final cedulas = {for (final c in provider.confirmaciones) c.id: c.documento};
+    final graduandos = invitaciones.map((i) => i.graduandoId).toSet().length;
 
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    bool sinConfirmar(Invitacion i) =>
+        i.estado == EstadoInvitacion.enviada || i.estado == EstadoInvitacion.pendiente;
+    final cuenta = {
+      'todos': invitaciones.where((i) => i.estado != EstadoInvitacion.anulada).length,
+      'confirmaron': invitaciones.where((i) => i.estado == EstadoInvitacion.confirmada).length,
+      'sin': invitaciones.where(sinConfirmar).length,
+      'no': invitaciones.where((i) => i.estado == EstadoInvitacion.rechazada).length,
+      'anulados': invitaciones.where((i) => i.estado == EstadoInvitacion.anulada).length,
+    };
+
+    final q = _busqueda.trim().toLowerCase();
+    final filtradas = invitaciones.where((i) {
+      final pasa = switch (_filtro) {
+        'confirmaron' => i.estado == EstadoInvitacion.confirmada,
+        'sin' => sinConfirmar(i),
+        'no' => i.estado == EstadoInvitacion.rechazada,
+        'anulados' => i.estado == EstadoInvitacion.anulada,
+        _ => i.estado != EstadoInvitacion.anulada,
+      };
+      if (!pasa) return false;
+      if (q.isEmpty) return true;
+      return i.invitado.toLowerCase().contains(q) ||
+          i.graduandoNombre.toLowerCase().contains(q) ||
+          (cedulas[i.id] ?? '').contains(q);
+    }).toList();
+
+    return PantallaApolo(
+      encabezado: EncabezadoPantalla(
+        titulo: 'Invitados',
+        detalle: '${cuenta['todos']} registrados por $graduandos graduandos',
+        acciones: [
+          if (isAdmin && invitaciones.isNotEmpty)
+            BotonSecundario(texto: 'Borrar todas', peligro: true, onPressed: () => _borrarTodas(context, provider)),
+          if (isAdmin)
+            BotonSecundario(
+              texto: 'Enviar recordatorio',
+              onPressed: () => provider.setSelectedIndex(Nav.recordatorio),
+            ),
+        ],
+      ),
+      cuerpo: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: SectionHeader(
-                  title: 'Invitaciones',
-                  subtitle: '${invitaciones.length} invitaciones registradas',
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: FiltroSegmentado<String>(
+                    valor: _filtro,
+                    onChanged: (v) => setState(() => _filtro = v),
+                    opciones: [
+                      ('todos', 'Todos', cuenta['todos']),
+                      ('confirmaron', 'Confirmaron', cuenta['confirmaron']),
+                      ('sin', 'Sin confirmar', cuenta['sin']),
+                      ('no', 'No asistirán', cuenta['no']),
+                      ('anulados', 'Anulados', cuenta['anulados']),
+                    ],
+                  ),
                 ),
               ),
-              if (isAdmin && invitaciones.isNotEmpty) ...[
-                ElevatedButton.icon(
-                  onPressed: () => _borrarTodas(context, provider),
-                  icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                  label: const Text('Borrar todas'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 260,
+                child: CampoConEtiqueta(
+                  etiqueta: 'Buscar',
+                  campo: CampoBusqueda(
+                    hint: 'Invitado, cédula o graduando',
+                    onChanged: (v) => setState(() => _busqueda = v),
+                  ),
                 ),
-                const SizedBox(width: 10),
-              ],
-              // Solo el administrador pide correos: los envía el servidor y
-              // las reglas de Firestore no aceptan peticiones de otros roles.
-              if (isAdmin && invitaciones.isNotEmpty) ...[
-                ElevatedButton.icon(
-                  onPressed: _enviandoRecordatorios ? null : () => _enviarRecordatorios(context, provider),
-                  icon: _enviandoRecordatorios
-                      ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded, size: 18),
-                  label: Text(_enviandoRecordatorios ? 'Enviando...' : 'Enviar recordatorios'),
-                ),
-              ],
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              _MiniMetric(
-                label: 'Confirmadas',
-                value: '$confirmadas',
-                color: AppColors.success,
-                icon: Icons.check_circle_rounded,
-              ),
-              const SizedBox(width: 12),
-              _MiniMetric(
-                label: 'Rechazadas',
-                value: '$rechazadas',
-                color: AppColors.error,
-                icon: Icons.cancel_rounded,
-              ),
-              const SizedBox(width: 12),
-              _MiniMetric(
-                label: 'Pendientes',
-                value: '${invitaciones.where((i) => i.estado == EstadoInvitacion.pendiente).length}',
-                color: AppColors.warning,
-                icon: Icons.schedule_rounded,
-              ),
-              const SizedBox(width: 12),
-              _MiniMetric(
-                label: 'Enviadas',
-                value: '${invitaciones.where((i) => i.estado == EstadoInvitacion.enviada).length}',
-                color: AppColors.info,
-                icon: Icons.send_rounded,
-              ),
-              const SizedBox(width: 12),
-              // Las anuladas se cuentan aparte de las rechazadas: las anula
-              // la universidad (y su cupo quedó libre), las rechaza el invitado.
-              _MiniMetric(
-                label: 'Anuladas',
-                value: '${invitaciones.where((i) => i.estado == EstadoInvitacion.anulada).length}',
-                color: AppColors.textSecondary,
-                icon: Icons.block_rounded,
               ),
             ],
           ),
-
-          const SizedBox(height: 20),
-
+          const SizedBox(height: 16),
           Expanded(
-            child: Card(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: invitaciones.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.mail_outline_rounded,
-                        title: 'Sin invitaciones',
-                        subtitle: 'Las invitaciones aparecerán aquí',
-                      )
-                    : isMobile
-                        ? _InvitacionesList(
-                            invitaciones: invitaciones,
-                            enviando: _enviando,
-                            onEnviar: (inv) => _enviarInvitacion(context, inv),
-                            onAnular: (inv) => _anularInvitado(context, inv),
-                            puedeEnviar: isAdmin,
-                          )
-                        : SingleChildScrollView(
-                        child: Table(
-                          columnWidths: const {
-                            0: FlexColumnWidth(2.5),
-                            1: FlexColumnWidth(2.5),
-                            2: FlexColumnWidth(1.5),
-                            3: FlexColumnWidth(1.5),
-                            4: FlexColumnWidth(1.5),
-                            5: FlexColumnWidth(1.2),
-                          },
-                          children: [
-                            TableRow(
-                              decoration: BoxDecoration(color: AppColors.surfaceVariant),
-                              children: ['Invitado', 'Graduando', 'Tipo', 'Estado', 'Fecha Envío', 'Acción']
-                                  .map((h) => Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        child: Text(h, style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                      ))
-                                  .toList(),
-                            ),
-                            ...invitaciones.asMap().entries.map((entry) {
-                              final i = entry.key;
-                              final inv = entry.value;
-                              final estaEnviando = _enviando.contains(inv.id);
-
-                              return TableRow(
-                                decoration: BoxDecoration(
-                                  color: i.isEven ? Colors.white : const Color(0xFFFAFBFC),
-                                  border: Border(bottom: BorderSide(color: AppColors.divider)),
+            child: TablaApolo(
+              vacio: 'No hay invitados con ese filtro.',
+              columnas: const [
+                ColumnaTabla('Invitado', flex: 4),
+                ColumnaTabla('Graduando', flex: 4),
+                ColumnaTabla('Registrado', flex: 2),
+                ColumnaTabla('Asistencia', flex: 2),
+                ColumnaTabla('Acciones', flex: 2, derecha: true),
+              ],
+              filas: [
+                for (final inv in filtradas)
+                  [
+                    CeldaTexto(inv.invitado,
+                        debajo: [
+                          if ((cedulas[inv.id] ?? '').isNotEmpty) 'C.C. ${cedulas[inv.id]}',
+                          inv.tipo == TipoInvitacion.secundaria ? 'Segundo cupo' : 'Primer cupo',
+                        ].join(' · '),
+                        fuerte: true),
+                    CeldaTexto(inv.graduandoNombre),
+                    CeldaTexto(inv.fechaEnvio == null ? '' : DateFormat('dd/MM/yyyy').format(inv.fechaEnvio!), mono: true),
+                    switch (inv.estado) {
+                      EstadoInvitacion.confirmada => const Etiqueta('Confirmó', tono: TonoEtiqueta.ok),
+                      EstadoInvitacion.rechazada => const Etiqueta('No asistirá', tono: TonoEtiqueta.error),
+                      EstadoInvitacion.anulada => const Etiqueta('Anulado'),
+                      _ => const Etiqueta('Sin confirmar', tono: TonoEtiqueta.aviso),
+                    },
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isAdmin && inv.estado != EstadoInvitacion.anulada)
+                          _enviando.contains(inv.id)
+                              ? const Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                              : AccionFila(
+                                  icono: Icons.mail_outline,
+                                  ayuda: 'Reenviar la invitación',
+                                  onPressed: () => _enviarInvitacion(context, inv),
                                 ),
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    child: Row(
-                                      children: [
-                                        UserAvatar(name: inv.invitado, size: 30),
-                                        const SizedBox(width: 10),
-                                        Expanded(child: Text(inv.invitado, style: AppTextStyles.body)),
-                                      ],
-                                    ),
-                                  ),
-                                  _cell(inv.graduandoNombre),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: inv.tipo == TipoInvitacion.principal
-                                            ? AppColors.primaryLight.withValues(alpha: 0.1)
-                                            : AppColors.pending.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        inv.tipo == TipoInvitacion.principal ? 'Principal' : 'Secundaria',
-                                        style: TextStyle(
-                                          color: inv.tipo == TipoInvitacion.principal
-                                              ? AppColors.primaryLight
-                                              : AppColors.pending,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    child: StatusBadge.fromEstadoInvitacion(inv.estado),
-                                  ),
-                                  _cell(inv.fechaEnvio != null
-                                      ? DateFormat('dd/MM/yyyy').format(inv.fechaEnvio!)
-                                      : '—'),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: !isAdmin || inv.estado == EstadoInvitacion.anulada
-                                        // Reenviar y anular son acciones de
-                                        // administrador; un anulado ya no
-                                        // recibe ningún correo.
-                                        ? const SizedBox.shrink()
-                                        : estaEnviando
-                                            ? const SizedBox(
-                                                width: 20, height: 20,
-                                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight),
-                                              )
-                                            : Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  IconButton(
-                                                    icon: const Icon(Icons.send_rounded, size: 18),
-                                                    color: AppColors.primaryLight,
-                                                    tooltip: 'Enviar invitación por correo',
-                                                    onPressed: () => _enviarInvitacion(context, inv),
-                                                  ),
-                                                  IconButton(
-                                                    icon: const Icon(Icons.block_rounded, size: 18),
-                                                    color: AppColors.error,
-                                                    tooltip: 'Anular invitado y liberar su cupo',
-                                                    onPressed: () => _anularInvitado(context, inv),
-                                                  ),
-                                                ],
-                                              ),
-                                  ),
-                                ],
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-              ),
+                        if (isAdmin && inv.estado != EstadoInvitacion.anulada)
+                          AccionFila(
+                            icono: Icons.block_rounded,
+                            ayuda: 'Anular invitado',
+                            peligro: true,
+                            onPressed: () => _anularInvitado(context, inv),
+                          ),
+                      ],
+                    ),
+                  ],
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
   Future<void> _enviarRecordatorios(BuildContext context, AppProvider provider) async {
     setState(() => _enviandoRecordatorios = true);
     try {
@@ -427,142 +348,3 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
   }
 }
 
-class _MiniMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-
-  const _MiniMetric({required this.label, required this.value, required this.color, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
-                  Text(label, style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InvitacionesList extends StatelessWidget {
-  final List<Invitacion> invitaciones;
-  final Set<String> enviando;
-  final Function(Invitacion) onEnviar;
-
-  /// Anular también es una acción de administrador: libera cupos y deja
-  /// registro en la bitácora.
-  final Function(Invitacion) onAnular;
-
-  /// Solo el administrador puede pedirle al servidor que reenvíe un correo.
-  final bool puedeEnviar;
-
-  const _InvitacionesList({
-    required this.invitaciones,
-    required this.enviando,
-    required this.onEnviar,
-    required this.onAnular,
-    required this.puedeEnviar,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: invitaciones.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final inv = invitaciones[i];
-        final estaEnviando = enviando.contains(inv.id);
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Row(
-            children: [
-              UserAvatar(name: inv.invitado, size: 38),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(inv.invitado, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                    if (inv.graduandoNombre.isNotEmpty)
-                      Text(inv.graduandoNombre, style: AppTextStyles.bodySmall),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: inv.tipo == TipoInvitacion.principal
-                              ? AppColors.primaryLight.withValues(alpha: 0.1)
-                              : AppColors.pending.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          inv.tipo == TipoInvitacion.principal ? 'Principal' : 'Secundaria',
-                          style: TextStyle(color: inv.tipo == TipoInvitacion.principal ? AppColors.primaryLight : AppColors.pending, fontSize: 11, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      StatusBadge.fromEstadoInvitacion(inv.estado),
-                    ]),
-                  ],
-                ),
-              ),
-              if (!puedeEnviar || inv.estado == EstadoInvitacion.anulada)
-                const SizedBox.shrink()
-              else if (estaEnviando)
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight))
-              else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.send_rounded, size: 18),
-                      color: AppColors.primaryLight,
-                      tooltip: 'Enviar invitación por correo',
-                      onPressed: () => onEnviar(inv),
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.block_rounded, size: 18),
-                      color: AppColors.error,
-                      tooltip: 'Anular invitado y liberar su cupo',
-                      onPressed: () => onAnular(inv),
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}

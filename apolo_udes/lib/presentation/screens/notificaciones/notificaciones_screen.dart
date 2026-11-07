@@ -1,229 +1,201 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
-import '../../widgets/common/widgets.dart';
+import '../../navegacion.dart';
+import '../../widgets/common/apolo_ui.dart';
 
-class NotificacionesScreen extends StatelessWidget {
+/// "Enviar recordatorio a invitados" (rediseño). A la izquierda se arma el
+/// correo; a la derecha están los envíos anteriores y cómo van.
+///
+/// La app NO manda correos: deja una petición en `solicitudes_correo` y el
+/// servidor (Apps Script) la procesa cada 5 minutos, respetando el límite
+/// diario de Gmail.
+class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final notificaciones = provider.notificaciones;
-    final isMobile = MediaQuery.of(context).size.width < 600;
-
-    // Métricas reales de `solicitudes_correo`: cuántas peticiones están en
-    // cola del servidor, cuántas va procesando y cuántas ya terminaron.
-    final enCola = notificaciones.where((n) => n.estado == EstadoNotificacion.pendiente).length;
-    final enProceso = notificaciones.where((n) => n.estado == EstadoNotificacion.enProceso).length;
-    // `enviado` lo dejan las peticiones de versiones anteriores: se cuenta igual.
-    final terminadas = notificaciones
-        .where((n) =>
-            n.estado == EstadoNotificacion.terminada ||
-            n.estado == EstadoNotificacion.enviado)
-        .length;
-    final conError = notificaciones.where((n) => n.estado == EstadoNotificacion.rechazado).length;
-
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(child: SectionHeader(title: 'Notificaciones', subtitle: 'Gestión de campañas de comunicación')),
-              // Las campañas las manda el servidor; las reglas solo aceptan
-              // peticiones firmadas por un administrador.
-              if (provider.isAdmin)
-                ElevatedButton.icon(
-                  onPressed: () => _mostrarNuevaCampana(context, provider),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Nueva campaña'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          isMobile
-              ? Column(children: [
-                  Row(children: [
-                    _NotifMetric(label: 'En cola', value: '$enCola', color: AppColors.warning, icon: Icons.schedule_send_rounded),
-                    const SizedBox(width: 10),
-                    _NotifMetric(label: 'En proceso', value: '$enProceso', color: AppColors.info, icon: Icons.autorenew_rounded),
-                  ]),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    _NotifMetric(label: 'Terminadas', value: '$terminadas', color: AppColors.success, icon: Icons.check_circle_rounded),
-                    const SizedBox(width: 10),
-                    _NotifMetric(label: 'Con error', value: '$conError', color: AppColors.error, icon: Icons.error_outline_rounded),
-                  ]),
-                ])
-              : Row(children: [
-                  _NotifMetric(label: 'Envíos en cola', value: '$enCola', color: AppColors.warning, icon: Icons.schedule_send_rounded),
-                  const SizedBox(width: 12),
-                  _NotifMetric(label: 'En proceso', value: '$enProceso', color: AppColors.info, icon: Icons.autorenew_rounded),
-                  const SizedBox(width: 12),
-                  _NotifMetric(label: 'Terminadas', value: '$terminadas', color: AppColors.success, icon: Icons.check_circle_rounded),
-                  const SizedBox(width: 12),
-                  _NotifMetric(label: 'Con error', value: '$conError', color: AppColors.error, icon: Icons.error_outline_rounded),
-                ]),
-
-          const SizedBox(height: 16),
-
-          Expanded(
-            child: notificaciones.isEmpty
-                ? const EmptyState(
-                    icon: Icons.campaign_rounded,
-                    title: 'Sin campañas',
-                    subtitle: 'Crea una nueva campaña para enviar notificaciones',
-                  )
-                : ListView.separated(
-                    itemCount: notificaciones.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) => _CampaignCard(
-                      campana: notificaciones[i],
-                      isMobile: isMobile,
-                      // Un fallo se puede reintentar, y solo por administrador.
-                      onReintentar: notificaciones[i].estado ==
-                                  EstadoNotificacion.rechazado &&
-                              provider.isAdmin
-                          ? provider.reintentarCorreo
-                          : null,
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _mostrarNuevaCampana(BuildContext context, AppProvider provider) {
-    showDialog(
-      context: context,
-      builder: (_) => _NuevaCampanaDialog(provider: provider),
-    );
-  }
+  State<NotificacionesScreen> createState() => _NotificacionesScreenState();
 }
 
-class _NuevaCampanaDialog extends StatefulWidget {
-  final AppProvider provider;
-  const _NuevaCampanaDialog({required this.provider});
-
-  @override
-  State<_NuevaCampanaDialog> createState() => _NuevaCampanaDialogState();
-}
-
-class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
-  final _tituloCtrl = TextEditingController();
+class _NotificacionesScreenState extends State<NotificacionesScreen> {
+  final _asuntoCtrl = TextEditingController(text: 'Recuerde confirmar su asistencia a la ceremonia de grado');
   final _mensajeCtrl = TextEditingController();
-  String _destinatarios = 'todos';
+  String _destinatarios = 'pendientes';
   bool _enviando = false;
 
   @override
   void dispose() {
-    _tituloCtrl.dispose();
+    _asuntoCtrl.dispose();
     _mensajeCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _enviar() async {
-    if (_tituloCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un título'), backgroundColor: AppColors.error),
-      );
+  Future<void> _programar(AppProvider provider) async {
+    final asunto = _asuntoCtrl.text.trim();
+    if (asunto.isEmpty) {
+      _aviso('Escriba el asunto del correo.', error: true);
       return;
     }
-
     setState(() => _enviando = true);
-
     try {
-      await widget.provider.enviarCampana(
-        titulo: _tituloCtrl.text.trim(),
-        mensaje: _mensajeCtrl.text.trim(),
-        destinatarios: _destinatarios,
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          // El envío lo hace el servidor (Apps Script), no la app.
-          content: Text('✅ Campaña en cola. El servidor la enviará en unos minutos.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      await provider.enviarCampana(titulo: asunto, mensaje: _mensajeCtrl.text.trim(), destinatarios: _destinatarios);
+      _mensajeCtrl.clear();
+      _aviso('Envío programado. El servidor lo procesa en unos minutos.');
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-      );
+      _aviso('No se pudo programar el envío: $e', error: true);
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
   }
 
+  void _aviso(String texto, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(texto), backgroundColor: error ? AppColors.error : AppColors.success),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final provider = context.watch<AppProvider>();
+    final invitaciones = provider.invitaciones.where((i) => i.estado != EstadoInvitacion.anulada).toList();
+    final confirmados = invitaciones.where((i) => i.estado == EstadoInvitacion.confirmada).length;
+    final pendientes = invitaciones
+        .where((i) => i.estado == EstadoInvitacion.enviada || i.estado == EstadoInvitacion.pendiente)
+        .length;
+    final ancho = MediaQuery.sizeOf(context).width;
+
+    final formulario = Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('¿A quién se envía?', style: AppTextStyles.h4),
+          const SizedBox(height: 12),
+          for (final o in [
+            ('pendientes', 'Invitados que no han confirmado', pendientes),
+            ('confirmados', 'Invitados que ya confirmaron', confirmados),
+            ('todos', 'Todos los invitados (sin anulados)', invitaciones.length),
+          ])
+            _OpcionDestino(
+              texto: o.$2,
+              cantidad: o.$3,
+              elegida: _destinatarios == o.$1,
+              onTap: () => setState(() => _destinatarios = o.$1),
+            ),
+          const SizedBox(height: 14),
+          CampoConEtiqueta(
+            etiqueta: 'Asunto del correo',
+            campo: TextField(controller: _asuntoCtrl, maxLength: 120, decoration: const InputDecoration(counterText: '')),
+          ),
+          const SizedBox(height: 14),
+          CampoConEtiqueta(
+            etiqueta: 'Mensaje',
+            nota: '(opcional; el correo ya incluye la fecha, la hora y el enlace a su código QR)',
+            campo: TextField(controller: _mensajeCtrl, maxLines: 4, maxLength: 1000, decoration: const InputDecoration(counterText: '')),
+          ),
+          const SizedBox(height: 18),
+          Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 16),
+          Row(
             children: [
-              Row(children: [
-                Expanded(child: Text('Nueva campaña', style: AppTextStyles.h2)),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
-              ]),
-              const SizedBox(height: 16),
-              Text('Título', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _tituloCtrl,
-                decoration: const InputDecoration(hintText: 'Ej: Recordatorio ceremonia de grado'),
-              ),
-              const SizedBox(height: 14),
-              Text('Mensaje (opcional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _mensajeCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(hintText: 'Mensaje adicional para los invitados...'),
-              ),
-              const SizedBox(height: 14),
-              Text('Destinatarios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _destinatarios,
-                decoration: const InputDecoration(),
-                items: const [
-                  DropdownMenuItem(value: 'todos', child: Text('Todos los invitados')),
-                  DropdownMenuItem(value: 'confirmados', child: Text('Solo confirmados')),
-                  DropdownMenuItem(value: 'pendientes', child: Text('Solo pendientes')),
-                ],
-                onChanged: (v) => setState(() => _destinatarios = v!),
-              ),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _enviando ? null : _enviar,
-                    icon: _enviando
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.send_rounded, size: 16),
-                    label: Text(_enviando ? 'Enviando...' : 'Enviar campaña'),
-                  ),
+              Expanded(
+                child: Text(
+                  'El servidor de correos toma la petición en máximo 5 minutos. El avance se ve en «Envíos anteriores».',
+                  style: AppTextStyles.bodySmall.copyWith(height: 1.5),
                 ),
-              ]),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _enviando ? null : () => _programar(provider),
+                  child: Text(_enviando ? 'Programando…' : 'Programar envío'),
+                ),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+
+    final anteriores = Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(padding: const EdgeInsets.fromLTRB(20, 18, 20, 14), child: Text('Envíos anteriores', style: AppTextStyles.h4)),
+          Divider(height: 1, color: AppColors.border),
+          if (provider.notificaciones.isEmpty)
+            Padding(padding: const EdgeInsets.all(20), child: Text('Todavía no se ha enviado ningún correo masivo.', style: AppTextStyles.label)),
+          for (final c in provider.notificaciones.take(8)) _FilaEnvio(campana: c, provider: provider),
+        ],
+      ),
+    );
+
+    return PantallaApolo(
+      desplazable: true,
+      encabezado: EncabezadoPantalla(
+        titulo: 'Enviar recordatorio a invitados',
+        alVolver: () => provider.setSelectedIndex(Nav.invitados),
+      ),
+      cuerpo: ancho >= 1100
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: formulario),
+                const SizedBox(width: 20),
+                Expanded(flex: 2, child: anteriores),
+              ],
+            )
+          : Column(children: [formulario, const SizedBox(height: 20), anteriores]),
+    );
+  }
+}
+
+class _OpcionDestino extends StatelessWidget {
+  final String texto;
+  final int cantidad;
+  final bool elegida;
+  final VoidCallback onTap;
+  const _OpcionDestino({required this.texto, required this.cantidad, required this.elegida, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: elegida ? AppColors.infoLight : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: elegida ? AppColors.boton : AppColors.border, width: elegida ? 1.5 : 1),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(elegida ? Icons.radio_button_checked : Icons.radio_button_off,
+                    size: 20, color: elegida ? AppColors.boton : AppColors.textHint),
+                const SizedBox(width: 12),
+                Expanded(child: Text(texto, style: AppTextStyles.body)),
+                Text('$cantidad personas', style: AppTextStyles.mono(size: 13, color: AppColors.textSecondary)),
+              ],
+            ),
           ),
         ),
       ),
@@ -231,140 +203,54 @@ class _NuevaCampanaDialogState extends State<_NuevaCampanaDialog> {
   }
 }
 
-class _CampaignCard extends StatelessWidget {
+class _FilaEnvio extends StatelessWidget {
   final CampanaNotificacion campana;
-  final bool isMobile;
-
-  /// Solo se pasa cuando la solicitud del servidor falló (`error`) y quien
-  /// mira es administrador: las reglas no dejan tocar `solicitudes_correo`,
-  /// así que el reintento crea otra petición idéntica en la cola.
-  final Future<bool> Function(CampanaNotificacion)? onReintentar;
-
-  const _CampaignCard({
-    required this.campana,
-    required this.isMobile,
-    this.onReintentar,
-  });
-
-  Color get _statusColor {
-    switch (campana.estado) {
-      case EstadoNotificacion.enviado: return AppColors.success;
-      case EstadoNotificacion.terminada: return AppColors.success;
-      case EstadoNotificacion.enProceso: return AppColors.info;
-      case EstadoNotificacion.pendiente: return AppColors.warning;
-      case EstadoNotificacion.rechazado: return AppColors.error;
-    }
-  }
-
-  String get _statusLabel {
-    switch (campana.estado) {
-      case EstadoNotificacion.enviado: return 'Enviado';
-      case EstadoNotificacion.terminada: return 'Terminada';
-      case EstadoNotificacion.enProceso: return 'En proceso';
-      case EstadoNotificacion.pendiente: return 'En cola';
-      case EstadoNotificacion.rechazado: return 'Error';
-    }
-  }
-
-  IconData get _icon {
-    switch (campana.estado) {
-      case EstadoNotificacion.enviado: return Icons.check_circle_rounded;
-      case EstadoNotificacion.terminada: return Icons.check_circle_rounded;
-      case EstadoNotificacion.enProceso: return Icons.autorenew_rounded;
-      case EstadoNotificacion.pendiente: return Icons.schedule_rounded;
-      case EstadoNotificacion.rechazado: return Icons.cancel_rounded;
-    }
-  }
+  final AppProvider provider;
+  const _FilaEnvio({required this.campana, required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 14 : 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: _statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: Icon(_icon, color: _statusColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text(campana.titulo, style: AppTextStyles.h4)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: _statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                    child: Text(_statusLabel, style: TextStyle(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ),
-                ]),
-                Text(campana.descripcion, style: AppTextStyles.bodySmall),
-              ])),
-            ]),
-            if (campana.fechaEnvio != null || campana.totalDestinatarios > 0) ...[
-              const SizedBox(height: 10),
-              Row(children: [
-                if (campana.fechaEnvio != null)
-                  Text(DateFormat('dd/MM/yyyy HH:mm').format(campana.fechaEnvio!), style: AppTextStyles.caption),
-                if (campana.fechaEnvio != null && campana.totalDestinatarios > 0)
-                  Text('  ·  ', style: AppTextStyles.caption),
-                // Correos que el servidor ya lleva enviados de esta solicitud.
-                Text('${campana.totalDestinatarios} enviados', style: AppTextStyles.caption),
-              ]),
+    final (texto, tono) = switch (campana.estado) {
+      EstadoNotificacion.terminada || EstadoNotificacion.enviado => ('Terminado', TonoEtiqueta.ok),
+      EstadoNotificacion.enProceso => ('En curso', TonoEtiqueta.info),
+      EstadoNotificacion.rechazado => ('Con error', TonoEtiqueta.error),
+      EstadoNotificacion.pendiente => ('En cola', TonoEtiqueta.aviso),
+    };
+    final fecha = campana.fechaEnvio == null ? '' : DateFormat("d 'de' MMMM, h:mm a", 'es_CO').format(campana.fechaEnvio!);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.divider))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(campana.titulo, style: AppTextStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Etiqueta(texto, tono: tono),
             ],
-            if (onReintentar != null) ...[
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                  onPressed: () => _reintentar(context),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Reintentar'),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text('${campana.totalDestinatarios} enviados · $fecha',
+                    style: AppTextStyles.mono(size: 12, color: AppColors.textSecondary)),
+              ),
+              if (campana.estado == EstadoNotificacion.rechazado)
+                TextButton(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final ok = await provider.reintentarCorreo(campana);
+                    messenger.showSnackBar(SnackBar(
+                      backgroundColor: ok ? AppColors.success : AppColors.error,
+                      content: Text(ok ? 'Reintentado: el servidor lo procesa en unos minutos.' : 'No fue posible reintentar.'),
+                    ));
+                  },
+                  child: const Text('Reintentar'),
                 ),
-              ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Vuelve a dejar el mismo pedido en la cola del servidor. El estado de la
-  /// solicitud vieja lo cambia únicamente Apps Script: aquí solo se crea otra.
-  Future<void> _reintentar(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final ok = await onReintentar!(campana);
-    messenger.showSnackBar(SnackBar(
-      backgroundColor: ok ? AppColors.success : AppColors.error,
-      content: Text(ok
-          ? 'Reintentado: el servidor procesará esta nueva petición en unos minutos.'
-          : 'No fue posible reintentar el correo.'),
-    ));
-  }
-}
-
-class _NotifMetric extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  final IconData icon;
-  const _NotifMetric({required this.label, required this.value, required this.color, required this.icon});
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-        child: Row(children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            Text(label, style: AppTextStyles.label),
-          ])),
-        ]),
+          ),
+        ],
       ),
     );
   }

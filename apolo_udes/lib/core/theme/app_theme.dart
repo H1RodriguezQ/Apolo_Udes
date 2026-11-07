@@ -152,7 +152,8 @@ class AppColors {
   // ── Iguales en ambos modos ──
   // Se dejan los mismos nombres de antes para no tener que tocar cada
   // pantalla; solo cambian los tonos a los del diseño nuevo.
-  static const Color primaryLight = Color(0xFF0B4A99);
+  // Azul medio: se lee sobre blanco y sobre el fondo oscuro (iconos y textos).
+  static const Color primaryLight = Color(0xFF2F6BC4);
   static const Color primaryDark = Color(0xFF06387A);
   static const Color accent = Color(0xFFC4956A); // línea dorada del login
   static const Color accentLight = Color(0xFFE0BE96);
@@ -164,10 +165,10 @@ class AppColors {
 
   // Colores de estado para iconos, gráficos y textos sobre fondo claro.
   static const Color success = Color(0xFF2E7D4F);
-  static const Color error = Color(0xFFB3382B);
+  static const Color error = Color(0xFFC8473A);
   static const Color warning = Color(0xFFB26A16);
-  static const Color info = Color(0xFF0B4A99);
-  static const Color pending = Color(0xFF6A5AA8);
+  static const Color info = Color(0xFF2F6BC4);
+  static const Color pending = Color(0xFF7B6CC0);
 
   // Serie de los gráficos (entradas, facultades): tonos del mismo azul.
   static const Color serie1 = Color(0xFF0B4A99);

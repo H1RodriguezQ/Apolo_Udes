@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Column(
                           children: [
                             if (angosto) ...[
-                              const _LogoUdes(),
+                              const _LogoUdes(alto: 90),
                               const SizedBox(height: 24),
                             ],
                             _formulario(),
@@ -265,14 +265,7 @@ class _PanelInstitucional extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // En modo oscuro el logo va sobre un recuadro blanco para que se lea.
-          Container(
-            padding: AppColors.isDark ? const EdgeInsets.all(10) : EdgeInsets.zero,
-            decoration: BoxDecoration(
-              color: AppColors.isDark ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const _LogoUdes(),
-          ),
+          const _LogoUdes(alto: 120),
           const Spacer(),
           Container(width: 58, height: 4, color: AppColors.accent),
           const SizedBox(height: 28),
@@ -285,6 +278,15 @@ class _PanelInstitucional extends StatelessWidget {
           Text('Uso exclusivo del personal de la universidad en las tablets de registro y de las entradas.',
               style: AppTextStyles.label.copyWith(fontSize: 15, height: 1.6)),
           const Spacer(),
+          // Sellos de acreditación oficiales (versión blanca en modo oscuro).
+          Image.asset(
+            AppColors.isDark ? 'assets/images/acreditaciones_blanco.png' : 'assets/images/acreditaciones_color.png',
+            height: 64,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            semanticLabel: 'Acreditada en alta calidad y acreditación internacional EQUAA',
+          ),
+          const SizedBox(height: 18),
           Divider(color: AppColors.border),
           const SizedBox(height: 16),
           Text('Universidad de Santander · Campus Lagos del Cacique, Bucaramanga',
@@ -314,28 +316,19 @@ class _BotonTemaLogin extends StatelessWidget {
   }
 }
 
-/// Escudo y nombre de la universidad.
+/// Logo oficial de la universidad: a color en modo claro y con las letras
+/// en blanco en modo oscuro, para que siempre se lea sobre el fondo.
 class _LogoUdes extends StatelessWidget {
-  const _LogoUdes();
+  final double alto;
+  const _LogoUdes({this.alto = 150});
 
   @override
   Widget build(BuildContext context) {
-    const azul = Color(0xFF0B4A99);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset('assets/images/udes_escudo.png', height: 78),
-        const SizedBox(width: 14),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Universidad', style: TextStyle(fontSize: 26, height: 1.05, fontWeight: FontWeight.w700, color: azul)),
-            Text('de Santander', style: TextStyle(fontSize: 26, height: 1.05, fontWeight: FontWeight.w700, color: azul)),
-            SizedBox(height: 4),
-            Text('UDES', style: TextStyle(fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w600, color: azul)),
-          ],
-        ),
-      ],
+    return Image.asset(
+      AppColors.isDark ? 'assets/images/udes_logo_blanco.png' : 'assets/images/udes_logo_color.png',
+      height: alto,
+      fit: BoxFit.contain,
+      semanticLabel: 'Universidad de Santander',
     );
   }
 }

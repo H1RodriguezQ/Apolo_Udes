@@ -7,6 +7,8 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/usuarios_service.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
+import '../../widgets/common/apolo_ui.dart';
+import '../../navegacion.dart';
 
 // ── Validaciones del formulario ──
 
@@ -72,23 +74,18 @@ class UsuariosScreen extends StatelessWidget {
     final actual = provider.usuarioActual;
     final isMobile = MediaQuery.of(context).size.width < 900;
 
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
+    return PantallaApolo(
+      encabezado: EncabezadoPantalla(
+        titulo: 'Usuarios',
+        detalle: 'Personal con acceso a Apolo',
+        alVolver: () => provider.setSelectedIndex(Nav.ajustes),
+        acciones: [
+          ElevatedButton(onPressed: () => _abrirDialogo(context), child: Text(isMobile ? 'Nuevo' : 'Crear usuario')),
+        ],
+      ),
+      cuerpo: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Expanded(
-                child: SectionHeader(
-                    title: 'Usuarios',
-                    subtitle: 'Personal con acceso al sistema')),
-            ElevatedButton.icon(
-              onPressed: () => _abrirDialogo(context),
-              icon: const Icon(Icons.person_add_rounded, size: 18),
-              label: Text(isMobile ? 'Nuevo' : 'Nuevo usuario'),
-            ),
-          ]),
-          const SizedBox(height: 16),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance.collection('usuarios').snapshots(),

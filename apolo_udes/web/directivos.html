@@ -239,6 +239,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app-check.js';
   import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
@@ -251,7 +252,15 @@
     appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
   };
 
-  const db = getFirestore(initializeApp(firebaseConfig));
+  const app = initializeApp(firebaseConfig);
+  // App Check: Firestore solo responde a esta página, no a scripts que
+  // copien la configuración. Clave del sitio de reCAPTCHA v3 (no es
+  // secreta). Vacía = desactivado. Ver docs/seguridad/FORTALECIMIENTO.md.
+  const CLAVE_RECAPTCHA = '';
+  if (CLAVE_RECAPTCHA) {
+    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(CLAVE_RECAPTCHA), isTokenAutoRefreshEnabled: true });
+  }
+  const db = getFirestore(app);
   const params = new URLSearchParams(window.location.search);
   const directivoId = params.get('id');
   const respuesta = params.get('r'); // 'si' | 'no' (viene de los botones del correo)

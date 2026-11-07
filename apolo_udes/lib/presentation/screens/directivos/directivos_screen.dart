@@ -7,6 +7,7 @@ import '../../../data/models/models.dart';
 import '../../../data/services/usuarios_service.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
+import '../../widgets/common/apolo_ui.dart';
 
 // ── Validaciones del formulario de directivos ──
 
@@ -132,136 +133,78 @@ class DirectivosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final directivos = provider.directivos;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 900;
+    final directivos = [...provider.directivos]..sort((a, b) => a.nombre.compareTo(b.nombre));
+    final esAdmin = provider.isAdmin;
+    final ancho = MediaQuery.sizeOf(context).width;
 
-    final confirmados =
-        directivos.where((d) => d.estado == EstadoDirectivo.confirmado).length;
-    final pendientes =
-        directivos.where((d) => d.estado == EstadoDirectivo.pendiente).length;
-    final rechazados =
-        directivos.where((d) => d.estado == EstadoDirectivo.rechazado).length;
-
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header responsive
-          if (isMobile)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeader(
-                  title: 'Directivos',
-                  subtitle: 'Gestión de directivos y autoridades UDES',
-                ),
-                const SizedBox(height: 12),
-                if (provider.isAdmin)
-                  Row(children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showAddDialog(context),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Agregar'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (directivos.isNotEmpty)
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _limpiarTodo(context, provider),
-                          icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                          label: const Text('Limpiar'),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
-                        ),
-                      ),
-                  ])
-                else
-                  const _SoloLectura(),
-              ],
-            )
-          else
-            Row(
-              children: [
-                const Expanded(
-                  child: SectionHeader(
-                    title: 'Directivos',
-                    subtitle: 'Gestión de directivos y autoridades UDES',
+    final tabla = TablaApolo(
+      vacio: 'Todavía no hay directivos invitados.',
+      columnas: const [
+        ColumnaTabla('Directivo', flex: 5),
+        ColumnaTabla('Facultad', flex: 3),
+        ColumnaTabla('Invitación', flex: 2),
+        ColumnaTabla('Respuesta', flex: 2),
+        ColumnaTabla('Acciones', flex: 3, derecha: true),
+      ],
+      filas: [
+        for (final d in directivos)
+          [
+            CeldaTexto(d.nombre, debajo: d.cargo, fuerte: true),
+            CeldaTexto(d.facultad ?? 'General'),
+            switch (d.correoInvitacion) {
+              'enviado' => const Etiqueta('Enviada', tono: TonoEtiqueta.ok),
+              'pendiente' => const Etiqueta('En cola', tono: TonoEtiqueta.aviso),
+              'error' => const Etiqueta('Con error', tono: TonoEtiqueta.error),
+              _ => const Etiqueta('Sin enviar'),
+            },
+            switch (d.estado) {
+              EstadoDirectivo.confirmado => const Etiqueta('Asistirá', tono: TonoEtiqueta.ok),
+              EstadoDirectivo.rechazado => const Etiqueta('No asistirá', tono: TonoEtiqueta.error),
+              EstadoDirectivo.pendiente => const Etiqueta('Sin respuesta', tono: TonoEtiqueta.aviso),
+            },
+            if (esAdmin)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AccionFila(icono: Icons.mail_outline, ayuda: 'Enviar invitación por correo', onPressed: () => _enviarInvitacionEmail(context, d)),
+                  AccionFila(
+                    icono: Icons.edit_outlined,
+                    ayuda: 'Editar',
+                    onPressed: () => showDialog(context: context, barrierDismissible: false, builder: (_) => _DirectivoDialog(directivo: d)),
                   ),
-                ),
-                if (provider.isAdmin) ...[
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddDialog(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Agregar Directivo'),
-                  ),
-                  const SizedBox(width: 8),
-                  if (directivos.isNotEmpty)
-                    ElevatedButton.icon(
-                      onPressed: () => _limpiarTodo(context, provider),
-                      icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                      label: const Text('Limpiar'),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
-                    ),
-                ] else
-                  const _SoloLectura(),
-              ],
-            ),
-          const SizedBox(height: 20),
+                  AccionFila(icono: Icons.delete_outline, ayuda: 'Eliminar', peligro: true, onPressed: () => _eliminarDirectivo(context, d)),
+                ],
+              )
+            else
+              const SizedBox.shrink(),
+          ],
+      ],
+    );
 
-          // Tabla o lista
-          Expanded(
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: directivos.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.person_outline_rounded,
-                      title: 'No hay directivos',
-                      subtitle: 'Agrega directivos para gestionar invitaciones',
-                    )
-                  : isMobile
-                      ? _DirectivosList(directivos: directivos)
-                      : _DirectivosTable(directivos: directivos),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Métricas
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isMobile ? 2 : 4,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: isMobile ? 1.6 : 2.0,
-            children: [
-              _MetricCard(
-                  title: 'Total',
-                  value: directivos.length.toString(),
-                  color: AppColors.primaryLight,
-                  icon: Icons.group_outlined),
-              _MetricCard(
-                  title: 'Confirmados',
-                  value: confirmados.toString(),
-                  color: AppColors.success,
-                  icon: Icons.check_circle_outline),
-              _MetricCard(
-                  title: 'Pendientes',
-                  value: pendientes.toString(),
-                  color: AppColors.warning,
-                  icon: Icons.access_time_outlined),
-              _MetricCard(
-                  title: 'Rechazados',
-                  value: rechazados.toString(),
-                  color: AppColors.error,
-                  icon: Icons.cancel_outlined),
-            ],
-          ),
+    return PantallaApolo(
+      encabezado: EncabezadoPantalla(
+        titulo: 'Directivos',
+        detalle: '${directivos.length} invitados a la mesa principal',
+        acciones: [
+          if (esAdmin && directivos.isNotEmpty)
+            BotonSecundario(texto: 'Borrar todos', peligro: true, onPressed: () => _limpiarTodo(context, provider)),
+          if (esAdmin && ancho < 1100)
+            ElevatedButton(onPressed: () => _showAddDialog(context), child: const Text('Agregar directivo')),
+          if (!esAdmin) const _SoloLectura(),
         ],
       ),
+      // En tablet el formulario va fijo a la derecha, como en el lienzo; en
+      // pantallas angostas se abre con el botón "Agregar directivo".
+      cuerpo: esAdmin && ancho >= 1100
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: tabla),
+                const SizedBox(width: 20),
+                const SizedBox(width: 330, child: SingleChildScrollView(child: _DirectivoDialog(enPanel: true))),
+              ],
+            )
+          : tabla,
     );
   }
 
@@ -374,342 +317,12 @@ Future<void> _enviarInvitacionEmail(BuildContext context, Directivo d) async {
 }
 
 // Lista para móvil
-class _DirectivosList extends StatelessWidget {
-  final List<Directivo> directivos;
-  const _DirectivosList({required this.directivos});
-
-  @override
-  Widget build(BuildContext context) {
-    final isAdmin = context.read<AppProvider>().isAdmin;
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: directivos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final d = directivos[i];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface, // antes: Colors.white fijo
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UserAvatar(name: d.nombre, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(d.nombre,
-                            style: AppTextStyles.body
-                                .copyWith(fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        Text(d.cargo,
-                            style: AppTextStyles.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _EstadoBadge(estado: d.estado),
-                      // Estado del correo de invitación que manda el servidor.
-                      if (d.correoInvitacion != null) ...[
-                        const SizedBox(height: 4),
-                        EstadoCorreoBadge(estado: d.correoInvitacion),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(d.correo,
-                  style: AppTextStyles.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              if (d.facultad != null) ...[
-                const SizedBox(height: 4),
-                Text(d.facultad!,
-                    style: AppTextStyles.caption,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-              ],
-              if (isAdmin) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.send_rounded, size: 18),
-                      color: AppColors.success,
-                      tooltip: 'Enviar invitación por correo',
-                      onPressed: () => _enviarInvitacionEmail(context, d),
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.edit_rounded, size: 18),
-                      color: AppColors.primaryLight,
-                      tooltip: 'Editar',
-                      onPressed: () => showDialog(
-                          context: context,
-                          builder: (_) => _DirectivoDialog(directivo: d)),
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      color: AppColors.error,
-                      tooltip: 'Eliminar',
-                      onPressed: () => _eliminarDirectivo(context, d),
-                      constraints:
-                          const BoxConstraints(minWidth: 36, minHeight: 36),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Tabla para desktop
-class _DirectivosTable extends StatelessWidget {
-  final List<Directivo> directivos;
-  const _DirectivosTable({required this.directivos});
-
-  @override
-  Widget build(BuildContext context) {
-    final isAdmin = context.read<AppProvider>().isAdmin;
-    return SingleChildScrollView(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: 1100,
-          child: Table(
-            columnWidths: {
-              0: const FlexColumnWidth(2.0),
-              1: const FlexColumnWidth(1.8),
-              2: const FlexColumnWidth(3.2),
-              3: const FlexColumnWidth(2.5),
-              4: const FlexColumnWidth(1.5),
-              if (isAdmin) 5: const FlexColumnWidth(1.8),
-            },
-            children: [
-              TableRow(
-                decoration: BoxDecoration(color: AppColors.surfaceVariant),
-                children: [
-                  'Nombre',
-                  'Cargo',
-                  'Correo',
-                  'Facultad',
-                  'Estado',
-                  if (isAdmin) 'Acciones'
-                ]
-                    .map((h) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        child: Text(h,
-                            style: AppTextStyles.label.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary))))
-                    .toList(),
-              ),
-              ...directivos.asMap().entries.map((entry) {
-                final i = entry.key;
-                final d = entry.value;
-                return TableRow(
-                  decoration: BoxDecoration(
-                    // antes: Colors.white / 0xFFFAFBFC fijos
-                    color: i.isEven
-                        ? AppColors.surface
-                        : AppColors.surfaceVariant.withValues(alpha: 0.35),
-                    border: Border(
-                        bottom: BorderSide(color: AppColors.divider)),
-                  ),
-                  children: [
-                    _cell(d.nombre),
-                    _cell(d.cargo),
-                    _cell(d.correo),
-                    _cell(d.facultad ?? '---'),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _EstadoBadge(estado: d.estado),
-                          // Estado del correo de invitación del servidor.
-                          if (d.correoInvitacion != null) ...[
-                            const SizedBox(height: 4),
-                            EstadoCorreoBadge(estado: d.correoInvitacion),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (isAdmin)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.send_rounded, size: 18),
-                              color: AppColors.success,
-                              tooltip: 'Enviar Correo',
-                              onPressed: () => _enviarInvitacionEmail(context, d),
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_rounded, size: 18),
-                              color: AppColors.primaryLight,
-                              tooltip: 'Editar',
-                              onPressed: () => showDialog(
-                                  context: context,
-                                  builder: (_) => _DirectivoDialog(directivo: d)),
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded,
-                                  size: 18),
-                              color: AppColors.error,
-                              tooltip: 'Eliminar',
-                              onPressed: () => _eliminarDirectivo(context, d),
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _cell(String text) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(text,
-          style: AppTextStyles.body,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis));
-}
-
-class _EstadoBadge extends StatelessWidget {
-  final EstadoDirectivo estado;
-  const _EstadoBadge({required this.estado});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    String label;
-    switch (estado) {
-      case EstadoDirectivo.confirmado:
-        color = AppColors.success;
-        label = 'Confirmado';
-        break;
-      case EstadoDirectivo.rechazado:
-        color = AppColors.error;
-        label = 'Rechazado';
-        break;
-      case EstadoDirectivo.pendiente:
-        color = AppColors.warning;
-        label = 'Pendiente';
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-          color: color.withAlpha(25),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withAlpha(76))),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  final String title, value;
-  final Color color;
-  final IconData icon;
-
-  const _MetricCard({
-    required this.title,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface, // antes: Colors.white fijo
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withAlpha(25),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(value,
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
-          ),
-          Text(title,
-              style: AppTextStyles.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-        ],
-      ),
-    );
-  }
-}
-
 class _DirectivoDialog extends StatefulWidget {
   final Directivo? directivo;
-  const _DirectivoDialog({this.directivo});
+  /// true = se dibuja como la tarjeta "Agregar directivo" al lado de la
+  /// tabla (sin ventana); al guardar se limpia para agregar el siguiente.
+  final bool enPanel;
+  const _DirectivoDialog({this.directivo, this.enPanel = false});
 
   @override
   State<_DirectivoDialog> createState() => _DirectivoDialogState();
@@ -799,125 +412,139 @@ class _DirectivoDialogState extends State<_DirectivoDialog> {
             'Agrego directivo ${directivo.nombre} (${directivo.cargo})',
             tipo: 'directivo');
       }
-      navigator.pop();
-      _mostrarExito(messenger, 'Directivo agregado');
+      if (widget.enPanel) {
+        for (final c in [_nombreCtrl, _cargoCtrl, _correoCtrl, _telCtrl]) {
+          c.clear();
+        }
+        setState(() {
+          _guardando = false;
+          _facultad = null;
+        });
+      } else {
+        navigator.pop();
+      }
+      _mostrarExito(messenger, 'Directivo agregado: la invitación sale por correo en unos minutos');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 650),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Expanded(
-                          child: Text(
-                              isEditing ? 'Editar directivo' : 'Nuevo directivo',
-                              style: AppTextStyles.h2)),
-                      IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: _guardando ? null : () => Navigator.pop(context))
-                    ]),
-                    const SizedBox(height: 16),
-                    _fieldLabel('Nombre completo'),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                        controller: _nombreCtrl,
-                        textCapitalization: TextCapitalization.words,
-                        maxLength: 80,
-                        decoration: const InputDecoration(
-                            hintText: 'Dr. Juan Pérez', counterText: ''),
-                        validator: _validarNombreDirectivo),
-                    const SizedBox(height: 12),
-                    _fieldLabel('Cargo'),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                        controller: _cargoCtrl,
-                        textCapitalization: TextCapitalization.sentences,
-                        maxLength: 60,
-                        decoration: const InputDecoration(
-                            hintText: 'Rector / Decano', counterText: ''),
-                        validator: _validarCargo),
-                    const SizedBox(height: 12),
-                    _fieldLabel('Correo'),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                        controller: _correoCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                            hintText: 'correo@udes.edu.co'),
-                        validator: _validarCorreoDirectivo),
-                    const SizedBox(height: 12),
-                    _fieldLabel('Teléfono (opcional)'),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                        controller: _telCtrl,
-                        keyboardType: TextInputType.phone,
-                        maxLength: 12,
-                        decoration: const InputDecoration(
-                            hintText: '3001234567', counterText: ''),
-                        validator: _validarTelefono),
-                    const SizedBox(height: 12),
-                    _fieldLabel('Facultad (opcional)'),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: _facultad,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                          hintText: 'Selecciona facultad'),
-                      items: [
-                        const DropdownMenuItem(
-                            value: null, child: Text('Ninguna')),
-                        ...AppConstants.facultades.map((f) => DropdownMenuItem(
-                            value: f,
-                            child: Text(f, overflow: TextOverflow.ellipsis))),
-                      ],
-                      onChanged: (v) => setState(() => _facultad = v),
-                    ),
-                    const SizedBox(height: 12),
-                    _fieldLabel('Estado'),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<EstadoDirectivo>(
-                      initialValue: _estado,
-                      items: EstadoDirectivo.values
-                          .map((e) => DropdownMenuItem(
-                              value: e, child: Text(_estadoLabel(e))))
-                          .toList(),
-                      onChanged: (v) => setState(() => _estado = v!),
-                      decoration: const InputDecoration(),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(children: [
-                      Expanded(
-                          child: OutlinedButton(
-                              onPressed: _guardando ? null : () => Navigator.pop(context),
-                              child: const Text('Cancelar'))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: ElevatedButton(
-                              onPressed: _guardando ? null : _submit,
-                              child: _guardando
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white))
-                                  : Text(isEditing ? 'Guardar' : 'Crear'))),
-                    ]),
-                  ]),
+    final formulario = Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Expanded(
+                child: Text(
+                    isEditing ? 'Editar directivo' : 'Agregar directivo',
+                    style: widget.enPanel ? AppTextStyles.h4.copyWith(fontSize: 17) : AppTextStyles.h2)),
+            if (!widget.enPanel)
+              IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: _guardando ? null : () => Navigator.pop(context))
+          ]),
+          const SizedBox(height: 16),
+          _fieldLabel('Nombre completo'),
+          const SizedBox(height: 6),
+          TextFormField(
+              controller: _nombreCtrl,
+              textCapitalization: TextCapitalization.words,
+              maxLength: 80,
+              decoration: const InputDecoration(hintText: 'Dr. Juan Pérez', counterText: ''),
+              validator: _validarNombreDirectivo),
+          const SizedBox(height: 12),
+          _fieldLabel('Cargo'),
+          const SizedBox(height: 6),
+          TextFormField(
+              controller: _cargoCtrl,
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: 60,
+              decoration: const InputDecoration(hintText: 'Rector / Decano', counterText: ''),
+              validator: _validarCargo),
+          const SizedBox(height: 12),
+          _fieldLabel('Correo'),
+          const SizedBox(height: 6),
+          TextFormField(
+              controller: _correoCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(hintText: 'correo@udes.edu.co'),
+              validator: _validarCorreoDirectivo),
+          if (!widget.enPanel) ...[
+            const SizedBox(height: 12),
+            _fieldLabel('Teléfono (opcional)'),
+            const SizedBox(height: 6),
+            TextFormField(
+                controller: _telCtrl,
+                keyboardType: TextInputType.phone,
+                maxLength: 12,
+                decoration: const InputDecoration(hintText: '3001234567', counterText: ''),
+                validator: _validarTelefono),
+          ],
+          const SizedBox(height: 12),
+          Text.rich(TextSpan(children: [
+            TextSpan(text: 'Facultad', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+            TextSpan(text: ' (define la hora)', style: AppTextStyles.label),
+          ])),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            initialValue: _facultad,
+            isExpanded: true,
+            dropdownColor: AppColors.surface,
+            decoration: const InputDecoration(hintText: 'General (todas)'),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('General (todas)')),
+              ...AppConstants.facultades.map((f) => DropdownMenuItem(value: f, child: Text(f, overflow: TextOverflow.ellipsis))),
+            ],
+            onChanged: (v) => setState(() => _facultad = v),
+          ),
+          if (isEditing) ...[
+            const SizedBox(height: 12),
+            _fieldLabel('Respuesta'),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<EstadoDirectivo>(
+              initialValue: _estado,
+              dropdownColor: AppColors.surface,
+              items: EstadoDirectivo.values.map((e) => DropdownMenuItem(value: e, child: Text(_estadoLabel(e)))).toList(),
+              onChanged: (v) => setState(() => _estado = v!),
+              decoration: const InputDecoration(),
+            ),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _guardando ? null : _submit,
+              child: _guardando
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(isEditing ? 'Guardar cambios' : 'Guardar y enviar invitación'),
             ),
           ),
+          if (!isEditing) ...[
+            const SizedBox(height: 12),
+            Text('Recibe un correo con su código QR y un enlace para responder si asiste. El envío sale en máximo 5 minutos.',
+                style: AppTextStyles.bodySmall.copyWith(height: 1.5)),
+          ],
+        ],
+      ),
+    );
+
+    if (widget.enPanel) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
         ),
+        child: formulario,
+      );
+    }
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 680),
+        child: Padding(padding: const EdgeInsets.all(24), child: SingleChildScrollView(child: formulario)),
       ),
     );
   }

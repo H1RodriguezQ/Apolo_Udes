@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
@@ -31,6 +32,30 @@ void main() async {
   if (usarEmulador) {
     await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+  }
+
+  // App Check: Firestore solo atiende peticiones que vengan de ESTA app o
+  // de ESTA página web, no de un script que copió la configuración.
+  //   - Web: reCAPTCHA v3, con la clave del sitio (no es secreta).
+  //   - Tablets: no están en Play Store, así que Play Integrity no las
+  //     reconoce; se usa un token de depuración registrado en la consola,
+  //     uno por cada tablet autorizada.
+  // Las claves llegan con --dart-define al compilar (no van en el código).
+  // Si no se pasan, App Check no se activa y la app funciona como antes.
+  const claveRecaptcha = String.fromEnvironment('RECAPTCHA_KEY');
+  const tokenTablet = String.fromEnvironment('APPCHECK_TOKEN');
+  if (!usarEmulador) {
+    try {
+      if (kIsWeb && claveRecaptcha.isNotEmpty) {
+        await FirebaseAppCheck.instance.activate(providerWeb: ReCaptchaV3Provider(claveRecaptcha));
+      } else if (!kIsWeb && tokenTablet.isNotEmpty) {
+        await FirebaseAppCheck.instance.activate(
+          providerAndroid: const AndroidDebugProvider(debugToken: tokenTablet),
+        );
+      }
+    } catch (e) {
+      debugPrint('App Check no se pudo activar: $e');
+    }
   }
 
   // En la web la sesión dura solo mientras la pestaña esté abierta: al

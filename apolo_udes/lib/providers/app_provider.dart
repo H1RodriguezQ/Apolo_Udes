@@ -54,6 +54,14 @@ class AppProvider extends ChangeNotifier {
   List<Confirmacion> _confirmaciones = [];
   List<Directivo> _directivos = [];
   final List<RegistroAcceso> _registrosAcceso = [];
+
+  /// Todas las lecturas de hoy en TODAS las entradas (de Firestore, la más
+  /// reciente primero). Las usan "Ceremonia en curso" y "Registro".
+  List<LecturaDia> _lecturasDelDia = [];
+  List<LecturaDia> get lecturasDelDia => _lecturasDelDia;
+
+  /// Punto de entrada de este usuario ("Entrada 1"); vacío para el admin.
+  String get miPunto => (_usuarioActual?.puntoValidacion ?? '').trim();
   List<CampanaNotificacion> _notificaciones = [];
   List<Usuario> _usuarios = [];
   List<ActividadReciente> _actividades = [];
@@ -792,8 +800,18 @@ class AppProvider extends ChangeNotifier {
         .snapshots()
         .listen((snapshot) {
       final validos = <String>{};
+      final lecturas = <LecturaDia>[];
       for (final doc in snapshot.docs) {
         final data = doc.data();
+        final ts = data['timestamp'];
+        lecturas.add(LecturaDia(
+          hora: ts is Timestamp ? ts.toDate() : DateTime.now(),
+          nombre: (data['nombre'] as String?) ?? '',
+          codigo: (data['codigo'] as String?) ?? '',
+          punto: (data['puntoValidacion'] as String?) ?? '',
+          operador: (data['operadorCorreo'] as String?) ?? '',
+          resultado: (data['resultado'] as String?) ?? '',
+        ));
         if (data['resultado'] == 'valido') {
           final codigo = data['codigo'] as String?;
           if (codigo != null && codigo.isNotEmpty) validos.add(codigo);
@@ -805,6 +823,8 @@ class AppProvider extends ChangeNotifier {
       _codigosValidosDelDia
         ..clear()
         ..addAll(validos);
+      lecturas.sort((a, b) => b.hora.compareTo(a.hora));
+      _lecturasDelDia = lecturas;
       _reconstruirCodigosUsados();
       debugPrint('Validaciones sincronizadas: ${_codigosUsados.length}');
     }, onError: (e) => debugPrint('Error escuchando validaciones: $e'));
@@ -1250,4 +1270,24 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     return ocupados;
   }
+}
+
+/// Una lectura de QR del día, tal como quedó guardada en `validaciones`.
+class LecturaDia {
+  final DateTime hora;
+  final String nombre;
+  final String codigo;
+  final String punto;
+  final String operador;
+  final String resultado; // 'valido', 'usado' o 'invalido'
+  const LecturaDia({
+    required this.hora,
+    required this.nombre,
+    required this.codigo,
+    required this.punto,
+    required this.operador,
+    required this.resultado,
+  });
+
+  bool get valida => resultado == 'valido';
 }

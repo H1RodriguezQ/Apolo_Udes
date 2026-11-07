@@ -11,6 +11,15 @@ service cloud.firestore {
 
     // ---------------------------------------------------------------- helpers
 
+    // Registro publico abierto: si el administrador fijo `cierreRegistro`
+    // en configuracion/evento, solo se puede registrar antes de esa hora.
+    function registroAbierto() {
+      let evento = /databases/$(database)/documents/configuracion/evento;
+      return !exists(evento)
+        || !('cierreRegistro' in get(evento).data)
+        || request.time < get(evento).data.cierreRegistro;
+    }
+
     function autenticado() {
       return request.auth != null;
     }
@@ -246,8 +255,15 @@ service cloud.firestore {
              'cupo'
            ])
         && request.resource.data.id == invitadoId
+        // El nombre del graduando que queda guardado tiene que ser el REAL
+        // (el del espejo publico), no uno escrito por quien llena el formulario.
         && request.resource.data.graduandoNombre is string
-        && request.resource.data.graduandoNombre.size() <= 100
+        && request.resource.data.graduandoNombre ==
+             get(/databases/$(database)/documents/graduandos_publico/$(request.resource.data.graduandoId))
+               .data.get('nombreCompleto', '')
+        // Despues de la fecha de cierre que pone el administrador en Ajustes
+        // ya no se pueden registrar invitados desde la pagina publica.
+        && registroAbierto()
         // Nombre y correo con el MISMO patron que exige la pagina publica y
         // que valida validadores_graduando.dart: no se cuela nada que la app
         // ya rechazaria (tampoco HTML, comillas ni otros caracteres).

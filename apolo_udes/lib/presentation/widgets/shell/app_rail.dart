@@ -17,12 +17,12 @@ class OpcionMenu {
 /// opciones con icono y texto, y la cuenta abajo.
 class AppRail extends StatelessWidget {
   final List<OpcionMenu> opciones;
-  const AppRail({super.key, required this.opciones});
+  final int marcado; // opción resaltada (puede ser la "padre" de la pantalla)
+  const AppRail({super.key, required this.opciones, required this.marcado});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final actual = provider.selectedIndex.clamp(0, opciones.length - 1);
 
     return Container(
       width: 100,
@@ -38,8 +38,8 @@ class AppRail extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
             ),
-            padding: const EdgeInsets.all(6),
-            child: Image.asset('assets/images/udes_escudo.png', fit: BoxFit.contain),
+            padding: const EdgeInsets.all(7),
+            child: Image.asset('assets/images/udes_escudo.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
           ),
           const SizedBox(height: 18),
           Expanded(
@@ -49,7 +49,7 @@ class AppRail extends StatelessWidget {
                   for (var i = 0; i < opciones.length; i++)
                     _BotonMenu(
                       opcion: opciones[i],
-                      activo: i == actual,
+                      activo: i == marcado,
                       onTap: () => provider.setSelectedIndex(i),
                     ),
                 ],
@@ -140,7 +140,8 @@ class _BotonCuenta extends StatelessWidget {
       onSelected: (opcion) {
         switch (opcion) {
           case 'tema':
-            context.read<ThemeProvider>().siguiente();
+            final tema = context.read<ThemeProvider>();
+            tema.cambiar(AppColors.isDark ? ThemeMode.light : ThemeMode.dark);
           case 'jornada':
             confirmarCierreJornada(context);
           case 'salir':

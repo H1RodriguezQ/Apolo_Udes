@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
+import '../../widgets/common/apolo_ui.dart';
+import '../../navegacion.dart';
 
 class ControlAccesoScreen extends StatefulWidget {
   const ControlAccesoScreen({super.key});
@@ -142,10 +144,23 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
 
     // Tablet (rediseño): a la izquierda el lector y la búsqueda manual; a la
     // derecha el resultado en grande, los contadores y las últimas lecturas.
-    final ingresosAqui = registros.where((r) => r.valido).length;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
+    // Los contadores salen de las lecturas de hoy en Firestore, así que
+    // incluyen lo que validó la otra entrada.
+    final validasHoy = provider.lecturasDelDia.where((l) => l.valida).toList();
+    final punto = provider.miPunto;
+    final ingresosAqui = punto.isEmpty
+        ? registros.where((r) => r.valido).length
+        : validasHoy.where((l) => l.punto == punto).length;
+    final totalAuditorio = validasHoy.length;
+    return PantallaApolo(
+      desplazable: true,
+      encabezado: EncabezadoPantalla(
+        titulo: 'Control de acceso',
+        segundaLinea: 'Ceremonia de grado${punto.isEmpty ? '' : ' · $punto'}',
+        mostrarConexion: true,
+        alVolver: provider.isAdmin ? () => provider.setSelectedIndex(Nav.ceremonia) : null,
+      ),
+      cuerpo: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Mientras esta tablet está sin internet no se entera de lo que
@@ -192,7 +207,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                         Expanded(
                           child: _Contador(
                             etiqueta: 'Total en el auditorio',
-                            valor: '${provider.accesosHoy}',
+                            valor: '$totalAuditorio',
                             de: '${provider.aforoDisponible}',
                           ),
                         ),

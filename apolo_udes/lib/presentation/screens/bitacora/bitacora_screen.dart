@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/app_provider.dart';
+import '../../navegacion.dart';
+import '../../widgets/common/apolo_ui.dart';
 import '../../widgets/common/widgets.dart';
 
 /// Un registro de la coleccion `auditoria` (solo insercion).
@@ -167,6 +171,7 @@ class _BitacoraScreenState extends State<BitacoraScreen> {
   };
 
   String _filtro = 'todos';
+  String _fecha = 'todo'; // 'hoy', '7dias' o 'todo'
   String _busqueda = '';
   int _limite = 200;
   late Stream<List<BitacoraEntrada>> _stream;
@@ -187,7 +192,12 @@ class _BitacoraScreenState extends State<BitacoraScreen> {
   List<BitacoraEntrada> _filtrar(List<BitacoraEntrada> todas) {
     const conocidos = ['usuario', 'directivo', 'graduando'];
     final q = _busqueda.trim().toLowerCase();
+    final hoy = DateTime.now();
+    final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
     return todas.where((e) {
+      final f = e.fecha;
+      if (_fecha == 'hoy' && (f == null || f.isBefore(inicioHoy))) return false;
+      if (_fecha == '7dias' && (f == null || f.isBefore(inicioHoy.subtract(const Duration(days: 6))))) return false;
       if (_filtro == 'otro' && conocidos.contains(e.tipo)) return false;
       if (_filtro != 'todos' && _filtro != 'otro' && e.tipo != _filtro) {
         return false;
@@ -198,113 +208,131 @@ class _BitacoraScreenState extends State<BitacoraScreen> {
     }).toList();
   }
 
+  static String _nombreTipo(String tipo) => switch (tipo) {
+        'usuario' => 'Usuarios',
+        'directivo' => 'Directivos',
+        'graduando' || 'graduandos' => 'Graduandos',
+        'invitados' || 'invitado' => 'Invitados',
+        'importacion' => 'Importación',
+        'sesion' => 'Sesión',
+        'usuarios' => 'Usuarios',
+        'mantenimiento' => 'Mantenimiento',
+        'email' || 'correo' => 'Correos',
+        _ => tipo.isEmpty ? 'Otro' : tipo[0].toUpperCase() + tipo.substring(1),
+      };
+
+  int _cuenta(List<BitacoraEntrada> todas, String filtro) {
+    const conocidos = ['usuario', 'directivo', 'graduando'];
+    if (filtro == 'todos') return todas.length;
+    if (filtro == 'otro') return todas.where((e) => !conocidos.contains(e.tipo)).length;
+    return todas.where((e) => e.tipo == filtro).length;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 900;
-
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(
-            title: 'Bitácora',
-            subtitle: 'Registro permanente de acciones del sistema',
+    final provider = context.read<AppProvider>();
+    return StreamBuilder<List<BitacoraEntrada>>(
+      stream: _stream,
+      builder: (context, snap) {
+        final todas = snap.data ?? const <BitacoraEntrada>[];
+        final lista = _filtrar(todas);
+        return PantallaApolo(
+          encabezado: EncabezadoPantalla(
+            titulo: 'Bitácora',
+            detalle: 'Registro permanente de lo que se hace en Apolo',
+            alVolver: () => provider.setSelectedIndex(Nav.inicio),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.infoLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(children: [
-              Icon(Icons.lock_outline_rounded, color: AppColors.info, size: 16),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Los registros no se pueden modificar ni eliminar, ni siquiera por un administrador.',
-                  style: TextStyle(color: AppColors.info, fontSize: 12),
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _filtros.entries
-                .map((f) => ChoiceChip(
-                      label: Text(f.value),
-                      selected: _filtro == f.key,
-                      onSelected: (_) => setState(() => _filtro = f.key),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Buscar por acción o correo',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-            onChanged: (v) => setState(() => _busqueda = v),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Card(
-              child: StreamBuilder<List<BitacoraEntrada>>(
-                stream: _stream,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return const Center(
-                        child: Text('No fue posible cargar la bitácora.'));
-                  }
-                  if (!snap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final todas = snap.data!;
-                  final lista = _filtrar(todas);
-
-                  if (lista.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.history_rounded,
-                      title: 'Sin registros',
-                      subtitle: 'No hay acciones que coincidan con el filtro',
-                    );
-                  }
-
-                  return Column(children: [
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: lista.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (_, i) => BitacoraRow(entrada: lista[i]),
+          cuerpo: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: FiltroSegmentado<String>(
+                        valor: _filtro,
+                        onChanged: (v) => setState(() => _filtro = v),
+                        opciones: [
+                          for (final f in _filtros.entries) (f.key, f.value == 'Todos' ? 'Todo' : f.value, _cuenta(todas, f.key)),
+                        ],
                       ),
                     ),
-                    const Divider(height: 1),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(children: [
-                        Expanded(
-                          child: Text(
-                              'Mostrando ${lista.length} de los últimos ${todas.length} registros',
-                              style: AppTextStyles.caption),
-                        ),
-                        if (todas.length >= _limite)
-                          TextButton(
-                              onPressed: _cargarMas,
-                              child: const Text('Cargar más')),
-                      ]),
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 170,
+                    child: CampoConEtiqueta(
+                      etiqueta: 'Fecha',
+                      campo: DropdownButtonFormField<String>(
+                        initialValue: _fecha,
+                        dropdownColor: AppColors.surface,
+                        decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13)),
+                        items: const [
+                          DropdownMenuItem(value: 'hoy', child: Text('Hoy')),
+                          DropdownMenuItem(value: '7dias', child: Text('Últimos 7 días')),
+                          DropdownMenuItem(value: 'todo', child: Text('Todo')),
+                        ],
+                        onChanged: (v) => setState(() => _fecha = v ?? 'todo'),
+                      ),
                     ),
-                  ]);
-                },
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 240,
+                    child: CampoConEtiqueta(
+                      etiqueta: 'Buscar',
+                      campo: CampoBusqueda(hint: 'Acción o correo', onChanged: (v) => setState(() => _busqueda = v)),
+                    ),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: snap.hasError
+                    ? Center(child: Text('No fue posible cargar la bitácora.', style: AppTextStyles.label))
+                    : !snap.hasData
+                        ? const Center(child: CircularProgressIndicator())
+                        : TablaApolo(
+                            porPagina: 12,
+                            vacio: 'No hay acciones que coincidan con el filtro.',
+                            columnas: const [
+                              ColumnaTabla('Hora', flex: 2),
+                              ColumnaTabla('Quién', flex: 3),
+                              ColumnaTabla('Qué hizo', flex: 6),
+                              ColumnaTabla('Tipo', flex: 2),
+                            ],
+                            filas: [
+                              for (final e in lista)
+                                [
+                                  CeldaTexto(e.fecha == null ? '' : DateFormat('HH:mm').format(e.fecha!),
+                                      debajo: e.fecha == null ? null : DateFormat('dd/MM/yyyy').format(e.fecha!), mono: true),
+                                  CeldaTexto(e.autorCorreo, debajo: e.autorRol),
+                                  Text(e.accion, style: AppTextStyles.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  Etiqueta(_nombreTipo(e.tipo), tono: TonoEtiqueta.info),
+                                ],
+                            ],
+                          ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.lock_outline_rounded, size: 15, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Los registros no se pueden editar ni borrar desde la aplicación. Se muestran los últimos ${todas.length}.',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ),
+                  if (todas.length >= _limite) TextButton(onPressed: _cargarMas, child: const Text('Cargar más')),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -40,6 +40,14 @@ Storage cerrado y regeneración de códigos).
 | S-10 | Repudio | Un operador niega haber validado una entrada | `validaciones` y `auditoria` son de solo inserción, con `operadorId == uid` y hora del servidor | Pruebas de reglas secciones E y F | Controlado desde el diseño |
 | S-11 | Divulgación de información | Alguien descarga la lista completa de graduandos o invitados | `list` negado a anónimos; solo el personal con perfil activo lista | Pruebas de reglas sección A | Controlado desde el diseño |
 | S-12 | Denegación de servicio | Se cae internet durante la ceremonia | La tablet sigue validando con su caché y envía los usos al volver la conexión | Prueba en la tablet en modo avión | Por probar |
+| S-13 | Suplantación, Manipulación | Un script con la configuración copiada habla directo con Firestore | App Check: reCAPTCHA v3 en la web y token por tablet (ver `FORTALECIMIENTO.md`) | Métricas de App Check en la consola | Listo en el código; falta activar |
+| S-14 | Suplantación | Otra página mete Apolo en un marco para engañar (clickjacking) o se filtra la URL con el ID del invitado | Encabezados `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS | Encabezados en la respuesta del sitio publicado | Corregido |
+| S-15 | Suplantación | Instalan una APK falsa encima de la real | APK firmada con llave propia (`crear-llave-apk.ps1`) | Huella SHA-256 de la APK | Listo; falta crear la llave |
+| S-16 | Divulgación de información | Leen el código de la APK sacada de una tablet | Compilación ofuscada (`compilar.ps1 apk`) | Comando de compilación | Corregido |
+| S-17 | Elevación de privilegios | Usan la cuenta del admin en un equipo que quedó abierto | Cierre de sesión tras 15 min sin uso (solo admin) | 3 pruebas automáticas en `test/cierre_inactividad_test.dart` | Corregido |
+| S-18 | Denegación de servicio | Se pierden datos por un borrado accidental (el plan gratis no tiene copias) | `respaldo.js` antes de cada ceremonia | Archivo de respaldo con fecha | Corregido |
+| S-19 | Manipulación | Registran un invitado con un nombre de graduando inventado | Las reglas exigen que `graduandoNombre` sea el del espejo público | Prueba de reglas "nombre de graduando inventado se rechaza" | Corregido |
+| S-20 | Manipulación | Siguen registrando invitados hasta el día del grado con un enlace reenviado | Fecha de cierre en Ajustes; las reglas rechazan registros después de esa fecha | Pruebas de reglas de cierre (antes y después de la fecha) | Corregido |
 
 ## 4. Riesgos que quedan
 
@@ -55,7 +63,7 @@ Storage cerrado y regeneración de códigos).
 
 ## 5. Cómo se verificó
 
-- `rules-tests\ejecutar.ps1`: 61 comprobaciones contra el emulador con las reglas reales, 0 fallos.
+- `rules-tests\ejecutar.ps1`: 64 comprobaciones contra el emulador con las reglas reales, 0 fallos.
 - `pruebas-carga\ejecutar.ps1`: flujo normal con 110, 500 y 1000 asistentes, doble escaneo
   simultáneo y estrés con 50 lecturas a la vez.
 - Revisión del historial de git: no hay llaves ni contraseñas subidas.

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../navegacion.dart';
+import '../widgets/common/apolo_ui.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +20,9 @@ class ConfiguracionScreen extends StatefulWidget {
 
 class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
   DateTime? _fechaCeremonia;
+  // Último día en que los graduandos pueden registrar invitados. Vacío =
+  // registro abierto. Lo hace cumplir firestore.rules (registroAbierto).
+  DateTime? _cierreRegistro;
   bool _guardando = false;
   bool _cargando = true;
   final _aforoCtrl = TextEditingController();
@@ -107,6 +113,9 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       if (doc.exists) {
         final data = doc.data()!;
 
+        if (data['cierreRegistro'] is Timestamp) {
+          _cierreRegistro = (data['cierreRegistro'] as Timestamp).toDate();
+        }
         if (data['fechaCeremonia'] != null) {
           final ts = data['fechaCeremonia'] as Timestamp;
           setState(() => _fechaCeremonia = ts.toDate());
@@ -252,6 +261,16 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       return;
     }
 
+    if (_cierreRegistro != null && _cierreRegistro!.isAfter(_fechaCeremonia!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El cierre del registro debe ser antes de la ceremonia'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _guardando = true);
     try {
       await FirebaseFirestore.instance
@@ -267,6 +286,10 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
         // Lo que imprime la invitación por correo (ver Codigo.gs).
         'numeroCeremonia': numeroCeremonia,
         'lugarCeremonia': lugarCeremonia,
+        // Se cierra al final de ese día (23:59:59).
+        if (_cierreRegistro != null)
+          'cierreRegistro': Timestamp.fromDate(DateTime(
+              _cierreRegistro!.year, _cierreRegistro!.month, _cierreRegistro!.day, 23, 59, 59)),
         'actualizadoPor':
             context.read<AppProvider>().usuarioActual?.correo ?? 'admin',
         'actualizadoEn': FieldValue.serverTimestamp(),
@@ -306,352 +329,282 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
     if (fecha != null) setState(() => _fechaCeremonia = fecha);
   }
 
+  Future<void> _seleccionarCierre() async {
+    final fecha = await showDatePicker(
+      context: context,
+      initialDate: _cierreRegistro ?? (_fechaCeremonia ?? DateTime.now()).subtract(const Duration(days: 5)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('es', 'CO'),
+      helpText: 'Último día para registrar invitados',
+    );
+    if (fecha != null) setState(() => _cierreRegistro = fecha);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(28),
+    final provider = context.watch<AppProvider>();
+    final ancho = MediaQuery.sizeOf(context).width;
+    final horas = _generarHorarios();
+
+    final ceremonia = _Bloque(
+      titulo: 'La ceremonia',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!EnShell.de(context)) ...[
-                      Text('Configuración del Evento', style: AppTextStyles.h1),
-                      const SizedBox(height: 4),
-                    ],
-                    Text(
-                      'Fecha, hora, aforo, lugar y facultades',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 14),
+                child: CampoConEtiqueta(
+                  etiqueta: 'Fecha',
+                  campo: InkWell(
+                    onTap: _seleccionarFecha,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(suffixIcon: Icon(Icons.calendar_today_outlined, size: 18)),
+                      child: Text(
+                        _fechaCeremonia == null ? 'dd/mm/aaaa' : DateFormat('dd/MM/yyyy').format(_fechaCeremonia!),
+                        style: AppTextStyles.mono(size: 15, color: _fechaCeremonia == null ? AppColors.textHint : null),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: _guardando ? null : _guardarConfiguracion,
-                icon: _guardando
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_rounded, size: 18),
-                label: Text(_guardando ? 'Guardando...' : 'Guardar cambios'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: CampoConEtiqueta(
+                  etiqueta: 'Número de ceremonia',
+                  campo: TextField(
+                    controller: _numeroCeremoniaCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+                    style: AppTextStyles.mono(size: 15),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: CampoConEtiqueta(
+                  etiqueta: 'Sillas del auditorio',
+                  campo: TextField(
+                    controller: _aforoCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)],
+                    style: AppTextStyles.mono(size: 15),
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (_cargando)
-            const Center(child: CircularProgressIndicator())
-          else
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // ── Fecha ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('📅 Fecha de la Ceremonia',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Todas las facultades comparten la misma fecha',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 20),
-                            InkWell(
-                              onTap: _seleccionarFecha,
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: _fechaCeremonia != null
-                                        ? AppColors.primaryLight
-                                        : AppColors.border,
-                                    width: _fechaCeremonia != null ? 2 : 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: _fechaCeremonia != null
-                                      ? AppColors.primaryLight
-                                          .withValues(alpha: 0.05)
-                                      : AppColors.surface,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today_rounded,
-                                      color: _fechaCeremonia != null
-                                          ? AppColors.primaryLight
-                                          : AppColors.textSecondary,
-                                      size: 22,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _fechaCeremonia != null
-                                            ? '${_fechaCeremonia!.day}/${_fechaCeremonia!.month}/${_fechaCeremonia!.year}'
-                                            : 'Toca para seleccionar la fecha',
-                                        style: TextStyle(
-                                          color: _fechaCeremonia != null
-                                              ? AppColors.textPrimary
-                                              : AppColors.textSecondary,
-                                          fontSize: 15,
-                                          fontWeight: _fechaCeremonia != null
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                    Icon(Icons.chevron_right_rounded,
-                                        color: AppColors.textSecondary),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+          const SizedBox(height: 14),
+          CampoConEtiqueta(
+            etiqueta: 'Cierre del registro de invitados',
+            nota: '(después de este día la página ya no deja registrar)',
+            campo: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _seleccionarCierre,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(suffixIcon: Icon(Icons.event_busy_outlined, size: 18)),
+                      child: Text(
+                        _cierreRegistro == null ? 'Sin fecha: el registro está abierto' : 'Hasta el ${DateFormat('dd/MM/yyyy').format(_cierreRegistro!)} a las 11:59 p. m.',
+                        style: _cierreRegistro == null ? AppTextStyles.label.copyWith(fontSize: 15) : AppTextStyles.mono(size: 15),
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // ── Lugar del Evento (Editable) ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('📍 Lugar del Evento',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Nombre del lugar donde se realizará la ceremonia',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _lugarCtrl,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.location_on_rounded),
-                                hintText: 'Ej: Auditorio Mayor',
-                                helperText: 'Nombre del lugar',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _direccionCtrl,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.map_rounded),
-                                hintText: 'Ej: Calle 70 No. 55-210',
-                                helperText: 'Dirección completa',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _ciudadCtrl,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.location_city_rounded),
-                                hintText: 'Ej: Bucaramanga, Santander',
-                                helperText: 'Ciudad, Departamento',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Invitación por correo ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('✉️ Invitación por Correo',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Datos que aparecen impresos en la tarjeta de invitación',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _numeroCeremoniaCtrl,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                    ],
-                                    decoration: const InputDecoration(
-                                      prefixIcon: Icon(
-                                          Icons.confirmation_number_rounded),
-                                      labelText: 'Número de ceremonia',
-                                      hintText: 'Ej: 3',
-                                      helperText: 'Entre 1 y 99',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  flex: 2,
-                                  child: TextFormField(
-                                    controller: _lugarCeremoniaCtrl,
-                                    maxLength: 120,
-                                    decoration: const InputDecoration(
-                                      prefixIcon:
-                                          Icon(Icons.apartment_rounded),
-                                      labelText: 'Lugar de la ceremonia',
-                                      hintText:
-                                          'Ej: Auditorio Mayor · Campus Lagos del Cacique',
-                                      helperText:
-                                          'Tal como aparece en la invitación',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Aforo ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('🎟️ Aforo Disponible',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Número máximo de personas permitidas en el evento',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: 200,
-                              child: TextFormField(
-                                controller: _aforoCtrl,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(Icons.people_rounded),
-                                  hintText: 'Ej: 500',
-                                  helperText: 'Personas',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Horas por facultad ──
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('🕐 Hora por Facultad',
-                                style: AppTextStyles.h3),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Cada facultad puede tener un horario diferente',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 20),
-                            ..._horasPorFacultad.entries.map(
-                              (entry) => Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        entry.key,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      flex: 2,
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: entry.value,
-                                        isExpanded: true,
-                                        decoration: const InputDecoration(
-                                          contentPadding: EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 10),
-                                        ),
-                                        items: AppConstants.horasCeremonia
-                                            .map((h) => DropdownMenuItem(
-                                                  value: h,
-                                                  child: Text(h),
-                                                ))
-                                            .toList(),
-                                        onChanged: (v) {
-                                          if (v != null) {
-                                            setState(() =>
-                                                _horasPorFacultad[entry.key] =
-                                                    v);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Apariencia (NUEVO) ──
-                    // Se aplica al instante y solo en este dispositivo;
-                    // no depende del botón "Guardar cambios".
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: SelectorTema(),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                if (_cierreRegistro != null) ...[
+                  const SizedBox(width: 8),
+                  BotonSecundario(texto: 'Quitar', onPressed: () => setState(() => _cierreRegistro = null)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          CampoConEtiqueta(etiqueta: 'Lugar', campo: TextField(controller: _lugarCtrl, decoration: const InputDecoration(hintText: 'Auditorio Mayor'))),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: CampoConEtiqueta(etiqueta: 'Dirección', campo: TextField(controller: _direccionCtrl, decoration: const InputDecoration(hintText: 'Calle 70 No. 55-210'))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: CampoConEtiqueta(etiqueta: 'Ciudad', campo: TextField(controller: _ciudadCtrl, decoration: const InputDecoration(hintText: 'Bucaramanga'))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          CampoConEtiqueta(
+            etiqueta: 'Lugar como sale en la invitación',
+            campo: TextField(controller: _lugarCeremoniaCtrl, maxLength: 120, decoration: const InputDecoration(counterText: '', hintText: 'Auditorio Mayor, Campus Lagos del Cacique')),
+          ),
+        ],
+      ),
+    );
+
+    final facultades = _horasPorFacultad.keys.toList();
+    final horario = _Bloque(
+      titulo: 'Hora por facultad',
+      accion: Text('Sale en los correos y en Control de acceso', style: AppTextStyles.bodySmall),
+      sinMargen: true,
+      child: Column(
+        children: [
+          for (final f in facultades)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.divider))),
+              child: Row(
+                children: [
+                  Expanded(child: Text(f, style: AppTextStyles.body)),
+                  SizedBox(
+                    width: 150,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: horas.contains(_horasPorFacultad[f]) ? _horasPorFacultad[f] : null,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surface,
+                        alignment: AlignmentDirectional.centerEnd,
+                        hint: Text(_horasPorFacultad[f] ?? '', style: AppTextStyles.mono(size: 15)),
+                        items: [
+                          for (final h in horas)
+                            DropdownMenuItem(value: h, alignment: AlignmentDirectional.centerEnd, child: Text(h, style: AppTextStyles.mono(size: 15))),
+                        ],
+                        onChanged: (v) => setState(() => _horasPorFacultad[f] = v!),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+        ],
+      ),
+    );
+
+    const apariencia = _Bloque(titulo: 'Apariencia', child: SelectorTema());
+
+    final usuarios = _Bloque(
+      titulo: 'Usuarios',
+      accion: BotonSecundario(texto: 'Administrar', onPressed: () => provider.setSelectedIndex(Nav.usuarios)),
+      sinMargen: true,
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('usuarios').snapshots(),
+        builder: (context, snap) {
+          final docs = (snap.data?.docs ?? []).where((d) => (d.data()['estado'] ?? 'activo') != 'eliminado').toList();
+          return Column(
+            children: [
+              for (final d in docs.take(8))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                  decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.divider))),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CeldaTexto(
+                          '${d.data()['nombre'] ?? ''}'.trim().isEmpty ? '${d.data()['correo'] ?? ''}' : '${d.data()['nombre']}',
+                          debajo: switch (d.data()['rol']) { 'admin' => 'Administrador', 'operador' => 'Operador', _ => 'Consulta' },
+                          fuerte: true,
+                        ),
+                      ),
+                      Text('${d.data()['puntoValidacion'] ?? (d.data()['rol'] == 'admin' ? 'Administración' : '')}', style: AppTextStyles.bodySmall),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+
+    final finalizar = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.errorText.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Finalizar ceremonia', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.errorText)),
+          const SizedBox(height: 8),
+          Text(
+            'Cuando la ceremonia termine, se borran los graduandos, invitados, directivos y lecturas para dejar '
+            'Apolo listo para la siguiente. Se conservan los usuarios, estos ajustes y la bitácora.',
+            style: AppTextStyles.body.copyWith(height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Por seguridad este borrado no se hace desde la tablet: lo hace el administrador desde el computador '
+            'con el script deploy/limpieza.js.',
+            style: AppTextStyles.bodySmall.copyWith(height: 1.5),
+          ),
+        ],
+      ),
+    );
+
+    final izquierda = Column(children: [ceremonia, const SizedBox(height: 20), horario, const SizedBox(height: 20), apariencia]);
+    final derecha = Column(children: [usuarios, const SizedBox(height: 20), finalizar]);
+
+    return PantallaApolo(
+      desplazable: true,
+      encabezado: EncabezadoPantalla(
+        titulo: 'Ajustes',
+        acciones: [
+          ElevatedButton(
+            onPressed: _guardando || _cargando ? null : _guardarConfiguracion,
+            child: Text(_guardando ? 'Guardando…' : 'Guardar cambios'),
+          ),
+        ],
+      ),
+      cuerpo: _cargando
+          ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+          : ancho >= 1100
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [Expanded(flex: 3, child: izquierda), const SizedBox(width: 20), Expanded(flex: 2, child: derecha)],
+                )
+              : Column(children: [izquierda, const SizedBox(height: 20), derecha]),
+    );
+  }
+}
+
+/// Tarjeta con título de la pantalla de Ajustes.
+class _Bloque extends StatelessWidget {
+  final String titulo;
+  final Widget? accion;
+  final Widget child;
+  final bool sinMargen; // el contenido llega hasta los bordes (listas)
+  const _Bloque({required this.titulo, required this.child, this.accion, this.sinMargen = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+            child: Row(
+              children: [
+                Expanded(child: Text(titulo, style: AppTextStyles.h4.copyWith(fontSize: 16))),
+                if (accion != null) accion!,
+              ],
+            ),
+          ),
+          sinMargen ? child : Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), child: child),
         ],
       ),
     );

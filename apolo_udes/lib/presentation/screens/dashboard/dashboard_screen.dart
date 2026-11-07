@@ -7,6 +7,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/tarjeta.dart';
+import '../../widgets/common/apolo_ui.dart';
+import '../../navegacion.dart';
 
 /// Pantalla de Inicio (rediseño). Responde lo que el administrador necesita
 /// saber antes del grado: cuándo y dónde es la ceremonia, cómo van las
@@ -14,10 +16,10 @@ import '../../widgets/common/tarjeta.dart';
 ///
 /// Índices del menú del administrador (ver home_screen.dart) a los que
 /// llevan los enlaces de "Requiere atención".
-const _irGraduandos = 1;
-const _irCorreos = 5;
-const _irBitacora = 6;
-const _irAjustes = 7;
+const _irGraduandos = Nav.graduandos;
+const _irCorreos = Nav.recordatorio;
+const _irBitacora = Nav.bitacora;
+const _irAjustes = Nav.ajustes;
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -43,9 +45,13 @@ class DashboardScreen extends StatelessWidget {
           : _TarjetaUltimasLecturas(registros: provider.registrosAcceso),
     ];
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(ancho < 600 ? 16 : 32),
-      child: dosColumnas
+    return PantallaApolo(
+      desplazable: true,
+      encabezado: EncabezadoPantalla(
+        titulo: 'Inicio',
+        detalle: DateFormat("EEEE d 'de' MMMM", 'es_CO').format(DateTime.now()),
+      ),
+      cuerpo: dosColumnas
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

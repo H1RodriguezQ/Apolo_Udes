@@ -12,6 +12,7 @@ import '../../../data/services/firestore_service.dart';
 import '../../../data/services/usuarios_service.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
+import '../../widgets/common/apolo_ui.dart';
 
 // Las reglas de validación (código UDES, documento, nombres, teléfono y
 // correo) están en core/validators/validadores_graduando.dart y las comparten
@@ -309,108 +310,122 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
   late final Stream<Set<String>> _conExtra =
       FirestoreService.escucharGraduandosConExtra();
 
+  // Filtros del diseño: facultad y estado del correo de registro.
+  String _facultad = 'Todas';
+  String _correo = 'Todos';
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-    
-    // Decidimos posicionar los botones en una nueva línea si el ancho de pantalla es menor a 950px
-    // para dar espacio amplio al título y evitar el aplastamiento horizontal
-    final showButtonsInline = screenWidth > 950;
-    
-    // Filtrado en tiempo real de graduandos según la barra de búsqueda
     final q = _searchQuery.trim().toLowerCase();
-    final graduandos = q.isEmpty
-        ? provider.graduandos
-        : provider.graduandos
-            .where((g) =>
-                g.nombreCompleto.toLowerCase().contains(q) ||
-                g.documento.contains(q) ||
-                g.codigoEstudiantil.contains(q))
-            .toList();
+    final facultades = {for (final g in provider.graduandos) g.facultad}.where((f) => f.isNotEmpty).toList()..sort();
 
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 16 : 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final graduandos = provider.graduandos.where((g) {
+      if (q.isNotEmpty &&
+          !(g.nombreCompleto.toLowerCase().contains(q) || g.documento.contains(q) || g.codigoEstudiantil.contains(q))) {
+        return false;
+      }
+      if (_facultad != 'Todas' && g.facultad != _facultad) return false;
+      if (_correo != 'Todos' && (g.correoRegistro ?? 'sin dato') != _correo) return false;
+      return true;
+    }).toList()
+      ..sort((a, b) => a.nombreCompleto.compareTo(b.nombreCompleto));
+
+    // Invitados registrados por cada graduando (sin contar los anulados).
+    final porGraduando = <String, int>{};
+    for (final i in provider.invitaciones) {
+      if (i.estado == EstadoInvitacion.anulada) continue;
+      porGraduando[i.graduandoId] = (porGraduando[i.graduandoId] ?? 0) + 1;
+    }
+
+    return PantallaApolo(
+      encabezado: EncabezadoPantalla(
+        titulo: 'Graduandos',
+        detalle: '${provider.totalGraduandos} registrados',
+        acciones: [
+          PopupMenuButton<String>(
+            tooltip: 'Más opciones',
+            onSelected: (v) => v == 'plantilla' ? _descargarPlantilla() : _borrarTodo(),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'plantilla', child: Text('Descargar plantilla de Excel')),
+              if (provider.graduandos.isNotEmpty)
+                PopupMenuItem(value: 'borrar', child: Text('Borrar todos', style: TextStyle(color: AppColors.errorText))),
+            ],
+            child: const IgnorePointer(child: BotonSecundario(texto: 'Más', icono: Icons.more_horiz_rounded, onPressed: _nada)),
+          ),
+          BotonSecundario(
+            texto: _importando ? 'Importando…' : 'Importar Excel',
+            onPressed: _importando ? null : _importarExcel,
+          ),
+          ElevatedButton(
+            onPressed: () => _showAddDialog(context),
+            child: const Text('Agregar graduando'),
+          ),
+        ],
+      ),
+      cuerpo: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (showButtonsInline)
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!EnShell.de(context)) Text('Graduandos', style: AppTextStyles.h1),
-                          Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Row(
-                      children: _buildButtons(context, provider, isMobile),
-                    ),
-                  ],
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!EnShell.de(context)) Text('Graduandos', style: AppTextStyles.h1),
-                        Text('${provider.totalGraduandos} estudiantes registrados', style: AppTextStyles.label),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _buildButtons(context, provider, isMobile),
-                    ),
-                  ],
+              Expanded(
+                flex: 5,
+                child: CampoConEtiqueta(
+                  etiqueta: 'Buscar',
+                  campo: CampoBusqueda(
+                    hint: 'Nombre, cédula o código',
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
                 ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: CampoConEtiqueta(
+                  etiqueta: 'Facultad',
+                  campo: _Desplegable(
+                    valor: _facultad,
+                    opciones: ['Todas', ...facultades],
+                    onChanged: (v) => setState(() => _facultad = v),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: CampoConEtiqueta(
+                  etiqueta: 'Correo de registro',
+                  campo: _Desplegable(
+                    valor: _correo,
+                    opciones: const ['Todos', 'enviado', 'pendiente', 'error'],
+                    etiquetas: const {'enviado': 'Enviado', 'pendiente': 'En cola', 'error': 'Con error'},
+                    onChanged: (v) => setState(() => _correo = v),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          
-          TextField(
-            onChanged: (v) => setState(() => _searchQuery = v),
-            decoration: const InputDecoration(
-              hintText: 'Buscar por nombre, documento o código...',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
           Expanded(
-            child: Card(
-              child: graduandos.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.school_outlined,
-                      title: 'No hay graduandos',
-                      subtitle: 'Sube un Excel o agrega manualmente',
-                    )
-                  : StreamBuilder<Set<String>>(
-                      stream: _conExtra,
-                      builder: (context, snap) {
-                        final conExtra = snap.data ?? const <String>{};
-                        return isMobile
-                            ? _GraduandosList(graduandos: graduandos, conExtra: conExtra)
-                            : _GraduandosTable(graduandos: graduandos, conExtra: conExtra);
-                      },
-                    ),
+            child: StreamBuilder<Set<String>>(
+              stream: _conExtra,
+              builder: (context, snap) {
+                final conExtra = snap.data ?? const <String>{};
+                return _GraduandosTable(
+                  graduandos: graduandos,
+                  conExtra: conExtra,
+                  invitados: porGraduando,
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
+
+  static void _nada() {}
 
   List<Widget> _buildButtons(BuildContext context, AppProvider provider, bool isMobile) {
     return [
@@ -645,180 +660,97 @@ class _GraduandosList extends StatelessWidget {
 class _GraduandosTable extends StatelessWidget {
   final List<Graduando> graduandos;
   final Set<String> conExtra;
-  const _GraduandosTable({required this.graduandos, required this.conExtra});
+  final Map<String, int> invitados;
+  const _GraduandosTable({required this.graduandos, required this.conExtra, required this.invitados});
 
   @override
   Widget build(BuildContext context) {
-    // Reenviar el correo del enlace es acción de administrador.
     final esAdmin = context.watch<AppProvider>().isAdmin;
-    // La tabla ocupa el ancho REAL disponible (ya sin el menú lateral).
-    // Antes tenía un ancho fijo de 1150 px y, en pantallas más angostas,
-    // la columna "Acciones" quedaba escondida a la derecha.
-    return LayoutBuilder(builder: (context, c) => ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          // Ancho mínimo garantizado de la tabla: la suma de anchos cómodos
-          // (740 px de columnas fijas + 630 px para Graduando, Programa y
-          // Facultad). Antes el mínimo era 820 px y esas tres columnas
-          // colapsaban a ~50 px: los textos salían letra por letra. Con 1370
-          // px nunca se comprimen; si la pantalla es más angosta, la tabla
-          // se desplaza horizontalmente en lugar de romperse.
-          width: c.maxWidth < 1370 ? 1370 : c.maxWidth,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: Table(
-              // Columnas de datos cortos (documento, código, hora, estado) y la de
-              // acciones tienen ancho FIJO: no se parten en dos líneas y los
-              // botones siempre tienen espacio. Nombre, programa y facultad se
-              // reparten el espacio restante.
-              columnWidths: const {
-                0: FlexColumnWidth(3),     // Graduando
-                1: FixedColumnWidth(130),  // Documento
-                2: FixedColumnWidth(135),  // Código
-                3: FlexColumnWidth(3),     // Programa
-                4: FlexColumnWidth(2),     // Facultad
-                5: FixedColumnWidth(110),  // Hora
-                6: FixedColumnWidth(175),  // Estado
-                7: FixedColumnWidth(190),  // Acciones
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    return TablaApolo(
+      vacio: 'No hay graduandos con ese filtro. Importe el Excel o agréguelos uno por uno.',
+      columnas: const [
+        ColumnaTabla('Graduando', flex: 5),
+        ColumnaTabla('Cédula', flex: 2),
+        ColumnaTabla('Código', flex: 2),
+        ColumnaTabla('Invitados', flex: 2),
+        ColumnaTabla('Correo', flex: 2),
+        ColumnaTabla('Acciones', flex: 3, derecha: true),
+      ],
+      filas: [
+        for (final g in graduandos)
+          [
+            CeldaTexto(g.nombreCompleto, debajo: g.programa, fuerte: true),
+            CeldaTexto(g.documento, mono: true),
+            CeldaTexto(g.codigoEstudiantil, mono: true),
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TableRow(
-                  decoration: BoxDecoration(color: AppColors.surfaceVariant),
-                  children: ['Graduando', 'Documento', 'Código', 'Programa', 'Facultad', 'Hora', 'Estado', 'Acciones']
-                      .map((h) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Text(h,
-                                style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                ),
-                
-                ...graduandos.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final g = entry.value;
-                  final tieneExtra = conExtra.contains(g.id);
-                  return TableRow(
-                    decoration: BoxDecoration(
-                      // antes: Colors.white / 0xFFFAFBFC fijos
-                      color: i.isEven
-                          ? AppColors.surface
-                          : AppColors.surfaceVariant.withValues(alpha: 0.35),
-                      border: Border(bottom: BorderSide(color: AppColors.divider)),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            UserAvatar(name: g.nombreCompleto, size: 32),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                g.nombreCompleto,
-                                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _cell(g.documento, unaLinea: true),
-                      _cell(g.codigoEstudiantil, unaLinea: true),
-                      _cell(g.programa),
-                      _cell(_facultadCorta(g.facultad)),
-                      _cell(g.horaCeremonia, unaLinea: true),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: [
-                            StatusBadge.fromEstadoGraduando(g.estado),
-                            if (tieneExtra) const _ExtraBadge(),
-                            // Estado del correo del enlace de registro.
-                            EstadoCorreoBadge(estado: g.correoRegistro),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _BotonExtra(graduando: g, tieneExtra: tieneExtra, size: 20),
-                            const SizedBox(width: 6),
-                            IconButton(
-                              tooltip: 'Editar',
-                              icon: const Icon(Icons.edit_rounded, size: 20),
-                              color: AppColors.primaryLight,
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              padding: EdgeInsets.zero,
-                              onPressed: () => showDialog(context: context, builder: (_) => _AgregarGraduandoDialog(graduando: g)),
-                            ),
-                            // Reenviar el enlace solo aparece cuando el
-                            // documento trae el campo y quien lo pide es
-                            // administrador.
-                            if (esAdmin && g.correoRegistro != null) ...[
-                              const SizedBox(width: 6),
-                              IconButton(
-                                tooltip: 'Reenviar el correo con el enlace de registro',
-                                icon: const Icon(Icons.mark_email_read_outlined, size: 20),
-                                color: AppColors.info,
-                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                padding: EdgeInsets.zero,
-                                onPressed: () => _reenviarEnlaceRegistro(context, g),
-                              ),
-                            ],
-                            const SizedBox(width: 6),
-                            IconButton(
-                              tooltip: 'Eliminar',
-                              icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                              color: AppColors.error,
-                              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                              padding: EdgeInsets.zero,
-                              onPressed: () => _eliminarGraduando(context, g),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }),
+                Text('${invitados[g.id] ?? 0} / ${conExtra.contains(g.id) ? 3 : 2}', style: AppTextStyles.mono(size: 14)),
+                if (conExtra.contains(g.id)) ...[const SizedBox(width: 8), const Etiqueta('+1', tono: TonoEtiqueta.info)],
               ],
             ),
-          ),
-        ),
-      ),
-    ));
+            switch (g.correoRegistro) {
+              'enviado' => const Etiqueta('Enviado', tono: TonoEtiqueta.ok),
+              'pendiente' => const Etiqueta('En cola', tono: TonoEtiqueta.aviso),
+              'error' => const Etiqueta('Con error', tono: TonoEtiqueta.error),
+              _ => const Etiqueta('Sin dato'),
+            },
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AccionFila(
+                  icono: Icons.edit_outlined,
+                  ayuda: 'Editar',
+                  onPressed: () => showDialog(context: context, builder: (_) => _AgregarGraduandoDialog(graduando: g)),
+                ),
+                if (esAdmin)
+                  AccionFila(
+                    icono: Icons.mail_outline,
+                    ayuda: 'Reenviar el correo con el enlace de registro',
+                    onPressed: () => _reenviarEnlaceRegistro(context, g),
+                  ),
+                if (esAdmin)
+                  AccionFila(
+                    icono: conExtra.contains(g.id) ? Icons.person_remove_outlined : Icons.person_add_alt_outlined,
+                    ayuda: conExtra.contains(g.id) ? 'Revocar invitado adicional' : 'Autorizar invitado adicional',
+                    onPressed: () => conExtra.contains(g.id) ? _revocarExtra(context, g) : _autorizarExtra(context, g),
+                  ),
+                AccionFila(
+                  icono: Icons.delete_outline,
+                  ayuda: 'Eliminar',
+                  peligro: true,
+                  onPressed: () => _eliminarGraduando(context, g),
+                ),
+              ],
+            ),
+          ],
+      ],
+    );
   }
+}
 
-  String _facultadCorta(String f) {
-    if (f.contains('Salud')) return 'C. Salud';
-    if (f.contains('Económ')) return 'C. Económicas';
-    if (f.contains('Ingenier')) return 'Ingenierías';
-    return f.length > 12 ? '${f.substring(0, 12)}...' : f;
+/// Lista desplegable del diseño (Todas / Ingenierías / ...).
+class _Desplegable extends StatelessWidget {
+  final String valor;
+  final List<String> opciones;
+  final Map<String, String> etiquetas;
+  final ValueChanged<String> onChanged;
+  const _Desplegable({required this.valor, required this.opciones, required this.onChanged, this.etiquetas = const {}});
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 13)),
+      dropdownColor: AppColors.surface,
+      items: [
+        for (final o in opciones)
+          DropdownMenuItem(value: o, child: Text(etiquetas[o] ?? o, overflow: TextOverflow.ellipsis)),
+      ],
+      onChanged: (v) => v == null ? null : onChanged(v),
+    );
   }
-
-  /// `unaLinea`: para documento, código y hora, que nunca deben partirse.
-  /// El resto (programa y facultad) aguanta hasta 2 líneas y luego trunca con
-  /// puntos suspensivos: así un nombre largo no reventaba la fila ni salía
-  /// letra por letra cuando la columna se achicaba.
-  Widget _cell(String text, {bool unaLinea = false}) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Text(
-          text,
-          style: AppTextStyles.body,
-          maxLines: unaLinea ? 1 : 2,
-          softWrap: true,
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
 }
 
 class _ResultadoImportDialog extends StatelessWidget {

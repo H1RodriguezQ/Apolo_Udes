@@ -35,6 +35,7 @@ function Jwt([string]$sub) {
 # --- valores de campo REST --------------------------------------------------
 function S([string]$v) { return @{ stringValue = $v } }
 function N([int]$v) { return @{ integerValue = "$v" } }
+function T([DateTime]$v) { return @{ timestampValue = $v.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } }
 function Mas([hashtable]$a, [hashtable]$b) {
   $r = @{}
   foreach ($k in $a.Keys) { $r[$k] = $a[$k] }
@@ -106,7 +107,7 @@ function Lote([string]$g, [string]$inv, [string]$docPorDefecto, [hashtable]$extr
     @{ update = @{ name = "$ruta/invitados_documentos/${g}_${doc}"; fields = @{ graduandoId = S $g; documento = S $doc; invitadoId = S $inv } } },
     @{ update = @{ name = $invPath; fields = $campos } },
     @{ transform = @{ document = $invPath; fieldTransforms = @(@{ fieldPath = 'fechaRegistro'; setToServerValue = 'REQUEST_TIME' }) } },
-    @{ update = @{ name = "$ruta/graduandos_publico/$g"; fields = @{ nombre = S 'Graduando Prueba'; invitadosPermitidos = N 2; cuposUsados = N 1 } } }
+    @{ update = @{ name = "$ruta/graduandos_publico/$g"; fields = @{ nombre = S 'Graduando Prueba'; nombreCompleto = S 'Graduando Prueba'; invitadosPermitidos = N 2; cuposUsados = N 1 } } }
   )
 }
 
@@ -139,7 +140,7 @@ $gA = "ga-$run"
 $gB = "gb-$run"
 foreach ($g in @($gA, $gB)) {
   $null = Escribir graduandos $g @{ nombre = S 'Graduando Prueba'; invitadosPermitidos = N 2 } $owner
-  $null = Escribir graduandos_publico $g @{ nombre = S 'Graduando Prueba'; invitadosPermitidos = N 2; cuposUsados = N 0 } $owner
+  $null = Escribir graduandos_publico $g @{ nombre = S 'Graduando Prueba'; nombreCompleto = S 'Graduando Prueba'; invitadosPermitidos = N 2; cuposUsados = N 0 } $owner
 }
 $null = Escribir configuracion 'evento' @{ lugar = S 'Auditorio Prueba'; ciudad = S 'Bucaramanga' } $owner
 
@@ -264,6 +265,14 @@ Comprobar 'no se sube el contador sin que exista el cupo' (Commit (@{ update = @
 Comprobar 'nombre con etiquetas HTML se rechaza' (Commit (Lote $gB "invb-$run" $docB @{ nombreInvitado = S '<script>alert(1)</script>' }) $anon) 403
 Comprobar 'correo con puntos dobles se rechaza' (Commit (Lote $gB "invc-$run" $docB @{ correoInvitado = S 'a..b@prueba.co' }) $anon) 403
 Comprobar 'documento que empieza por 0 se rechaza' (Commit (Lote $gB "invd-$run" $docB @{ documento = S '0123456' }) $anon) 403
+Comprobar 'nombre de graduando inventado se rechaza' (Commit (Lote $gB "inve-$run" $docB @{ graduandoNombre = S 'Otro Graduando' }) $anon) 403
+
+# Cierre del registro: con la fecha de cierre en el pasado nadie registra;
+# al moverla al futuro, el mismo registro pasa.
+$null = Escribir configuracion 'evento' @{ lugar = S 'Auditorio Prueba'; ciudad = S 'Bucaramanga'; cierreRegistro = T ([DateTime]::UtcNow.AddDays(-1)) } $owner
+Comprobar 'con el registro cerrado no se registran invitados' (Commit (Lote $gB "invf-$run" $docB @{}) $anon) 403
+$null = Escribir configuracion 'evento' @{ lugar = S 'Auditorio Prueba'; ciudad = S 'Bucaramanga'; cierreRegistro = T ([DateTime]::UtcNow.AddDays(7)) } $owner
+Comprobar 'antes de la fecha de cierre si se registra' (Commit (Lote $gB "invg-$run" $docB @{}) $anon) 200
 
 Comprobar 'el invitado confirma su asistencia UNA sola vez' (Commit (@{ update = @{ name = "$ruta/invitados/$invA"; fields = @{ confirmacion = S 'confirmado' } }; updateMask = @{ fieldPaths = @('confirmacion') } }) $anon) 200
 Comprobar 'la segunda confirmacion se rechaza' (Commit (@{ update = @{ name = "$ruta/invitados/$invA"; fields = @{ confirmacion = S 'rechazado' } }; updateMask = @{ fieldPaths = @('confirmacion') } }) $anon) 403

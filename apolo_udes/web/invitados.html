@@ -264,6 +264,7 @@
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app-check.js';
   import { getFirestore, doc, getDoc, collection, writeBatch, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
@@ -277,6 +278,13 @@
   };
 
   const app = initializeApp(firebaseConfig);
+  // App Check: Firestore solo responde a esta página, no a scripts que
+  // copien la configuración. Clave del sitio de reCAPTCHA v3 (no es
+  // secreta). Vacía = desactivado. Ver docs/seguridad/FORTALECIMIENTO.md.
+  const CLAVE_RECAPTCHA = '';
+  if (CLAVE_RECAPTCHA) {
+    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(CLAVE_RECAPTCHA), isTokenAutoRefreshEnabled: true });
+  }
   const db = getFirestore(app);
 
   const params = new URLSearchParams(window.location.search);
@@ -336,11 +344,26 @@
       // dejan leer a cualquiera. Si no se puede leer, la casilla se queda
       // en "—" y el registro sigue funcionando igual.
       let ceremonia = '—';
+      let cierre = null; // fecha de cierre del registro que pone el admin
       try {
         const evento = await getDoc(doc(db, 'configuracion', 'evento'));
         const n = evento.exists() ? evento.data().numeroCeremonia : null;
         if (Number.isInteger(n)) ceremonia = 'N.º ' + n;
+        const c = evento.exists() ? evento.data().cierreRegistro : null;
+        if (c && typeof c.toDate === 'function') cierre = c.toDate();
       } catch (e) { /* lectura secundaria: no bloquea el registro */ }
+
+      // Registro cerrado: las reglas ya lo rechazan en el servidor; aquí solo
+      // se avisa antes de que el graduando llene el formulario.
+      if (cierre && new Date() > cierre) {
+        mostrarError(
+          'El registro de invitados está cerrado',
+          'El plazo para registrar invitados terminó el ' +
+          cierre.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) +
+          '. Si necesitas ayuda, comunícate con la Dirección de Graduados.'
+        );
+        return;
+      }
 
       document.getElementById('grad-nombre').textContent = grad.nombreCompleto || '';
       document.getElementById('grad-prog').textContent = (grad.programa || '') + ' · ' + (grad.facultad || '');

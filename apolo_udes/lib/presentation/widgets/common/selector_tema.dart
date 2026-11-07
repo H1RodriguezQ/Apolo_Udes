@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/theme_provider.dart';
+import 'apolo_ui.dart';
 
 /// Selector de tres opciones para la pantalla de Configuración.
 class SelectorTema extends StatelessWidget {
@@ -10,31 +11,17 @@ class SelectorTema extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = context.watch<ThemeProvider>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text('Apariencia', style: AppTextStyles.h4),
-        const SizedBox(height: 4),
-        Text('Elige cómo se ve Apolo en este dispositivo',
-            style: AppTextStyles.bodySmall),
-        const SizedBox(height: 12),
-        SegmentedButton<ThemeMode>(
-          segments: const [
-            ButtonSegment(
-                value: ThemeMode.light,
-                icon: Icon(Icons.light_mode_outlined),
-                label: Text('Claro')),
-            ButtonSegment(
-                value: ThemeMode.dark,
-                icon: Icon(Icons.dark_mode_outlined),
-                label: Text('Oscuro')),
-            ButtonSegment(
-                value: ThemeMode.system,
-                icon: Icon(Icons.settings_brightness_outlined),
-                label: Text('Sistema')),
+        Expanded(child: Text('Solo cambia en este dispositivo', style: AppTextStyles.bodySmall)),
+        FiltroSegmentado<ThemeMode>(
+          valor: tema.modo,
+          onChanged: tema.cambiar,
+          opciones: const [
+            (ThemeMode.light, 'Claro', null),
+            (ThemeMode.dark, 'Oscuro', null),
+            (ThemeMode.system, 'Igual que el sistema', null),
           ],
-          selected: {tema.modo},
-          onSelectionChanged: (s) => tema.cambiar(s.first),
         ),
       ],
     );
