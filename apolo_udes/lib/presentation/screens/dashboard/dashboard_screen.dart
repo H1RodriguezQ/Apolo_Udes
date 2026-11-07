@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/tarjeta.dart';
 import '../../widgets/common/apolo_ui.dart';
+import '../../widgets/common/grafico_barras.dart';
 import '../../navegacion.dart';
 
 /// Pantalla de Inicio (rediseño). Responde lo que el administrador necesita
@@ -226,70 +226,51 @@ class _TarjetaPorDia extends StatelessWidget {
   Widget build(BuildContext context) {
     final hoy = DateTime.now();
     final inicioHoy = DateTime(hoy.year, hoy.month, hoy.day);
+
+    // conteo[6] es hoy, conteo[5] ayer, y así hacia atrás.
     final conteo = List<int>.filled(7, 0);
     for (final inv in invitaciones) {
       final f = inv.fechaEnvio;
       if (f == null) continue;
-      final dia = DateTime(f.year, f.month, f.day);
-      final hace = inicioHoy.difference(dia).inDays;
+      final hace = inicioHoy.difference(DateTime(f.year, f.month, f.day)).inDays;
       if (hace >= 0 && hace < 7) conteo[6 - hace]++;
     }
-    final maximo = conteo.fold<int>(0, (a, b) => a > b ? a : b);
-    final tope = maximo < 4 ? 4.0 : (maximo * 1.15).ceilToDouble();
+    final dias = [for (var i = 0; i < 7; i++) inicioHoy.subtract(Duration(days: 6 - i))];
+    final total = conteo.fold<int>(0, (a, b) => a + b);
+
+    // Día con más registros, para decirlo en palabras debajo del gráfico.
+    var mejor = 0;
+    for (var i = 1; i < 7; i++) {
+      if (conteo[i] > conteo[mejor]) mejor = i;
+    }
+    String nombreDia(int i) => i == 6 ? 'hoy' : i == 5 ? 'ayer' : DateFormat("EEEE d", 'es_CO').format(dias[i]);
 
     return Tarjeta(
       titulo: 'Invitados registrados por día',
-      accion: Text('7 días', style: AppTextStyles.label),
-      child: SizedBox(
-        height: 180,
-        child: BarChart(
-          BarChartData(
-            maxY: tope,
-            alignment: BarChartAlignment.spaceAround,
-            borderData: FlBorderData(show: false),
-            gridData: FlGridData(
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) => FlLine(color: AppColors.divider, strokeWidth: 1),
-            ),
-            barTouchData: BarTouchData(enabled: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: AppTextStyles.mono(size: 11, color: AppColors.textSecondary)),
-                ),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (v, _) {
-                    final i = v.toInt();
-                    final dia = inicioHoy.subtract(Duration(days: 6 - i));
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(i == 6 ? 'hoy' : '${dia.day}',
-                          style: AppTextStyles.mono(size: 11, color: AppColors.textSecondary)),
-                    );
-                  },
-                ),
-              ),
-            ),
-            barGroups: [
+      accion: Text('Últimos 7 días', style: AppTextStyles.label),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GraficoBarras(
+            valores: [for (final c in conteo) [c]],
+            etiquetas: [
               for (var i = 0; i < 7; i++)
-                BarChartGroupData(x: i, barRods: [
-                  BarChartRodData(
-                    toY: conteo[i].toDouble(),
-                    width: 28,
-                    color: AppColors.isDark ? const Color(0xFF5F97E2) : AppColors.serie1,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ]),
+                i == 6 ? 'hoy' : DateFormat('E d', 'es_CO').format(dias[i]).replaceAll('.', ''),
             ],
+            colores: [AppColors.isDark ? const Color(0xFF5F97E2) : AppColors.serie1],
+            alto: 120,
+            resaltada: 6,
+            textoVacio: 'Nadie registró invitados esta semana.',
+            detalle: (i) => '${conteo[i]} invitado${conteo[i] == 1 ? '' : 's'} el ${nombreDia(i)}',
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            total == 0
+                ? 'Cuando los graduandos registren invitados, aquí se verá cuántos hubo cada día.'
+                : '$total en la semana. El día con más registros fue ${nombreDia(mejor)} (${conteo[mejor]}).',
+            style: AppTextStyles.bodySmall.copyWith(fontSize: 13),
+          ),
+        ],
       ),
     );
   }

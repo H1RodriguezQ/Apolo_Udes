@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../widgets/shell/barra_superior.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/validators/validadores_graduando.dart';
 import '../../../data/models/models.dart';
@@ -249,53 +248,6 @@ class _MotivoExtraDialogState extends State<_MotivoExtraDialog> {
   }
 }
 
-class _ExtraBadge extends StatelessWidget {
-  const _ExtraBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Tiene autorizado un invitado adicional',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.pending.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text('+1 extra',
-            style: TextStyle(
-                color: AppColors.pending,
-                fontSize: 11,
-                fontWeight: FontWeight.w700)),
-      ),
-    );
-  }
-}
-
-/// Botón que alterna entre autorizar y revocar el invitado adicional.
-class _BotonExtra extends StatelessWidget {
-  final Graduando graduando;
-  final bool tieneExtra;
-  final double size;
-  const _BotonExtra({required this.graduando, required this.tieneExtra, this.size = 18});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tieneExtra ? 'Revocar invitado adicional' : 'Autorizar invitado adicional',
-      icon: Icon(
-          tieneExtra ? Icons.person_remove_alt_1_rounded : Icons.person_add_alt_1_rounded,
-          size: size),
-      color: AppColors.pending,
-      onPressed: () => tieneExtra
-          ? _revocarExtra(context, graduando)
-          : _autorizarExtra(context, graduando),
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      padding: EdgeInsets.zero,
-    );
-  }
-}
-
 class GraduandosScreen extends StatefulWidget {
   const GraduandosScreen({super.key});
   @override
@@ -427,43 +379,6 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
 
   static void _nada() {}
 
-  List<Widget> _buildButtons(BuildContext context, AppProvider provider, bool isMobile) {
-    return [
-      OutlinedButton.icon(
-        onPressed: _importando ? null : _descargarPlantilla,
-        icon: const Icon(Icons.download_rounded, size: 18),
-        label: const Text('Plantilla'),
-      ),
-      const SizedBox(width: 8),
-      ElevatedButton.icon(
-        onPressed: _importando ? null : _importarExcel,
-        icon: _importando
-            ? const SizedBox(
-                width: 16, 
-                height: 16, 
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-              )
-            : const Icon(Icons.upload_file_rounded, size: 18),
-        label: Text(_importando ? 'Importando...' : 'Importar Excel'),
-      ),
-      const SizedBox(width: 8),
-      ElevatedButton.icon(
-        onPressed: () => _showAddDialog(context),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Agregar'),
-      ),
-      if (provider.graduandos.isNotEmpty) ...[
-        const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: _importando ? null : _borrarTodo,
-          icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-          label: const Text('Borrar'),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorLight, foregroundColor: AppColors.errorText),
-        ),
-      ],
-    ];
-  }
-
   Future<void> _importarExcel() async {
     setState(() => _importando = true);
     
@@ -564,96 +479,6 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
 
   void _showAddDialog(BuildContext context) {
     showDialog(context: context, barrierDismissible: false, builder: (_) => const _AgregarGraduandoDialog());
-  }
-}
-
-class _GraduandosList extends StatelessWidget {
-  final List<Graduando> graduandos;
-  final Set<String> conExtra;
-  const _GraduandosList({required this.graduandos, required this.conExtra});
-
-  @override
-  Widget build(BuildContext context) {
-    final esAdmin = context.watch<AppProvider>().isAdmin;
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: graduandos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final g = graduandos[i];
-        final tieneExtra = conExtra.contains(g.id);
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface, // antes: Colors.white fijo
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Row(
-            children: [
-              UserAvatar(name: g.nombreCompleto, size: 40),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(g.nombreCompleto, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                    Text(g.programa, style: AppTextStyles.bodySmall),
-                    Text('Doc: ${g.documento} | ${g.horaCeremonia}', style: AppTextStyles.caption),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge.fromEstadoGraduando(g.estado),
-                  if (g.correoRegistro != null) ...[
-                    const SizedBox(height: 4),
-                    EstadoCorreoBadge(estado: g.correoRegistro),
-                  ],
-                  if (tieneExtra) ...[
-                    const SizedBox(height: 4),
-                    const _ExtraBadge(),
-                  ],
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _BotonExtra(graduando: g, tieneExtra: tieneExtra, size: 16),
-                      if (esAdmin && g.correoRegistro != null)
-                        IconButton(
-                          tooltip: 'Reenviar el correo con el enlace de registro',
-                          icon: const Icon(Icons.mark_email_read_outlined, size: 16),
-                          color: AppColors.info,
-                          onPressed: () => _reenviarEnlaceRegistro(context, g),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          padding: EdgeInsets.zero,
-                        ),
-                      IconButton(
-                        tooltip: 'Editar',
-                        icon: const Icon(Icons.edit_rounded, size: 16),
-                        color: AppColors.primaryLight,
-                        onPressed: () => showDialog(context: context, builder: (_) => _AgregarGraduandoDialog(graduando: g)),
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                        color: AppColors.error,
-                        tooltip: 'Eliminar',
-                        onPressed: () => _eliminarGraduando(context, g),
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }
 

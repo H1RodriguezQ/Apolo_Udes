@@ -9,12 +9,11 @@ class Nav {
   static const graduandos = 1;
   static const invitados = 2;
   static const directivos = 3;
-  static const ceremonia = 4; // "Acceso": ceremonia en curso
+  static const ceremonia = 4; // "Acceso": lector + ceremonia en curso
   static const ajustes = 5;
   // Sin botón en el menú:
   static const recordatorio = 6; // desde Invitados e Inicio
   static const bitacora = 7; // desde Inicio
-  static const lector = 8; // desde Ceremonia en curso
   static const usuarios = 9; // desde Ajustes
 
   static const menu = [
@@ -22,7 +21,7 @@ class Nav {
     OpcionMenu('Graduandos', 'Graduandos', Icons.school_outlined),
     OpcionMenu('Invitados', 'Invitados', Icons.people_outline),
     OpcionMenu('Directivos', 'Directivos', Icons.person_outline),
-    OpcionMenu('Acceso', 'Ceremonia en curso', Icons.qr_code_scanner_rounded),
+    OpcionMenu('Acceso', 'Acceso a la ceremonia', Icons.qr_code_scanner_rounded),
     OpcionMenu('Ajustes', 'Ajustes', Icons.tune_rounded),
   ];
 
@@ -30,7 +29,6 @@ class Nav {
   static int opcionDelMenu(int i) => switch (i) {
         recordatorio => invitados,
         bitacora => inicio,
-        lector => ceremonia,
         usuarios => ajustes,
         _ => i,
       };

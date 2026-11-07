@@ -16,7 +16,6 @@ final _regexNombre =
     RegExp(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ .'\-]{1,79}$");
 final _regexCorreo = RegExp(
     r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$');
-final _regexPunto = RegExp(r'^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 \-]{2,40}$');
 
 String? _validarNombre(String? v) {
   final t = v?.trim() ?? '';
@@ -37,13 +36,6 @@ String? _validarCorreo(String? v) {
   if (t.length > 254 || !_regexCorreo.hasMatch(t) || t.contains('..')) {
     return 'Correo no valido';
   }
-  return null;
-}
-
-String? _validarPunto(String? v) {
-  final t = v?.trim() ?? '';
-  if (t.isEmpty) return 'Requerido para operadores';
-  if (!_regexPunto.hasMatch(t)) return 'Solo letras, numeros y espacios';
   return null;
 }
 
@@ -532,7 +524,11 @@ class _UsuarioDialog extends StatefulWidget {
 
 class _UsuarioDialogState extends State<_UsuarioDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nombreCtrl, _correoCtrl, _puntoCtrl;
+  late final TextEditingController _nombreCtrl, _correoCtrl;
+  // La entrada se escoge de una lista (no se escribe) para que "Entrada 1"
+  // sea siempre igual: si un operador quedaba con "entrada 1", la app lo
+  // contaba como otra entrada y partía los totales y la gráfica.
+  String? _punto;
   late RolUsuario _rol;
   late EstadoUsuario _estado;
   bool _guardando = false;
@@ -546,7 +542,10 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
     final u = widget.usuario;
     _nombreCtrl = TextEditingController(text: u?.nombre ?? '');
     _correoCtrl = TextEditingController(text: u?.correo ?? '');
-    _puntoCtrl = TextEditingController(text: u?.puntoValidacion ?? '');
+    // Si el usuario tenía una entrada escrita a mano que no está en la
+    // lista, queda sin escoger y el formulario pide elegir una.
+    final puntoGuardado = (u?.puntoValidacion ?? '').trim();
+    _punto = AppProvider.puntosDeEntrada.contains(puntoGuardado) ? puntoGuardado : null;
     _rol = u?.rol ?? RolUsuario.operador;
     _estado = u?.estado ?? EstadoUsuario.activo;
   }
@@ -555,7 +554,6 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
   void dispose() {
     _nombreCtrl.dispose();
     _correoCtrl.dispose();
-    _puntoCtrl.dispose();
     super.dispose();
   }
 
@@ -577,7 +575,7 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
           usuario: widget.usuario!,
           nombre: _nombreCtrl.text,
           rol: _rol,
-          puntoValidacion: _puntoCtrl.text,
+          puntoValidacion: _rol == RolUsuario.operador ? (_punto ?? '') : '',
           estado: _estado,
           autor: autor,
         );
@@ -587,7 +585,7 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
           nombre: _nombreCtrl.text,
           correo: _correoCtrl.text,
           rol: _rol,
-          puntoValidacion: _puntoCtrl.text,
+          puntoValidacion: _rol == RolUsuario.operador ? (_punto ?? '') : '',
           autor: autor,
         );
         mensaje = reactivado
@@ -671,12 +669,15 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
                     const SizedBox(height: 12),
                     _label('Punto de validación'),
                     const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _puntoCtrl,
-                      maxLength: 40,
-                      decoration: const InputDecoration(
-                          hintText: 'Entrada Principal', counterText: ''),
-                      validator: _validarPunto,
+                    DropdownButtonFormField<String>(
+                      initialValue: _punto,
+                      hint: const Text('Escoja la entrada'),
+                      items: [
+                        for (final p in AppProvider.puntosDeEntrada)
+                          DropdownMenuItem(value: p, child: Text(p)),
+                      ],
+                      onChanged: (v) => setState(() => _punto = v),
+                      validator: (v) => v == null ? 'Escoja la entrada del operador' : null,
                     ),
                   ],
                   if (_editando) ...[

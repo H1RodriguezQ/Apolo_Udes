@@ -17,7 +17,6 @@ class InvitacionesScreen extends StatefulWidget {
 
 class _InvitacionesScreenState extends State<InvitacionesScreen> {
   final Set<String> _enviando = {};
-  bool _enviandoRecordatorios = false;
 
   String _filtro = 'todos';
   String _busqueda = '';
@@ -164,28 +163,6 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _enviarRecordatorios(BuildContext context, AppProvider provider) async {
-    setState(() => _enviandoRecordatorios = true);
-    try {
-      await provider.enviarRecordatorios();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          // El servidor es quien manda los correos: aquí solo se pidió.
-          content: Text('✅ Recordatorio en cola. El servidor lo enviará en unos minutos.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-      );
-    } finally {
-      if (mounted) setState(() => _enviandoRecordatorios = false);
-    }
   }
 
   Future<void> _borrarTodas(BuildContext context, AppProvider provider) async {
@@ -340,11 +317,5 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
     );
   }
 
-  Widget _cell(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(text, style: AppTextStyles.body),
-    );
-  }
 }
 

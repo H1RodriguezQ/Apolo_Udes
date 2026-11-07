@@ -93,15 +93,22 @@ class _BotonMenu extends StatelessWidget {
                 children: [
                   Icon(opcion.icono, size: 22, color: color),
                   const SizedBox(height: 4),
-                  Text(
-                    opcion.etiqueta,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: color,
-                      fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                  // FittedBox achica la palabra si no cabe (en la tablet,
+                  // con letra más grande, "Graduandos" se cortaba).
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        opcion.etiqueta,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: color,
+                          fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
                     ),
                   ),
                 ],

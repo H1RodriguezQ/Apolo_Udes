@@ -60,8 +60,22 @@ class AppProvider extends ChangeNotifier {
   List<LecturaDia> _lecturasDelDia = [];
   List<LecturaDia> get lecturasDelDia => _lecturasDelDia;
 
-  /// Punto de entrada de este usuario ("Entrada 1"); vacío para el admin.
-  String get miPunto => (_usuarioActual?.puntoValidacion ?? '').trim();
+  /// Entradas del auditorio. El admin escoge en cuál está leyendo.
+  static const puntosDeEntrada = ['Entrada 1', 'Entrada 2'];
+  String _puntoDelAdmin = puntosDeEntrada.first;
+
+  /// Punto donde lee este usuario: el operador tiene el suyo asignado en su
+  /// perfil; el administrador lo escoge en la pantalla de Acceso.
+  String get miPunto {
+    final asignado = (_usuarioActual?.puntoValidacion ?? '').trim();
+    if (asignado.isNotEmpty) return asignado;
+    return isAdmin ? _puntoDelAdmin : '';
+  }
+
+  void elegirPunto(String punto) {
+    _puntoDelAdmin = punto;
+    notifyListeners();
+  }
   List<CampanaNotificacion> _notificaciones = [];
   List<Usuario> _usuarios = [];
   List<ActividadReciente> _actividades = [];
@@ -247,7 +261,9 @@ class AppProvider extends ChangeNotifier {
           _aforoDisponible = aforo;
           notifyListeners();
         }
-      }).catchError((e) => debugPrint('No se pudo leer el aforo: $e'));
+      }).catchError((Object e) {
+        debugPrint('No se pudo leer el aforo: $e');
+      });
       return;
     }
     _conexionSubscription?.cancel();
@@ -849,9 +865,7 @@ class AppProvider extends ChangeNotifier {
     final ref = FirebaseFirestore.instance.collection('usos').doc(codigo);
     final datos = {
       'codigo': codigo,
-      'puntoValidacion': (usuario.puntoValidacion ?? '').trim().isEmpty
-          ? 'Administracion'
-          : (usuario.puntoValidacion ?? '').trim(),
+      'puntoValidacion': miPunto.isEmpty ? 'Administracion' : miPunto,
       'operadorId': usuario.id,
       'timestamp': FieldValue.serverTimestamp(),
     };
@@ -970,9 +984,7 @@ class AppProvider extends ChangeNotifier {
         'nombre': nombre,
         'tipo': tipo,
         'resultado': resultado,
-        'puntoValidacion': (usuario.puntoValidacion ?? '').trim().isEmpty
-            ? 'Administracion'
-            : (usuario.puntoValidacion ?? '').trim(),
+        'puntoValidacion': miPunto.isEmpty ? 'Administracion' : miPunto,
         'operadorId': usuario.id,
         'operadorCorreo': usuario.correo,
         'timestamp': FieldValue.serverTimestamp(),

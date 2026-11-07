@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -7,10 +8,16 @@ import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
 import '../../widgets/common/apolo_ui.dart';
-import '../../navegacion.dart';
 
+/// Lector de códigos QR.
+///
+/// - El operador lo ve como pantalla completa (`enPanel: false`).
+/// - El administrador lo ve como un panel a la izquierda de la pantalla
+///   "Acceso a la ceremonia" (`enPanel: true`), junto a las cifras del
+///   auditorio, para no tener que cambiar de pantalla.
 class ControlAccesoScreen extends StatefulWidget {
-  const ControlAccesoScreen({super.key});
+  final bool enPanel;
+  const ControlAccesoScreen({super.key, this.enPanel = false});
 
   @override
   State<ControlAccesoScreen> createState() => _ControlAccesoScreenState();
@@ -19,7 +26,7 @@ class ControlAccesoScreen extends StatefulWidget {
 class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   final _codigoController = TextEditingController();
   MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
+    detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
     torchEnabled: false,
   );
@@ -27,7 +34,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   void _recrearController() {
     _scannerController.dispose();
     _scannerController = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
       torchEnabled: false,
     );
@@ -41,6 +48,13 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   bool _resultadoValido = false;
   String _mensajeDenegado = 'Código no válido';
 
+  // Último código leído y cuándo terminó de procesarse. La cámara ve el
+  // mismo QR muchas veces por segundo mientras la persona lo sostiene; se
+  // ignora durante 3 s para que no le salga "ya utilizado" a quien acaba de
+  // entrar.
+  String? _ultimoCodigoLeido;
+  DateTime _horaUltimoCodigo = DateTime(2000);
+
   @override
   void dispose() {
     _codigoController.dispose();
@@ -50,20 +64,25 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
 
   void _onDetect(BarcodeCapture capture) {
     if (_procesando) return;
-    final barcode = capture.barcodes.firstOrNull;
-    if (barcode?.rawValue == null) return;
-    _procesarCodigo(barcode!.rawValue!);
+    final codigo = capture.barcodes.firstOrNull?.rawValue;
+    if (codigo == null || codigo.isEmpty) return;
+    final repetido = codigo == _ultimoCodigoLeido &&
+        DateTime.now().difference(_horaUltimoCodigo).inSeconds < 3;
+    if (repetido) return;
+    _procesarCodigo(codigo);
   }
 
+  /// Verifica el código SIN apagar la cámara: antes se detenía, se esperaba
+  /// 0,4 s, se dejaba el resultado 2,5 s tapando la imagen y se volvía a
+  /// crear la cámara (4 a 5 s por persona). Ahora la cámara sigue leyendo y
+  /// el resultado se queda en la tarjeta de abajo hasta la siguiente lectura.
   Future<void> _procesarCodigo(String codigo) async {
+    _ultimoCodigoLeido = codigo;
     setState(() => _procesando = true);
-    _scannerController.stop();
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
 
     final provider = context.read<AppProvider>();
-    // Ahora es asíncrono: la tablet le pregunta al servidor si el código
-    // sigue libre antes de dejar pasar a la persona.
+    // La tablet le pregunta al servidor si el código sigue libre antes de
+    // dejar pasar a la persona.
     final resultado = await provider.verificarAcceso(codigo);
     if (!mounted) return;
 
@@ -89,13 +108,14 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           );
       _resultadoValido = resultado != null;
     });
+    _horaUltimoCodigo = DateTime.now();
 
-    await Future.delayed(const Duration(milliseconds: 2500));
-    if (mounted && _camaraActiva) {
-      // En el celular el resultado tapa la cámara y se quita; en la tablet
-      // queda a la derecha hasta la siguiente lectura.
-      if (MediaQuery.sizeOf(context).width < 900) setState(() => _ultimoResultado = null);
-      _recrearController();
+    // Vibración para que el operador sepa el resultado sin mirar (en la
+    // tablet; en la web no hace nada): suave si entra, fuerte si no.
+    if (resultado != null) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.heavyImpact();
     }
   }
 
@@ -130,13 +150,25 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 900;
 
+    if (widget.enPanel) return _panelLector(provider);
+
     if (isMobile) {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            if (!provider.enLinea) ...[const _AvisoSinConexion(), const SizedBox(height: 12)],
-            Expanded(child: _buildMobileLayout(registros)),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _panelLector(provider),
+                    const SizedBox(height: 16),
+                    _UltimasLecturas(registros: registros),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -158,7 +190,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
         titulo: 'Control de acceso',
         segundaLinea: 'Ceremonia de grado${punto.isEmpty ? '' : ' · $punto'}',
         mostrarConexion: true,
-        alVolver: provider.isAdmin ? () => provider.setSelectedIndex(Nav.ceremonia) : null,
       ),
       cuerpo: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,7 +207,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: SizedBox(height: 380, child: _buildCameraArea(mostrarResultado: false)),
+                      child: SizedBox(height: 380, child: _buildCameraArea()),
                     ),
                     const SizedBox(height: 16),
                     _tarjetaManual(),
@@ -193,11 +224,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                       valido: _resultadoValido,
                       mensajeDenegado: _mensajeDenegado,
                       procesando: _procesando,
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton(
-                      onPressed: _ultimoResultado == null ? null : () => setState(() => _ultimoResultado = null),
-                      child: const Text('Leer el siguiente código'),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -218,6 +244,84 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   ],
                 ),
               ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// El lector en una sola tarjeta: cámara, resultado, código a mano y los
+  /// contadores de la entrada donde se está leyendo.
+  Widget _panelLector(AppProvider provider) {
+    final punto = provider.miPunto;
+    final deAqui = provider.lecturasDelDia.where((l) => l.punto == punto);
+    final validasAqui = deAqui.where((l) => l.valida).length;
+    final rechazadasAqui = deAqui.length - validasAqui;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Lector de códigos', style: AppTextStyles.h4.copyWith(fontSize: 16))),
+              if (_camaraActiva)
+                OutlinedButton.icon(
+                  onPressed: _toggleCamara,
+                  icon: const Icon(Icons.videocam_off_outlined, size: 18),
+                  label: const Text('Apagar cámara'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (!provider.enLinea) ...[const _AvisoSinConexion(), const SizedBox(height: 14)],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(height: 260, child: _buildCameraArea()),
+          ),
+          const SizedBox(height: 14),
+          _ResultadoGrande(
+            registro: _ultimoResultado,
+            valido: _resultadoValido,
+            mensajeDenegado: _mensajeDenegado,
+            procesando: _procesando,
+          ),
+          const SizedBox(height: 14),
+          Text('Si el QR no lee, digite la cédula o el código', style: AppTextStyles.bodySmall),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _codigoController,
+                  style: AppTextStyles.mono(size: 16),
+                  decoration: const InputDecoration(hintText: 'Número de documento'),
+                  onSubmitted: (_) => _verificarManual(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _procesando ? null : _verificarManual,
+                  child: const Text('Validar'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _Contador(etiqueta: 'Válidas en $punto', valor: '$validasAqui')),
+              const SizedBox(width: 12),
+              Expanded(child: _Contador(etiqueta: 'Rechazadas en $punto', valor: '$rechazadasAqui')),
             ],
           ),
         ],
@@ -264,171 +368,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     );
   }
 
-  Widget _buildMobileLayout(List<RegistroAcceso> registros) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                        width: double.infinity,
-                        height: 220,
-                        child: _buildCameraArea()),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _toggleCamara,
-                        icon: Icon(
-                            _camaraActiva
-                                ? Icons.videocam_off_rounded
-                                : Icons.qr_code_scanner_rounded,
-                            size: 18),
-                        label: Text(_camaraActiva ? 'Detener' : 'Activar cámara'),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: _camaraActiva
-                                ? AppColors.error
-                                : AppColors.primaryLight),
-                      ),
-                    ),
-                    if (_camaraActiva) ...[
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        onPressed: _toggleLinterna,
-                        icon: Icon(_linternaActiva
-                            ? Icons.flash_off_rounded
-                            : Icons.flash_on_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: _linternaActiva
-                              ? AppColors.warning
-                              : AppColors.surfaceVariant,
-                          foregroundColor: _linternaActiva
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ]),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _codigoController,
-                    decoration: const InputDecoration(
-                        hintText: 'Documento o código QR',
-                        prefixIcon: Icon(Icons.badge_outlined)),
-                    onSubmitted: (_) => _verificarManual(),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _procesando ? null : _verificarManual,
-                      icon: const Icon(Icons.search_rounded, size: 18),
-                      label: const Text('Verificar'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.infoLight,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded,
-                            color: AppColors.info, size: 14),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Apunta al QR para registrar el acceso.',
-                            style: TextStyle(color: AppColors.info, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text('Registro en tiempo real',
-                          style: AppTextStyles.h4),
-                      Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle)),
-                      Text('${registros.length} accesos',
-                          style: AppTextStyles.bodySmall),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  registros.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Center(
-                              child: Text('Sin registros aún',
-                                  style: AppTextStyles.bodySmall)))
-                      : Column(
-                          children: registros
-                              .take(10)
-                              .map((r) => _RegistroTile(registro: r))
-                              .toList()),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCameraArea({bool mostrarResultado = true}) {
-    if (mostrarResultado && _ultimoResultado != null) {
-      return _ResultadoOverlay(
-        valido: _resultadoValido,
-        nombre: _ultimoResultado!.nombre,
-        documento: _ultimoResultado!.documento,
-        mensajeDenegado: _mensajeDenegado,
-      );
-    }
-
-    if (_procesando) {
-      return Container(
-        color: AppColors.sidebarBg,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 14),
-              Text('Verificando...',
-                  style: TextStyle(color: Colors.white, fontSize: 14)),
-            ],
-          ),
-        ),
-      );
-    }
-
+  /// La imagen de la cámara. El resultado NO se pinta encima: si la cámara
+  /// se quita del árbol de widgets, se apaga y tarda en volver a prender.
+  Widget _buildCameraArea() {
     if (_camaraActiva) {
       return Stack(
         children: [
@@ -453,12 +395,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                   onPressed: _toggleLinterna,
                   tooltip: 'Linterna',
                   icon: Icon(_linternaActiva ? Icons.flash_off_rounded : Icons.flash_on_rounded),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  onPressed: _toggleCamara,
-                  tooltip: 'Apagar cámara',
-                  icon: const Icon(Icons.videocam_off_outlined),
                 ),
               ],
             ),
@@ -502,150 +438,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultadoOverlay extends StatelessWidget {
-  final bool valido;
-  final String nombre;
-  final String documento;
-  final String mensajeDenegado;
-
-  const _ResultadoOverlay({
-    required this.valido,
-    required this.nombre,
-    required this.documento,
-    required this.mensajeDenegado,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = valido
-        ? AppColors.success
-        : mensajeDenegado.contains('utilizado')
-            ? AppColors.warning
-            : AppColors.error;
-
-    final icon = valido
-        ? Icons.check_circle_rounded
-        : mensajeDenegado.contains('utilizado')
-            ? Icons.warning_rounded
-            : Icons.cancel_rounded;
-
-    return Container(
-      color: color.withValues(alpha: 0.95),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 56),
-              const SizedBox(height: 10),
-              Text(
-                valido ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  letterSpacing: 1,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (valido) ...[
-                const SizedBox(height: 6),
-                Text(nombre,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                const Text('Bienvenido/a',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
-              ] else ...[
-                const SizedBox(height: 6),
-                Text(mensajeDenegado,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 4),
-                Text('Código: $documento',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RegistroTile extends StatelessWidget {
-  final RegistroAcceso registro;
-  const _RegistroTile({required this.registro});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: const BoxDecoration(
-                color: AppColors.success, shape: BoxShape.circle),
-          ),
-          UserAvatar(name: registro.nombre, size: 36),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(registro.nombre,
-                    style: AppTextStyles.body
-                        .copyWith(fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text('Doc: ${registro.documento}',
-                    style: AppTextStyles.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(DateFormat('HH:mm:ss').format(registro.horaAcceso),
-                  style: AppTextStyles.caption),
-              Container(
-                margin: const EdgeInsets.only(top: 3),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text('Ingresó',
-                    style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ],
           ),
         ],
       ),

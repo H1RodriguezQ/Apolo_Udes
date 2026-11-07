@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../providers/app_provider.dart';
 import '../../navegacion.dart';
 import '../../widgets/common/apolo_ui.dart';
-import '../../widgets/common/widgets.dart';
 
 /// Un registro de la coleccion `auditoria` (solo insercion).
 class BitacoraEntrada {

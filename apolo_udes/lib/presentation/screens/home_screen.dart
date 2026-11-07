@@ -24,7 +24,7 @@ import 'configuracion_screen.dart';
 /// propio encabezado (título, datos y botones), como en el lienzo.
 ///
 /// El menú del administrador tiene las 6 opciones del diseño. Recordatorio,
-/// Bitácora, Lector y Usuarios no salen en el menú: se abren desde un botón
+/// Bitácora y Usuarios no salen en el menú: se abren desde un botón
 /// o enlace y el menú deja marcada la opción de la que vienen (ver
 /// navegacion.dart).
 ///
@@ -42,7 +42,6 @@ class HomeScreen extends StatelessWidget {
     Nav.ajustes: const ConfiguracionScreen(),
     Nav.recordatorio: const NotificacionesScreen(),
     Nav.bitacora: const BitacoraScreen(),
-    Nav.lector: const ControlAccesoScreen(),
     Nav.usuarios: const UsuariosScreen(),
   };
 

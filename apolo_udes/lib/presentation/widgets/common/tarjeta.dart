@@ -85,7 +85,7 @@ class DatoEtiquetado extends StatelessWidget {
   }
 }
 
-/// Fila de "avance": nombre, barra y "x / y".
+/// Fila de "avance": nombre, barra, "x / y" y el porcentaje.
 class BarraAvance extends StatelessWidget {
   final String nombre;
   final int valor;
@@ -111,11 +111,17 @@ class BarraAvance extends StatelessWidget {
               ),
             ),
           ),
+          // "3 / 7" y debajo el porcentaje, para que se lea rápido cuánto falta.
           SizedBox(
             width: 110,
-            child: Text('$valor / $total',
-                textAlign: TextAlign.right,
-                style: AppTextStyles.mono(size: 15)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('$valor / $total', style: AppTextStyles.mono(size: 15)),
+                Text('${(fraccion * 100).round()} %',
+                    style: AppTextStyles.mono(size: 12, color: AppColors.textSecondary)),
+              ],
+            ),
           ),
         ],
       ),

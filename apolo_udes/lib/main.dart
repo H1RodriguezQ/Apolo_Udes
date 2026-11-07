@@ -112,17 +112,22 @@ class ApoloUdesApp extends StatelessWidget {
           darkTheme: AppTheme.dark,
           themeMode: tema.modo,
 
-          // Sincroniza AppColors con el modo real y reconstruye la interfaz
+          // Sincroniza AppColors con el modo real y vuelve a pintar la interfaz.
           builder: (context, child) {
             final oscuro = tema.modo == ThemeMode.dark ||
                 (tema.modo == ThemeMode.system &&
                     MediaQuery.platformBrightnessOf(context) ==
                         Brightness.dark);
-            AppColors.isDark = oscuro;
-            return KeyedSubtree(
-              key: ValueKey(oscuro),
-              child: child ?? const SizedBox.shrink(),
-            );
+            if (AppColors.isDark != oscuro) {
+              AppColors.isDark = oscuro;
+              // Los colores salen de AppColors y no del Theme, así que Flutter
+              // no sabe que cambiaron. Los widgets `const` (el panel del login,
+              // la tarjeta de la bitácora...) se quedaban con los colores del
+              // modo anterior. Por eso, al cambiar el modo, se marca TODA la
+              // interfaz para que se vuelva a construir en el siguiente cuadro.
+              WidgetsBinding.instance.addPostFrameCallback((_) => _repintarTodo());
+            }
+            return child ?? const SizedBox.shrink();
           },
 
           // ── Localización para DatePicker en español ──
@@ -161,4 +166,15 @@ class _AppRoot extends StatelessWidget {
           : const LoginScreen(key: ValueKey('login')),
     );
   }
+}
+
+/// Marca todos los widgets de la app para que se vuelvan a construir.
+/// Se usa solo al cambiar entre modo claro y oscuro.
+void _repintarTodo() {
+  void marcar(Element elemento) {
+    elemento.markNeedsBuild();
+    elemento.visitChildren(marcar);
+  }
+
+  WidgetsBinding.instance.rootElement?.visitChildren(marcar);
 }

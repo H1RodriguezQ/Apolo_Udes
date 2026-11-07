@@ -6,10 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../providers/app_provider.dart';
 import '../widgets/common/selector_tema.dart';
-import 'package:apolo_udes/presentation/widgets/shell/barra_superior.dart';
 
 class ConfiguracionScreen extends StatefulWidget {
   const ConfiguracionScreen({super.key});

@@ -64,6 +64,14 @@ async function main() {
     process.exit(1);
   }
 
+  // Las mismas entradas que la lista de la app (AppProvider.puntosDeEntrada).
+  // Escrita distinta ("entrada 1"), la app la cuenta como otra entrada.
+  const ENTRADAS = ["Entrada 1", "Entrada 2"];
+  if (punto && !ENTRADAS.includes(punto)) {
+    console.log('\n[X] Punto invalido. Use exactamente: "Entrada 1" o "Entrada 2"\n');
+    process.exit(1);
+  }
+
   try {
     let usuario;
     try {

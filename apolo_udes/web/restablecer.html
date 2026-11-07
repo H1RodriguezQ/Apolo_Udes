@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Nueva contraseña · Apolo UDES</title>
+  <!-- Página propia para el enlace del correo "Restablecer contraseña".
+       Reemplaza la página gris de Firebase. Para que el correo traiga este
+       enlace hay que ponerlo en Firebase Console → Authentication →
+       Plantillas → "Personalizar URL de acción":
+       https://apolo-udes.web.app/restablecer.html -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Mismos colores que la app (app_theme.dart). */
+    :root{
+      --azul:#0B4A99; --azul-hondo:#06387A; --dorado:#C99F81;
+      --fondo:#ECEEE9; --tarjeta:#FFFFFF; --borde:#C9CDC5;
+      --texto:#1B2433; --suave:#5B6472;
+      --ok-fondo:#DCEFE2; --ok-texto:#1D5E37;
+      --error-fondo:#F8DCD8; --error-texto:#8F2A1F;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --azul:#2F6BC4; --azul-hondo:#2459A6; --fondo:#0F141C; --tarjeta:#171E29; --borde:#3A4556;
+        --texto:#E6EAF0; --suave:#A3ADBB; --ok-fondo:#173826; --ok-texto:#9FD8B2;
+        --error-fondo:#3B1D19; --error-texto:#F2A99E;
+      }
+      .logo-claro{display:none}
+    }
+    @media (prefers-color-scheme: light){ .logo-oscuro{display:none} }
+    *{box-sizing:border-box;margin:0;padding:0}
+    [hidden]{display:none !important}
+    body{min-height:100vh;background:var(--fondo);color:var(--texto);font-family:'IBM Plex Sans',Arial,sans-serif;
+      font-size:1rem;line-height:1.5;display:flex;flex-direction:column;align-items:center;padding:2.5rem 1rem}
+    .logo{height:84px;margin-bottom:1.75rem}
+    .tarjeta{width:100%;max-width:440px;background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;padding:2rem 1.75rem}
+    .linea{width:44px;height:3px;background:var(--dorado);margin-bottom:1rem}
+    h1{font-size:1.5rem;font-weight:600}
+    .ayuda{color:var(--suave);margin-top:.35rem;font-size:.95rem}
+    .correo{font-weight:600;color:var(--texto);word-break:break-all}
+    form{margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem}
+    label{font-size:.9rem;font-weight:500;display:flex;flex-direction:column;gap:.35rem}
+    input{height:48px;border:1px solid var(--borde);border-radius:8px;padding:0 .9rem;font:inherit;font-size:1rem;
+      background:var(--tarjeta);color:var(--texto)}
+    input:focus{outline:2px solid var(--azul);outline-offset:1px;border-color:var(--azul)}
+    .requisitos{font-size:.85rem;color:var(--suave);list-style:none;display:flex;flex-direction:column;gap:2px}
+    .requisitos li::before{content:"○ ";}
+    .requisitos li.cumple{color:var(--ok-texto)}
+    .requisitos li.cumple::before{content:"✓ ";}
+    .boton{height:50px;border:0;border-radius:8px;background:var(--azul);color:#fff;font:inherit;font-weight:600;
+      font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
+    .boton:hover:not(:disabled){background:var(--azul-hondo)}
+    .boton:disabled{opacity:.55;cursor:not-allowed}
+    .boton:focus-visible{outline:3px solid var(--dorado);outline-offset:2px}
+    .aviso{border-radius:8px;padding:.85rem 1rem;font-size:.95rem;margin-top:1.25rem}
+    .aviso.error{background:var(--error-fondo);color:var(--error-texto)}
+    .aviso.ok{background:var(--ok-fondo);color:var(--ok-texto)}
+    .pie{margin-top:1.5rem;font-size:.8rem;color:var(--suave);text-align:center}
+  </style>
+</head>
+<body>
+  <img class="logo logo-claro" src="assets/assets/images/udes_logo_color.png" alt="Universidad de Santander">
+  <img class="logo logo-oscuro" src="assets/assets/images/udes_logo_blanco.png" alt="Universidad de Santander">
+
+  <main class="tarjeta">
+    <div class="linea"></div>
+
+    <!-- 1. Mientras se revisa el enlace -->
+    <section id="cargando">
+      <h1>Un momento…</h1>
+      <p class="ayuda">Estamos revisando el enlace.</p>
+    </section>
+
+    <!-- 2. Formulario para la nueva contraseña -->
+    <section id="paso-clave" hidden>
+      <h1>Nueva contraseña</h1>
+      <p class="ayuda">Para la cuenta <span class="correo" id="correo"></span></p>
+      <form id="formulario" novalidate>
+        <label>Nueva contraseña
+          <input id="clave" type="password" autocomplete="new-password" required>
+        </label>
+        <ul class="requisitos" aria-live="polite">
+          <li id="req-largo">Al menos 8 caracteres</li>
+          <li id="req-numero">Al menos un número</li>
+          <li id="req-igual">Las dos contraseñas coinciden</li>
+        </ul>
+        <label>Repita la contraseña
+          <input id="clave2" type="password" autocomplete="new-password" required>
+        </label>
+        <button class="boton" id="guardar" type="submit" disabled>Guardar contraseña</button>
+      </form>
+      <p class="aviso error" id="error" role="alert" hidden></p>
+    </section>
+
+    <!-- 3. Listo -->
+    <section id="paso-listo" hidden>
+      <h1>Contraseña cambiada</h1>
+      <p class="aviso ok">Ya puede entrar a Apolo UDES con su nueva contraseña.</p>
+      <p style="margin-top:1.25rem"><a class="boton" href="/">Ir a iniciar sesión</a></p>
+    </section>
+
+    <!-- 4. Enlace vencido, usado o incompleto -->
+    <section id="paso-malo" hidden>
+      <h1>El enlace ya no sirve</h1>
+      <p class="aviso error" id="motivo">El enlace venció o ya se usó.</p>
+      <p class="ayuda" style="margin-top:1rem">Pida uno nuevo desde la app con “¿Olvidó su contraseña?”.
+        El enlace dura una hora y sirve una sola vez.</p>
+      <p style="margin-top:1.25rem"><a class="boton" href="/">Ir a Apolo UDES</a></p>
+    </section>
+  </main>
+
+  <p class="pie">Apolo UDES · Universidad de Santander</p>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+  import { getAuth, verifyPasswordResetCode, confirmPasswordReset }
+    from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMcbZf2eIQrwt9mFeuui8MjD1RxynNQcQ",
+    authDomain: "apolo-udes.firebaseapp.com",
+    projectId: "apolo-udes",
+    storageBucket: "apolo-udes.firebasestorage.app",
+    messagingSenderId: "588093325085",
+    appId: "1:588093325085:web:d4ebd8d59be913f4032bf4"
+  };
+  const auth = getAuth(initializeApp(firebaseConfig));
+  auth.languageCode = 'es';
+
+  const $ = (id) => document.getElementById(id);
+  function mostrar(seccion) {
+    for (const s of ['cargando', 'paso-clave', 'paso-listo', 'paso-malo']) $(s).hidden = s !== seccion;
+  }
+  function enlaceMalo(motivo) {
+    $('motivo').textContent = motivo;
+    mostrar('paso-malo');
+  }
+
+  // El enlace del correo trae ?mode=resetPassword&oobCode=...
+  const params = new URLSearchParams(window.location.search);
+  const modo = params.get('mode');
+  const codigo = params.get('oobCode');
+
+  if (modo !== 'resetPassword' || !codigo) {
+    enlaceMalo('Este enlace está incompleto.');
+  } else {
+    try {
+      // Firebase dice de qué cuenta es el enlace y si todavía sirve.
+      const correo = await verifyPasswordResetCode(auth, codigo);
+      $('correo').textContent = correo;
+      mostrar('paso-clave');
+      $('clave').focus();
+    } catch (e) {
+      enlaceMalo(e.code === 'auth/expired-action-code'
+        ? 'El enlace venció.'
+        : 'El enlace venció o ya se usó.');
+    }
+  }
+
+  // Requisitos en vivo: el botón se activa solo cuando se cumplen todos.
+  function revisar() {
+    const c1 = $('clave').value, c2 = $('clave2').value;
+    const largo = c1.length >= 8, numero = /\d/.test(c1), igual = c1.length > 0 && c1 === c2;
+    $('req-largo').classList.toggle('cumple', largo);
+    $('req-numero').classList.toggle('cumple', numero);
+    $('req-igual').classList.toggle('cumple', igual);
+    $('guardar').disabled = !(largo && numero && igual);
+  }
+  $('clave').addEventListener('input', revisar);
+  $('clave2').addEventListener('input', revisar);
+
+  $('formulario').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    $('error').hidden = true;
+    $('guardar').disabled = true;
+    $('guardar').textContent = 'Guardando…';
+    try {
+      await confirmPasswordReset(auth, codigo, $('clave').value);
+      mostrar('paso-listo');
+    } catch (e) {
+      $('guardar').textContent = 'Guardar contraseña';
+      if (e.code === 'auth/weak-password') {
+        $('error').textContent = 'La contraseña es muy débil. Use una más larga.';
+        $('error').hidden = false;
+        revisar();
+      } else {
+        enlaceMalo('El enlace venció o ya se usó.');
+      }
+    }
+  });
+</script>
+</body>
+</html>
