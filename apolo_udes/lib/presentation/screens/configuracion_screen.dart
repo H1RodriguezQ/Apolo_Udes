@@ -350,8 +350,8 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          FilaAdaptable(
+            alinear: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: CampoConEtiqueta(

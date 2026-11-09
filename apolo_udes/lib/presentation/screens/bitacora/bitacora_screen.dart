@@ -244,8 +244,7 @@ class _BitacoraScreenState extends State<BitacoraScreen> {
           cuerpo: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              FilaAdaptable(
                 children: [
                   Flexible(
                     child: SingleChildScrollView(

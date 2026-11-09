@@ -32,15 +32,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     return PantallaApolo(
       encabezado: EncabezadoPantalla(
-        titulo: 'Registro de la entrada',
+        // En el celular el título corto, para que quepa junto a "En línea".
+        titulo: MediaQuery.sizeOf(context).width < 600 ? 'Registro' : 'Registro de la entrada',
         detalle: '${punto.isEmpty ? 'Todas las entradas' : punto} · hoy',
         mostrarConexion: true,
       ),
       cuerpo: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          FilaAdaptable(
             children: [
               FiltroSegmentado<String>(
                 valor: _filtro,

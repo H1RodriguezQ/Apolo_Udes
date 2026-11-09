@@ -9,6 +9,33 @@ import '../../../providers/app_provider.dart';
 import '../../widgets/common/widgets.dart';
 import '../../widgets/common/apolo_ui.dart';
 
+/// Decide cuál de los códigos que ve la cámara se procesa ahora, o ninguno.
+///
+/// La cámara puede ver varios QR a la vez (por ejemplo, el anterior todavía
+/// en la pantalla), así que se revisan todos, no solo el primero. Un código
+/// visto hace menos de 3 s sigue frente a la cámara: se renueva su hora y no
+/// se repite. Si ya se está procesando otro, el nuevo no se marca, para
+/// tomarlo en la siguiente detección. Actualiza [vistos].
+String? codigoAProcesar(
+  Iterable<String?> codigos,
+  Map<String, DateTime> vistos,
+  DateTime ahora, {
+  required bool ocupado,
+}) {
+  for (final codigo in codigos) {
+    if (codigo == null || codigo.isEmpty) continue;
+    final visto = vistos[codigo];
+    if (visto != null && ahora.difference(visto).inSeconds < 3) {
+      vistos[codigo] = ahora;
+      continue;
+    }
+    if (ocupado) return null;
+    vistos[codigo] = ahora;
+    return codigo;
+  }
+  return null;
+}
+
 /// Lector de códigos QR.
 ///
 /// - El operador lo ve como pantalla completa (`enPanel: false`).
@@ -38,22 +65,20 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
       facing: CameraFacing.back,
       torchEnabled: false,
     );
-    setState(() => _linternaActiva = false);
+    setState(() {});
   }
 
   bool _camaraActiva = false;
-  bool _linternaActiva = false;
   bool _procesando = false;
   RegistroAcceso? _ultimoResultado;
   bool _resultadoValido = false;
   String _mensajeDenegado = 'Código no válido';
 
-  // Último código leído y cuándo terminó de procesarse. La cámara ve el
-  // mismo QR muchas veces por segundo mientras la persona lo sostiene; se
-  // ignora durante 3 s para que no le salga "ya utilizado" a quien acaba de
-  // entrar.
-  String? _ultimoCodigoLeido;
-  DateTime _horaUltimoCodigo = DateTime(2000);
+  // Códigos ya procesados y la última vez que la cámara los vio. Mientras
+  // un código siga frente a la cámara (visto hace menos de 3 s) no se vuelve
+  // a procesar: antes se repetía cada 3 s y llenaba la bitácora de
+  // "rechazadas" (35 en la prueba del 7 de noviembre).
+  final Map<String, DateTime> _vistos = {};
 
   @override
   void dispose() {
@@ -63,13 +88,13 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_procesando) return;
-    final codigo = capture.barcodes.firstOrNull?.rawValue;
-    if (codigo == null || codigo.isEmpty) return;
-    final repetido = codigo == _ultimoCodigoLeido &&
-        DateTime.now().difference(_horaUltimoCodigo).inSeconds < 3;
-    if (repetido) return;
-    _procesarCodigo(codigo);
+    final codigo = codigoAProcesar(
+      capture.barcodes.map((b) => b.rawValue),
+      _vistos,
+      DateTime.now(),
+      ocupado: _procesando,
+    );
+    if (codigo != null) _procesarCodigo(codigo);
   }
 
   /// Verifica el código SIN apagar la cámara: antes se detenía, se esperaba
@@ -77,7 +102,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   /// crear la cámara (4 a 5 s por persona). Ahora la cámara sigue leyendo y
   /// el resultado se queda en la tarjeta de abajo hasta la siguiente lectura.
   Future<void> _procesarCodigo(String codigo) async {
-    _ultimoCodigoLeido = codigo;
     setState(() => _procesando = true);
 
     final provider = context.read<AppProvider>();
@@ -108,7 +132,8 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           );
       _resultadoValido = resultado != null;
     });
-    _horaUltimoCodigo = DateTime.now();
+    // Desde que termina, cuenta de nuevo el tiempo para no repetirlo.
+    _vistos[codigo] = DateTime.now();
 
     // Vibración para que el operador sepa el resultado sin mirar (en la
     // tablet; en la web no hace nada): suave si entra, fuerte si no.
@@ -139,7 +164,6 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
   }
 
   void _toggleLinterna() {
-    setState(() => _linternaActiva = !_linternaActiva);
     _scannerController.toggleTorch();
   }
 
@@ -259,8 +283,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     final validasAqui = deAqui.where((l) => l.valida).length;
     final rechazadasAqui = deAqui.length - validasAqui;
 
+    final celular = MediaQuery.sizeOf(context).width < 600;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(celular ? 14 : 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
@@ -271,7 +296,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Lector de códigos', style: AppTextStyles.h4.copyWith(fontSize: 16))),
+              Expanded(child: Text(punto.isEmpty ? 'Lector de códigos' : 'Lector · $punto', style: AppTextStyles.h4.copyWith(fontSize: 16))),
               if (_camaraActiva)
                 OutlinedButton.icon(
                   onPressed: _toggleCamara,
@@ -284,7 +309,7 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           if (!provider.enLinea) ...[const _AvisoSinConexion(), const SizedBox(height: 14)],
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(height: 260, child: _buildCameraArea()),
+            child: SizedBox(height: celular ? 240 : 260, child: _buildCameraArea()),
           ),
           const SizedBox(height: 14),
           _ResultadoGrande(
@@ -319,9 +344,9 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _Contador(etiqueta: 'Válidas en $punto', valor: '$validasAqui')),
+              Expanded(child: _Contador(etiqueta: 'Válidas aquí', valor: '$validasAqui')),
               const SizedBox(width: 12),
-              Expanded(child: _Contador(etiqueta: 'Rechazadas en $punto', valor: '$rechazadasAqui')),
+              Expanded(child: _Contador(etiqueta: 'Rechazadas aquí', valor: '$rechazadasAqui')),
             ],
           ),
         ],
@@ -389,14 +414,20 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
           Positioned(
             top: 12,
             right: 12,
-            child: Row(
-              children: [
-                IconButton.filledTonal(
+            // El botón de linterna solo sale si el equipo la deja usar. En el
+            // iPhone, Safari no permite prender el flash desde una página web
+            // (en la APK de la tablet sí funciona), así que ahí se oculta.
+            child: ValueListenableBuilder<MobileScannerState>(
+              valueListenable: _scannerController,
+              builder: (context, estado, _) {
+                if (estado.torchState == TorchState.unavailable) return const SizedBox.shrink();
+                final prendida = estado.torchState == TorchState.on;
+                return IconButton.filledTonal(
                   onPressed: _toggleLinterna,
-                  tooltip: 'Linterna',
-                  icon: Icon(_linternaActiva ? Icons.flash_off_rounded : Icons.flash_on_rounded),
-                ),
-              ],
+                  tooltip: prendida ? 'Apagar linterna' : 'Prender linterna',
+                  icon: Icon(prendida ? Icons.flash_off_rounded : Icons.flash_on_rounded),
+                );
+              },
             ),
           ),
           const Positioned(

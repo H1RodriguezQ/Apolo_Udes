@@ -278,6 +278,36 @@ class CampoBusqueda extends StatelessWidget {
   }
 }
 
+/// Fila de filtros o campos: en pantallas anchas van uno al lado del otro;
+/// en el celular (menos de 600 px) van uno debajo del otro y a todo el ancho.
+/// Recibe los mismos hijos que un Row (Expanded, SizedBox de ancho fijo y
+/// SizedBox vacíos como separadores).
+class FilaAdaptable extends StatelessWidget {
+  final List<Widget> children;
+  final CrossAxisAlignment alinear;
+  const FilaAdaptable({super.key, required this.children, this.alinear = CrossAxisAlignment.end});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, caja) {
+      if (caja.maxWidth >= 600) {
+        return Row(crossAxisAlignment: alinear, children: children);
+      }
+      final columna = <Widget>[];
+      for (final w in children) {
+        if (w is SizedBox && w.child == null) continue; // separador horizontal
+        if (w is Spacer) continue; // espacio flexible: no aplica en columna
+        Widget hijo = w;
+        if (w is Flexible) hijo = w.child; // Expanded también es Flexible
+        if (w is SizedBox && w.child != null) hijo = w.child!;
+        if (columna.isNotEmpty) columna.add(const SizedBox(height: 12));
+        columna.add(hijo);
+      }
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: columna);
+    });
+  }
+}
+
 /// Columna de una tabla: título y cuánto espacio toma (flex). `derecha`
 /// alinea el contenido a la derecha (por ejemplo los botones de acciones).
 class ColumnaTabla {
@@ -328,6 +358,42 @@ class _TablaApoloState extends State<TablaApolo> {
     final hasta = (desde + widget.porPagina).clamp(0, total);
     final visibles = widget.filas.sublist(desde.clamp(0, total), hasta);
 
+    return LayoutBuilder(
+      builder: (context, caja) => _tabla(context, visibles, total, desde, hasta, caja.maxWidth < 600),
+    );
+  }
+
+  /// En el celular cada fila se muestra como una tarjeta: la primera columna
+  /// (el nombre) arriba, las demás como "Columna: valor" y los botones de la
+  /// columna Acciones abajo a la derecha. Así no se parten las palabras.
+  Widget _tarjeta(List<Widget> celdas) {
+    final columnas = widget.columnas;
+    final tieneAcciones = columnas.last.titulo.toLowerCase().startsWith('acci') && celdas.length == columnas.length;
+    final hastaDatos = tieneAcciones ? columnas.length - 1 : columnas.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (celdas.isNotEmpty) celdas[0],
+          for (var k = 1; k < hastaDatos && k < celdas.length; k++)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(width: 100, child: Text(columnas[k].titulo, style: AppTextStyles.label.copyWith(fontSize: 13))),
+                  Expanded(child: Align(alignment: Alignment.centerLeft, child: celdas[k])),
+                ],
+              ),
+            ),
+          if (tieneAcciones) Align(alignment: Alignment.centerRight, child: celdas.last),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabla(BuildContext context, List<List<Widget>> visibles, int total, int desde, int hasta, bool celular) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -337,23 +403,25 @@ class _TablaApoloState extends State<TablaApolo> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Encabezado
-          Container(
-            color: AppColors.surfaceVariant,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            child: Row(
-              children: [
-                for (final c in widget.columnas)
-                  Expanded(
-                    flex: c.flex,
-                    child: Text(c.titulo,
-                        textAlign: c.derecha ? TextAlign.right : TextAlign.left,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                  ),
-              ],
+          // Encabezado (en el celular no se muestra: cada tarjeta dice qué es cada dato)
+          if (!celular) ...[
+            Container(
+              color: AppColors.surfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              child: Row(
+                children: [
+                  for (final c in widget.columnas)
+                    Expanded(
+                      flex: c.flex,
+                      child: Text(c.titulo,
+                          textAlign: c.derecha ? TextAlign.right : TextAlign.left,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: AppColors.border),
+          ],
           // Filas
           Expanded(
             child: visibles.isEmpty
@@ -361,7 +429,7 @@ class _TablaApoloState extends State<TablaApolo> {
                 : ListView.separated(
                     itemCount: visibles.length,
                     separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.divider),
-                    itemBuilder: (_, i) => Padding(
+                    itemBuilder: (_, i) => celular ? _tarjeta(visibles[i]) : Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       child: Row(
                         children: [

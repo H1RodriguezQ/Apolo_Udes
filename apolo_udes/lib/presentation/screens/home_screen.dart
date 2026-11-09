@@ -80,7 +80,12 @@ class HomeScreen extends StatelessWidget {
         child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: Text(menu[marcado].titulo),
+          // Admin: el título ya sale en cada pantalla. Operador: en el lector
+          // no hay encabezado, así que la barra dice dónde está leyendo.
+          title: Text(
+            !esAdmin && i == NavOperador.acceso ? 'Control de acceso' : 'Apolo UDES',
+            style: const TextStyle(fontSize: 16),
+          ),
           backgroundColor: AppColors.rail,
           foregroundColor: Colors.white,
         ),

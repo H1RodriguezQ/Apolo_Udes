@@ -318,8 +318,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
       cuerpo: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          FilaAdaptable(
             children: [
               Expanded(
                 flex: 5,

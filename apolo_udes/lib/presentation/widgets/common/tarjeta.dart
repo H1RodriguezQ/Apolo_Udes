@@ -95,22 +95,46 @@ class BarraAvance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraccion = total == 0 ? 0.0 : (valor / total).clamp(0.0, 1.0);
+    return LayoutBuilder(builder: (context, caja) {
+      final barra = ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: LinearProgressIndicator(
+          value: fraccion,
+          minHeight: 10,
+          backgroundColor: AppColors.pista,
+          color: AppColors.boton,
+        ),
+      );
+      // Angosto (celular): el nombre y los números arriba, la barra completa abajo.
+      if (caja.maxWidth < 480) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(nombre, style: AppTextStyles.body.copyWith(fontSize: 15))),
+                  Text('$valor / $total · ${(fraccion * 100).round()} %', style: AppTextStyles.mono(size: 14)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              barra,
+            ],
+          ),
+        );
+      }
+      return _fila(fraccion, barra);
+    });
+  }
+
+  Widget _fila(double fraccion, Widget barra) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           SizedBox(width: 230, child: Text(nombre, style: AppTextStyles.body.copyWith(fontSize: 15))),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: fraccion,
-                minHeight: 10,
-                backgroundColor: AppColors.pista,
-                color: AppColors.boton,
-              ),
-            ),
-          ),
+          Expanded(child: barra),
           // "3 / 7" y debajo el porcentaje, para que se lea rápido cuánto falta.
           SizedBox(
             width: 110,
