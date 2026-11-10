@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/app_provider.dart';
@@ -343,6 +344,9 @@ class TablaApolo extends StatefulWidget {
 class _TablaApoloState extends State<TablaApolo> {
   int _pagina = 0;
 
+  static final _formatoMiles = NumberFormat.decimalPattern('es_CO');
+  static String _miles(int n) => _formatoMiles.format(n); // 1284 → "1.284"
+
   @override
   void didUpdateWidget(TablaApolo viejo) {
     super.didUpdateWidget(viejo);
@@ -459,19 +463,34 @@ class _TablaApoloState extends State<TablaApolo> {
                     children: [
                       Expanded(
                         child: Text(
-                          total == 0 ? 'Sin resultados' : 'Mostrando ${desde + 1} a $hasta de $total',
+                          total == 0 ? 'Sin resultados' : 'Mostrando ${_miles(desde + 1)} a ${_miles(hasta)} de ${_miles(total)}',
                           style: AppTextStyles.label,
                         ),
                       ),
-                      OutlinedButton(
-                        onPressed: _pagina > 0 ? () => setState(() => _pagina--) : null,
-                        child: const Text('Anterior'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: hasta < total ? () => setState(() => _pagina++) : null,
-                        child: const Text('Siguiente'),
-                      ),
+                      // En el celular, flechas: con la letra grande del sistema
+                      // los botones con texto no caben y se salían de la pantalla.
+                      if (celular) ...[
+                        IconButton(
+                          tooltip: 'Anterior',
+                          onPressed: _pagina > 0 ? () => setState(() => _pagina--) : null,
+                          icon: const Icon(Icons.chevron_left_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Siguiente',
+                          onPressed: hasta < total ? () => setState(() => _pagina++) : null,
+                          icon: const Icon(Icons.chevron_right_rounded),
+                        ),
+                      ] else ...[
+                        OutlinedButton(
+                          onPressed: _pagina > 0 ? () => setState(() => _pagina--) : null,
+                          child: const Text('Anterior'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: hasta < total ? () => setState(() => _pagina++) : null,
+                          child: const Text('Siguiente'),
+                        ),
+                      ],
                     ],
                   ),
           ),
@@ -498,7 +517,8 @@ class CeldaTexto extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(texto.isEmpty ? '—' : texto, style: estilo, maxLines: 1, overflow: TextOverflow.ellipsis),
+        // Dos líneas: los nombres completos largos se leen enteros en vez de cortarse.
+        Text(texto.isEmpty ? '—' : texto, style: estilo, maxLines: 2, overflow: TextOverflow.ellipsis),
         if (debajo != null && debajo!.isNotEmpty)
           Text(debajo!, style: AppTextStyles.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
       ],
@@ -543,8 +563,7 @@ class AccionFila extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onPressed,
-      tooltip: ayuda,
-      visualDensity: VisualDensity.compact,
+      tooltip: ayuda, // sin densidad compacta: 48 px, el mínimo cómodo para el dedo en tablet
       icon: Icon(icono, size: 19, color: peligro ? AppColors.errorText : AppColors.primary),
     );
   }

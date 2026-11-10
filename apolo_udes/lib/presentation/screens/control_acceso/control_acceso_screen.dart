@@ -785,7 +785,7 @@ class _UltimasLecturas extends StatelessWidget {
                   StatusBadge(
                     label: r.valido ? 'Válido' : 'No válido',
                     backgroundColor: r.valido ? AppColors.successLight : AppColors.errorLight,
-                    textColor: r.valido ? AppColors.success : AppColors.error,
+                    textColor: r.valido ? AppColors.successText : AppColors.errorText,
                   ),
                 ],
               ),

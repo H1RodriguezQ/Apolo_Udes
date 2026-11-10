@@ -87,19 +87,19 @@ class EstadoCorreoBadge extends StatelessWidget {
         return StatusBadge(
           label: etiquetaCorta.isEmpty ? 'Correo enviado' : etiquetaCorta,
           backgroundColor: AppColors.successLight,
-          textColor: AppColors.success,
+          textColor: AppColors.successText,
         );
       case 'error':
         return StatusBadge(
           label: etiquetaCorta.isEmpty ? 'Correo con error' : etiquetaCorta,
           backgroundColor: AppColors.errorLight,
-          textColor: AppColors.error,
+          textColor: AppColors.errorText,
         );
       case 'pendiente':
         return StatusBadge(
           label: etiquetaCorta.isEmpty ? 'Correo en cola' : etiquetaCorta,
           backgroundColor: AppColors.warningLight,
-          textColor: AppColors.warning,
+          textColor: AppColors.warningText,
         );
       default:
         return const SizedBox.shrink();
@@ -124,19 +124,19 @@ class StatusBadge extends StatelessWidget {
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.successLight,
-          textColor: AppColors.success,
+          textColor: AppColors.successText,
         );
       case EstadoGraduando.pendiente:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.warningLight,
-          textColor: AppColors.warning,
+          textColor: AppColors.warningText,
         );
       case EstadoGraduando.inactivo:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.errorLight,
-          textColor: AppColors.error,
+          textColor: AppColors.errorText,
         );
     }
   }
@@ -147,25 +147,25 @@ class StatusBadge extends StatelessWidget {
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.successLight,
-          textColor: AppColors.success,
+          textColor: AppColors.successText,
         );
       case EstadoInvitacion.pendiente:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.warningLight,
-          textColor: AppColors.warning,
+          textColor: AppColors.warningText,
         );
       case EstadoInvitacion.enviada:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.infoLight,
-          textColor: AppColors.info,
+          textColor: AppColors.infoText,
         );
       case EstadoInvitacion.rechazada:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.errorLight,
-          textColor: AppColors.error,
+          textColor: AppColors.errorText,
         );
       // Gris: ya no es una invitación "viva", pero tampoco es un rechazo.
       case EstadoInvitacion.anulada:
@@ -183,19 +183,19 @@ class StatusBadge extends StatelessWidget {
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.successLight,
-          textColor: AppColors.success,
+          textColor: AppColors.successText,
         );
       case EstadoConfirmacion.pendiente:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.warningLight,
-          textColor: AppColors.warning,
+          textColor: AppColors.warningText,
         );
       case EstadoConfirmacion.rechazado:
         return StatusBadge(
           label: estado.label,
           backgroundColor: AppColors.errorLight,
-          textColor: AppColors.error,
+          textColor: AppColors.errorText,
         );
     }
   }
