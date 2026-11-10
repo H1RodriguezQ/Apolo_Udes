@@ -80,7 +80,6 @@ class HomeScreen extends StatelessWidget {
         child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          // El título ya sale en el encabezado de cada pantalla; aquí solo la marca.
           // Admin: el título ya sale en cada pantalla. Operador: en el lector
           // no hay encabezado, así que la barra dice dónde está leyendo.
           title: Text(

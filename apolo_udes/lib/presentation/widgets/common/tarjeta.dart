@@ -124,27 +124,17 @@ class BarraAvance extends StatelessWidget {
           ),
         );
       }
-      return _fila(fraccion);
+      return _fila(fraccion, barra);
     });
   }
 
-  Widget _fila(double fraccion) {
+  Widget _fila(double fraccion, Widget barra) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           SizedBox(width: 230, child: Text(nombre, style: AppTextStyles.body.copyWith(fontSize: 15))),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: fraccion,
-                minHeight: 10,
-                backgroundColor: AppColors.pista,
-                color: AppColors.boton,
-              ),
-            ),
-          ),
+          Expanded(child: barra),
           // "3 / 7" y debajo el porcentaje, para que se lea rápido cuánto falta.
           SizedBox(
             width: 110,
