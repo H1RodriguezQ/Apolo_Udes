@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _animController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 250), // entrada corta: la tablet vuelve a esta pantalla varias veces al día
       vsync: this,
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);

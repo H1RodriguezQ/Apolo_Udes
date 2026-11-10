@@ -40,9 +40,7 @@ class DashboardScreen extends StatelessWidget {
     final derecha = [
       _TarjetaPorDia(invitaciones: provider.invitaciones),
       const SizedBox(height: 20),
-      provider.isAdmin
-          ? const _TarjetaBitacora()
-          : _TarjetaUltimasLecturas(registros: provider.registrosAcceso),
+      provider.isAdmin ? const _TarjetaBitacora() : _TarjetaUltimasLecturas(registros: provider.registrosAcceso),
     ];
 
     return PantallaApolo(
@@ -77,49 +75,64 @@ class _TarjetaEvento extends StatelessWidget {
       stream: FirebaseFirestore.instance.collection('configuracion').doc('evento').snapshots(),
       builder: (context, snap) {
         final datos = snap.data?.data() ?? {};
-        final fecha = datos['fechaCeremonia'] is Timestamp
-            ? DateFormat("EEEE d 'de' MMMM", 'es_CO').format((datos['fechaCeremonia'] as Timestamp).toDate())
-            : null;
+        final cuando = datos['fechaCeremonia'] is Timestamp ? (datos['fechaCeremonia'] as Timestamp).toDate() : null;
+        final fecha = cuando == null ? null : DateFormat("EEEE d 'de' MMMM", 'es_CO').format(cuando);
+        // La hora solo si se configuró (una fecha sin hora queda a las 00:00).
+        final hora = cuando == null || (cuando.hour == 0 && cuando.minute == 0)
+            ? null
+            : DateFormat('h:mm a', 'es_CO').format(cuando);
         final lugar = (datos['lugarCeremonia'] ?? datos['lugar'] ?? '') as String;
         final aforo = datos['aforoDisponible'];
 
+        final columnaFecha = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DatoEtiquetado(
+              etiqueta: 'Próxima ceremonia',
+              valor: fecha == null ? 'Fecha por confirmar' : _mayuscula(fecha),
+              nota: hora,
+            ),
+            if (fecha == null && esAdmin)
+              TextButton(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: () => context.read<AppProvider>().setSelectedIndex(_irAjustes),
+                child: const Text('Configurar fecha'),
+              ),
+          ],
+        );
+        final columnaLugar = DatoEtiquetado(etiqueta: 'Lugar', valor: lugar.isEmpty ? 'Por definir' : lugar);
+        final columnaAforo = DatoEtiquetado(
+          etiqueta: 'Sillas del auditorio',
+          valor: aforo == null ? '—' : '$aforo',
+          nota: '2 invitados por graduando',
+          mono: true,
+        );
+
         return Tarjeta(
-          child: Wrap(
-            spacing: 28,
-            runSpacing: 16,
-            children: [
-              SizedBox(
-                width: 180,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DatoEtiquetado(
-                      etiqueta: 'Próxima ceremonia',
-                      valor: fecha == null ? 'Fecha por confirmar' : _mayuscula(fecha),
-                    ),
-                    if (fecha == null && esAdmin)
-                      TextButton(
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        onPressed: () => context.read<AppProvider>().setSelectedIndex(_irAjustes),
-                        child: const Text('Configurar fecha'),
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 220,
-                child: DatoEtiquetado(etiqueta: 'Lugar', valor: lugar.isEmpty ? 'Por definir' : lugar),
-              ),
-              SizedBox(
-                width: 150,
-                child: DatoEtiquetado(
-                  etiqueta: 'Sillas del auditorio',
-                  valor: aforo == null ? '—' : '$aforo',
-                  nota: '2 invitados por graduando',
-                  mono: true,
-                ),
-              ),
-            ],
+          // Ancho: los tres datos en una fila y el lugar con más espacio (antes
+          // tenía 220 px fijos, se partía en 4 líneas y dejaba un hueco al lado).
+          child: LayoutBuilder(
+            builder: (context, caja) => caja.maxWidth >= 480
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: columnaFecha),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 4, child: columnaLugar),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 2, child: columnaAforo),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      columnaFecha,
+                      const SizedBox(height: 16),
+                      columnaLugar,
+                      const SizedBox(height: 16),
+                      columnaAforo
+                    ],
+                  ),
           ),
         );
       },
@@ -173,12 +186,30 @@ class _TarjetaAtencion extends StatelessWidget {
         .length;
 
     final filas = [
-      (sinInvitados, 'Graduandos que no han registrado invitados', 'Ver graduandos', _irGraduandos,
-          AppColors.warningLight, AppColors.warningText),
-      (correosConError, 'Correos que no se pudieron enviar', 'Revisar', _irGraduandos,
-          AppColors.errorLight, AppColors.errorText),
-      (sinConfirmar, 'Invitados sin confirmar asistencia', 'Enviar recordatorio', _irCorreos,
-          AppColors.infoLight, AppColors.infoText),
+      (
+        sinInvitados,
+        'Graduandos que no han registrado invitados',
+        'Ver graduandos',
+        _irGraduandos,
+        AppColors.warningLight,
+        AppColors.warningText
+      ),
+      (
+        correosConError,
+        'Correos que no se pudieron enviar',
+        'Revisar',
+        _irGraduandos,
+        AppColors.errorLight,
+        AppColors.errorText
+      ),
+      (
+        sinConfirmar,
+        'Invitados sin confirmar asistencia',
+        'Enviar recordatorio',
+        _irCorreos,
+        AppColors.infoLight,
+        AppColors.infoText
+      ),
     ];
 
     return Tarjeta(
@@ -243,7 +274,11 @@ class _TarjetaPorDia extends StatelessWidget {
     for (var i = 1; i < 7; i++) {
       if (conteo[i] > conteo[mejor]) mejor = i;
     }
-    String nombreDia(int i) => i == 6 ? 'hoy' : i == 5 ? 'ayer' : DateFormat("EEEE d", 'es_CO').format(dias[i]);
+    String nombreDia(int i) => i == 6
+        ? 'hoy'
+        : i == 5
+            ? 'ayer'
+            : DateFormat("EEEE d", 'es_CO').format(dias[i]);
 
     return Tarjeta(
       titulo: 'Invitados registrados por día',
@@ -252,7 +287,9 @@ class _TarjetaPorDia extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GraficoBarras(
-            valores: [for (final c in conteo) [c]],
+            valores: [
+              for (final c in conteo) [c]
+            ],
             etiquetas: [
               for (var i = 0; i < 7; i++)
                 i == 6 ? 'hoy' : DateFormat('E d', 'es_CO').format(dias[i]).replaceAll('.', ''),
@@ -288,11 +325,8 @@ class _TarjetaBitacora extends StatelessWidget {
       lineaBajoTitulo: true,
       padding: EdgeInsets.zero,
       child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('auditoria')
-            .orderBy('fecha', descending: true)
-            .limit(5)
-            .snapshots(),
+        stream:
+            FirebaseFirestore.instance.collection('auditoria').orderBy('fecha', descending: true).limit(5).snapshots(),
         builder: (context, snap) {
           final docs = snap.data?.docs ?? [];
           return Column(
@@ -310,8 +344,7 @@ class _TarjetaBitacora extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: () => context.read<AppProvider>().setSelectedIndex(_irBitacora),
-                    child: const Text('Ver toda la bitácora',
-                        style: TextStyle(decoration: TextDecoration.underline)),
+                    child: const Text('Ver toda la bitácora', style: TextStyle(decoration: TextDecoration.underline)),
                   ),
                 ),
               ),
@@ -408,7 +441,8 @@ class _Etiqueta extends StatelessWidget {
       ),
       child: Text(
         valido ? 'Válido' : 'No válido',
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: valido ? AppColors.successText : AppColors.errorText),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w500, color: valido ? AppColors.successText : AppColors.errorText),
       ),
     );
   }

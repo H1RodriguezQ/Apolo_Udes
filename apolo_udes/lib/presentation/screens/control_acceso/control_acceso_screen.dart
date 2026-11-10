@@ -527,14 +527,16 @@ class _ScanLineState extends State<_ScanLine>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Positioned(
-          top: 240 * _animation.value,
-          left: 40,
-          right: 40,
-          child: Container(
+    // Con "reducir movimiento" del sistema, la línea se queda quieta.
+    final quieta = MediaQuery.disableAnimationsOf(context);
+    if (quieta) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+    final linea = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Container(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
@@ -549,8 +551,15 @@ class _ScanLineState extends State<_ScanLine>
               ],
             ),
           ),
-        );
-      },
+    );
+    // Recorre la altura REAL del recuadro (antes iba fija a 240 px y en la
+    // tablet, con 380 px de alto, solo barría la mitad de arriba).
+    return Positioned.fill(
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) => Align(alignment: Alignment(0, _animation.value * 2 - 1), child: child),
+        child: linea,
+      ),
     );
   }
 }
