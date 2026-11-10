@@ -1,0 +1,9 @@
+# Apolo UDES
+# La app es de uso interno. Las páginas de invitación llevan el ID de la
+# persona en la dirección, así que no deben aparecer en buscadores.
+User-agent: *
+Disallow: /invitados.html
+Disallow: /confirmar.html
+Disallow: /directivos.html
+Disallow: /mi-qr.html
+Disallow: /restablecer.html

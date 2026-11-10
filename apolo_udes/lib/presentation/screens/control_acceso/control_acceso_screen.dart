@@ -107,7 +107,29 @@ class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
     final provider = context.read<AppProvider>();
     // La tablet le pregunta al servidor si el código sigue libre antes de
     // dejar pasar a la persona.
-    final resultado = await provider.verificarAcceso(codigo);
+    final RegistroAcceso? resultado;
+    try {
+      resultado = await provider.verificarAcceso(codigo);
+    } catch (_) {
+      // Sin esto _procesando quedaba en true y el lector ignoraba todos los
+      // QR siguientes hasta reabrir la pantalla.
+      _vistos.remove(codigo); // que se pueda leer de nuevo de inmediato
+      if (!mounted) return;
+      setState(() {
+        _procesando = false;
+        _mensajeDenegado = 'Error de conexión, intente de nuevo';
+        _ultimoResultado = RegistroAcceso(
+          id: 'invalid',
+          nombre: 'No verificado',
+          documento: codigo,
+          horaAcceso: DateTime.now(),
+          valido: false,
+        );
+        _resultadoValido = false;
+      });
+      HapticFeedback.heavyImpact();
+      return;
+    }
     if (!mounted) return;
 
     String mensajeDenegado = 'Código no válido';
@@ -625,9 +647,10 @@ class _ResultadoGrande extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Row(
               children: [
-                Icon(icono, color: texto, size: 26),
+                Icon(icono, color: texto, size: 32),
                 const SizedBox(width: 12),
-                Text(titulo, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: texto)),
+                // Grande: el operador lo mira a un brazo de distancia mientras atiende la fila.
+                Flexible(child: Text(titulo, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w600, color: texto))),
               ],
             ),
           ),
@@ -640,7 +663,7 @@ class _ResultadoGrande extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(valido ? registro!.nombre : mensajeDenegado,
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                       const SizedBox(height: 14),
                       Row(
                         children: [

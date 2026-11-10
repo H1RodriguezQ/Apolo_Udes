@@ -73,7 +73,7 @@ const _claro = _Paleta(
   surfaceVariant: Color(0xFFF5F6F3),
   textPrimary: Color(0xFF1B2433),
   textSecondary: Color(0xFF5B6472),
-  textHint: Color(0xFF8A919C),
+  textHint: Color(0xFF68707C),
   border: Color(0xFFDCDFD8),
   borderFuerte: Color(0xFFC9CDC5),
   divider: Color(0xFFE5E7E2),
@@ -224,7 +224,7 @@ class AppTextStyles {
       );
 
   static TextStyle get caption => TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w400,
         color: AppColors.textHint,
       );

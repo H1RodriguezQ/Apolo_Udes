@@ -104,7 +104,7 @@ class GraficoBarras extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.clip,
                 style: AppTextStyles.mono(
-                  size: 11,
+                  size: 12,
                   peso: esResaltada ? FontWeight.w600 : FontWeight.w400,
                   color: esResaltada ? AppColors.textPrimary : AppColors.textSecondary,
                 ),

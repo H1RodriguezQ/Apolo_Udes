@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,21 +18,50 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Apolo UDES: invitaciones y control de acceso con código QR para las ceremonias de grado de la Universidad de Santander.">
+  <meta name="theme-color" content="#06387A">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="apolo_udes">
+  <meta name="apple-mobile-web-app-title" content="Apolo UDES">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>apolo_udes</title>
+  <title>Apolo UDES</title>
+
+  <!-- Pantalla de carga. Flutter tarda unos segundos en descargar su motor
+       gráfico (≈2,5 MB); mientras tanto se muestra el logo para que la página
+       no quede en blanco. Se quita sola cuando Flutter pinta su primer cuadro
+       (evento "flutter-first-frame", al final de esta página). -->
+  <style>
+    html,body{margin:0;height:100%;background:#ECEEE9}
+    #carga{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+      background:#ECEEE9;font-family:Arial,sans-serif;color:#5B6472;transition:opacity .25s}
+    #carga img{width:min(70vw,320px);height:auto}
+    #carga .oscuro{display:none}
+    #carga .rueda{width:34px;height:34px;border:3px solid #C9CDC5;border-top-color:#0B4A99;border-radius:50%;animation:girar .9s linear infinite}
+    @keyframes girar{to{transform:rotate(360deg)}}
+    @media (prefers-color-scheme: dark){
+      html,body,#carga{background:#0F141C}
+      #carga{color:#A3ADBB}
+      #carga .claro{display:none}
+      #carga .oscuro{display:block}
+      #carga .rueda{border-color:#3A4556;border-top-color:#5F97E2}
+    }
+    @media (prefers-reduced-motion: reduce){ #carga .rueda{animation:none} }
+  </style>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="carga" role="status" aria-live="polite">
+    <img class="claro" src="assets/assets/images/udes_logo_color.png" alt="Universidad de Santander" width="900" height="324">
+    <img class="oscuro" src="assets/assets/images/udes_logo_blanco.png" alt="Universidad de Santander" width="900" height="324">
+    <div class="rueda" aria-hidden="true"></div>
+    <span>Cargando Apolo UDES…</span>
+  </div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -42,5 +71,13 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var carga = document.getElementById('carga');
+      if (!carga) return;
+      carga.style.opacity = '0';
+      setTimeout(function () { carga.remove(); }, 300);
+    });
+  </script>
 </body>
 </html>

@@ -1,12 +1,12 @@
 {
-    "name": "apolo_udes",
-    "short_name": "apolo_udes",
+    "name": "Apolo UDES",
+    "short_name": "Apolo UDES",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#ECEEE9",
+    "theme_color": "#06387A",
+    "description": "Invitaciones y control de acceso con QR para las ceremonias de grado de la UDES.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

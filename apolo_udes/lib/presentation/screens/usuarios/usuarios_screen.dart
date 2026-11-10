@@ -719,7 +719,7 @@ class _UsuarioDialogState extends State<_UsuarioDialog> {
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(_error!,
-                        style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                        style: TextStyle(color: AppColors.errorText, fontSize: 13)),
                   ],
                   const SizedBox(height: 20),
                   Row(children: [

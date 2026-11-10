@@ -278,6 +278,8 @@ class CampoBusqueda extends StatelessWidget {
   }
 }
 
+/// Columna de una tabla: título y cuánto espacio toma (flex). `derecha`
+/// alinea el contenido a la derecha (por ejemplo los botones de acciones).
 /// Fila de filtros o campos: en pantallas anchas van uno al lado del otro;
 /// en el celular (menos de 600 px) van uno debajo del otro y a todo el ancho.
 /// Recibe los mismos hijos que un Row (Expanded, SizedBox de ancho fijo y
@@ -308,8 +310,6 @@ class FilaAdaptable extends StatelessWidget {
   }
 }
 
-/// Columna de una tabla: título y cuánto espacio toma (flex). `derecha`
-/// alinea el contenido a la derecha (por ejemplo los botones de acciones).
 class ColumnaTabla {
   final String titulo;
   final int flex;
@@ -405,22 +405,23 @@ class _TablaApoloState extends State<TablaApolo> {
         children: [
           // Encabezado (en el celular no se muestra: cada tarjeta dice qué es cada dato)
           if (!celular) ...[
-            Container(
-              color: AppColors.surfaceVariant,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-              child: Row(
-                children: [
-                  for (final c in widget.columnas)
-                    Expanded(
-                      flex: c.flex,
-                      child: Text(c.titulo,
-                          textAlign: c.derecha ? TextAlign.right : TextAlign.left,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                    ),
-                ],
-              ),
+
+          Container(
+            color: AppColors.surfaceVariant,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                for (final c in widget.columnas)
+                  Expanded(
+                    flex: c.flex,
+                    child: Text(c.titulo,
+                        textAlign: c.derecha ? TextAlign.right : TextAlign.left,
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                  ),
+              ],
             ),
-            Divider(height: 1, color: AppColors.border),
+          ),
+          Divider(height: 1, color: AppColors.border),
           ],
           // Filas
           Expanded(

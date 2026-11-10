@@ -643,7 +643,7 @@ class _ResultadoImportDialog extends StatelessWidget {
                             .map((e) => Padding(
                                   padding: const EdgeInsets.only(bottom: 4),
                                   child: Text('• $e',
-                                      style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                                      style: TextStyle(color: AppColors.errorText, fontSize: 12)),
                                 ))
                             .toList(),
                       ),
@@ -680,7 +680,7 @@ class _ResultadoImportDialog extends StatelessWidget {
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 6),
             Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w700)),
-            Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text(label, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
       ),
@@ -949,7 +949,7 @@ class _AgregarGraduandoDialogState extends State<_AgregarGraduandoDialog> {
                                 const SizedBox(width: 8),
                                 _cargandoHora
                                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryLight))
-                                    : Expanded(child: Text(_horaAsignada != null ? 'Hora: $_horaAsignada' : 'Sin hora configurada', style: const TextStyle(fontSize: 12, color: AppColors.primaryLight))),
+                                    : Expanded(child: Text(_horaAsignada != null ? 'Hora: $_horaAsignada' : 'Sin hora configurada', style: TextStyle(fontSize: 12, color: AppColors.primary))),
                               ],
                             ),
                           ),
@@ -987,7 +987,7 @@ class _AgregarGraduandoDialogState extends State<_AgregarGraduandoDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(_error!,
-                      style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                      style: TextStyle(color: AppColors.errorText, fontSize: 13)),
                 ),
               ],
               const SizedBox(height: 16),
