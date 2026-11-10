@@ -1138,7 +1138,7 @@ class AppProvider extends ChangeNotifier {
   /// configurada o falla la llamada, no se pierde nada: Apps Script corre
   /// solo cada 5 minutos y la solicitud seguirá en `pendiente`.
   Future<void> _avisarServidorCorreos() async {
-    final url = AppConstants.urlEnvioCorreos;
+    const url = AppConstants.urlEnvioCorreos;
     if (url.isEmpty) return;
     try {
       await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));

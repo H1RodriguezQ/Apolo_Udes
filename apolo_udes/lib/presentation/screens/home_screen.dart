@@ -6,7 +6,7 @@ import '../navegacion.dart';
 import '../widgets/shell/app_rail.dart';
 import '../widgets/shell/barra_superior.dart';
 import '../widgets/shell/cierre_inactividad.dart';
-import '../widgets/sidebar/app_sidebar.dart' show confirmarCierreJornada;
+import '../widgets/shell/cierre_jornada.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'graduandos/graduandos_screen.dart';
 import 'invitaciones/invitaciones_screen.dart';

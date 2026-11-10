@@ -198,7 +198,7 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
         correo: correoDestino,
       );
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -209,7 +209,7 @@ class _InvitacionesScreenState extends State<InvitacionesScreen> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al enviar: $e'), backgroundColor: AppColors.error),
       );

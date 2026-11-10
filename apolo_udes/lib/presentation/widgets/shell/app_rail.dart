@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/theme_provider.dart';
-import '../sidebar/app_sidebar.dart' show confirmarCierreJornada;
+import 'cierre_jornada.dart';
 
 /// Una opción del menú lateral.
 class OpcionMenu {
