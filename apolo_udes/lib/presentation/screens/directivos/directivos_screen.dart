@@ -44,7 +44,7 @@ String? _validarCorreoDirectivo(String? v) {
   final t = v?.trim() ?? '';
   if (t.isEmpty) return 'Requerido';
   if (t.length > 254 || !_dirRegexCorreo.hasMatch(t) || t.contains('..')) {
-    return 'Correo no valido';
+    return 'Correo no válido';
   }
   return null;
 }
@@ -121,7 +121,7 @@ Future<void> _eliminarDirectivo(BuildContext context, Directivo d) async {
   await provider.eliminarDirectivo(d.id);
   final autor = provider.usuarioActual;
   if (autor != null) {
-    UsuariosService.auditar(autor, 'Elimino directivo ${d.nombre} (${d.cargo})',
+    UsuariosService.auditar(autor, 'Eliminó directivo ${d.nombre} (${d.cargo})',
         tipo: 'directivo');
   }
   _mostrarExito(messenger, '${d.nombre} fue eliminado');
@@ -248,7 +248,7 @@ class DirectivosScreen extends StatelessWidget {
     final autor = provider.usuarioActual;
     if (autor != null) {
       UsuariosService.auditar(
-          autor, 'Elimino todos los directivos ($cantidad registros)',
+          autor, 'Eliminó todos los directivos ($cantidad registros)',
           tipo: 'directivo');
     }
     _mostrarExito(messenger, 'Se eliminaron $cantidad directivos');
@@ -303,7 +303,7 @@ Future<void> _enviarInvitacionEmail(BuildContext context, Directivo d) async {
   final exito = await provider.enviarCorreoDirectivo(d);
 
   if (context.mounted) {
-    if (exito) _auditarDirectivo(context, 'Envio invitacion a directivo ${d.nombre}');
+    if (exito) _auditarDirectivo(context, 'Envió invitación a directivo ${d.nombre}');
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -399,7 +399,7 @@ class _DirectivoDialogState extends State<_DirectivoDialog> {
       final autor = provider.usuarioActual;
       if (autor != null) {
         UsuariosService.auditar(autor,
-            'Edito directivo ${directivo.nombre} (${directivo.cargo})',
+            'Editó directivo ${directivo.nombre} (${directivo.cargo})',
             tipo: 'directivo');
       }
       navigator.pop();
@@ -409,7 +409,7 @@ class _DirectivoDialogState extends State<_DirectivoDialog> {
       final autor = provider.usuarioActual;
       if (autor != null) {
         UsuariosService.auditar(autor,
-            'Agrego directivo ${directivo.nombre} (${directivo.cargo})',
+            'Agregó directivo ${directivo.nombre} (${directivo.cargo})',
             tipo: 'directivo');
       }
       if (widget.enPanel) {

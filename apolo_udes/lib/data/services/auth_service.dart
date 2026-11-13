@@ -34,12 +34,12 @@ class AuthService {
       throw AuthException(_mensajeDeError(e.code));
     } catch (e) {
       debugPrint('Error de autenticacion: $e');
-      throw AuthException('No fue posible iniciar sesion. Intenta mas tarde.');
+      throw AuthException('No fue posible iniciar sesión. Intenta más tarde.');
     }
 
     final user = credencial.user;
     if (user == null) {
-      throw AuthException('No fue posible iniciar sesion.');
+      throw AuthException('No fue posible iniciar sesión.');
     }
 
     try {
@@ -72,7 +72,7 @@ class AuthService {
       doc = await _db.collection('usuarios').doc(user.uid).get();
     } catch (e) {
       debugPrint('Error leyendo perfil: $e');
-      throw AuthException('No fue posible verificar tu cuenta. Intenta mas tarde.');
+      throw AuthException('No fue posible verificar tu cuenta. Intenta más tarde.');
     }
 
     if (!doc.exists) {
@@ -202,7 +202,7 @@ class AuthService {
       case 'wrong-password':
       case 'user-not-found':
       case 'invalid-email':
-        return 'Correo o contrasena incorrectos.';
+        return 'Correo o contraseña incorrectos.';
       case 'user-disabled':
         return 'Esta cuenta esta deshabilitada. Contacta al administrador.';
       case 'too-many-requests':
@@ -210,7 +210,7 @@ class AuthService {
       case 'network-request-failed':
         return 'Sin conexion. Verifica tu red e intenta de nuevo.';
       default:
-        return 'No fue posible iniciar sesion. Intenta mas tarde.';
+        return 'No fue posible iniciar sesión. Intenta más tarde.';
     }
   }
 }

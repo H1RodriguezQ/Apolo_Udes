@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen>
     final correo = _correoController.text.trim();
     if (correo.isEmpty) {
       setState(() =>
-          _errorMessage = 'Escribe tu correo para recuperar la contrasena.');
+          _errorMessage = 'Escribe tu correo para recuperar la contraseña.');
       return;
     }
     try {
@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-            'Si el correo esta registrado, recibiras un enlace para restablecer la contrasena.'),
+            'Si el correo está registrado, recibirás un enlace para restablecer la contraseña.'),
       ),
     );
   }

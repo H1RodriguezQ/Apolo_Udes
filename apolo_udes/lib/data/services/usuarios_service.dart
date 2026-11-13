@@ -63,7 +63,7 @@ class UsuariosService {
       'creadoPor': autor.id,
     });
     await AuthService.enviarCorreoActivacion(email);
-    await auditar(autor, 'Creo usuario $email como $rolTexto');
+    await auditar(autor, 'Creó usuario $email como $rolTexto');
     return false;
   }
 
@@ -86,7 +86,7 @@ class UsuariosService {
       'actualizadoPor': autor.id,
     }, SetOptions(merge: true));
     await auditar(autor,
-        'Edito usuario ${usuario.correo}: rol $rolTexto, ${estado == EstadoUsuario.activo ? 'activo' : 'inactivo'}');
+        'Editó usuario ${usuario.correo}: rol $rolTexto, ${estado == EstadoUsuario.activo ? 'activo' : 'inactivo'}');
   }
 
   static Future<void> eliminar({
@@ -104,7 +104,7 @@ class UsuariosService {
       'ultimaActualizacion': FieldValue.serverTimestamp(),
       'actualizadoPor': autor.id,
     }, SetOptions(merge: true));
-    await auditar(autor, 'Elimino usuario ${usuario.correo}');
+    await auditar(autor, 'Eliminó usuario ${usuario.correo}');
   }
 
   static Future<void> reenviarActivacion({

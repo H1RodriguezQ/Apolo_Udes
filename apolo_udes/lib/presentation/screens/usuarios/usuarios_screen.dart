@@ -34,7 +34,7 @@ String? _validarCorreo(String? v) {
   final t = v?.trim() ?? '';
   if (t.isEmpty) return 'Requerido';
   if (t.length > 254 || !_regexCorreo.hasMatch(t) || t.contains('..')) {
-    return 'Correo no valido';
+    return 'Correo no válido';
   }
   return null;
 }
@@ -170,7 +170,7 @@ Future<void> _eliminar(BuildContext context, Usuario u) async {
 
   if (autor == null) {
     messenger.showSnackBar(
-        const SnackBar(content: Text('Sesion no valida. Vuelve a iniciar sesion.')));
+        const SnackBar(content: Text('Sesión no válida. Vuelve a iniciar sesión.')));
     return;
   }
 

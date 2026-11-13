@@ -182,7 +182,7 @@ class AppProvider extends ChangeNotifier {
       // Antes de cerrar sesión: la auditoría necesita el token vigente.
       await UsuariosService.auditar(
         autor,
-        'Cerro la jornada con $accesos acceso(s) validado(s)',
+        'Cerró la jornada con $accesos acceso(s) validado(s)',
         tipo: 'jornada',
         detalle: 'Cierre de turno; datos locales de la tablet borrados',
       );
@@ -1253,7 +1253,7 @@ class AppProvider extends ChangeNotifier {
     if (autor != null) {
       await UsuariosService.auditar(
         autor,
-        'Anulo invitado ${invitacion.id}',
+        'Anuló invitado ${invitacion.id}',
         tipo: 'invitacion',
         // Sin nombres ni datos personales en la bitácora: solo el ID y el
         // resultado, que es lo necesario para reconstruir qué pasó.

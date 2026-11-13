@@ -42,7 +42,7 @@ Future<void> _eliminarGraduando(BuildContext context, Graduando g) async {
     if (autor != null) {
       UsuariosService.auditar(
         autor,
-        _recortar('Elimino graduando ${g.nombreCompleto} (doc. ${g.documento}); '
+        _recortar('Eliminó graduando ${g.nombreCompleto} (doc. ${g.documento}); '
             '$anulados invitado(s) anulado(s)', 200),
         tipo: 'graduando',
       );
@@ -457,7 +457,7 @@ class _GraduandosScreenState extends State<GraduandosScreen> {
       if (autor != null) {
         UsuariosService.auditar(
           autor,
-          'Elimino todos los graduandos ($cantidad) y anulo sus invitados',
+          'Eliminó todos los graduandos ($cantidad) y anuló sus invitados',
           tipo: 'graduando',
         );
       }
