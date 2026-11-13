@@ -58,6 +58,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script type="module">
+  // "09:30 AM" (como lo guarda la app) -> "9:30 a. m.". Si no se entiende, igual.
+  function horaLegible(texto) {
+    const m = /^(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?$/i.exec((texto || '').trim());
+    if (!m) return texto;
+    return Number(m[1]) + ':' + m[2] + (m[3].toLowerCase() === 'a' ? ' a. m.' : ' p. m.');
+  }
+
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
   import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app-check.js';
   import { getFirestore, doc, getDoc }
@@ -137,7 +144,7 @@
         { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })]);
     }
     const hora = (conf.horasPorFacultad || {})[facultad];
-    if (hora) filas.push(['🕐', hora]);
+    if (hora) filas.push(['🕐', horaLegible(hora)]);
     if (conf.lugar) {
       filas.push(['📍', conf.lugar +
         (conf.direccion ? ', ' + conf.direccion : '') +

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/app_provider.dart';
 import '../widgets/common/selector_tema.dart';
@@ -471,7 +472,7 @@ class _ConfiguracionScreenState extends State<ConfiguracionScreen> {
                         hint: Text(_horasPorFacultad[f] ?? '', style: AppTextStyles.mono(size: 15)),
                         items: [
                           for (final h in horas)
-                            DropdownMenuItem(value: h, alignment: AlignmentDirectional.centerEnd, child: Text(h, style: AppTextStyles.mono(size: 15))),
+                            DropdownMenuItem(value: h, alignment: AlignmentDirectional.centerEnd, child: Text(AppConstants.horaLegible(h), style: AppTextStyles.mono(size: 15))),
                         ],
                         onChanged: (v) => setState(() => _horasPorFacultad[f] = v!),
                       ),

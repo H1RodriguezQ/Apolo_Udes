@@ -316,7 +316,7 @@
     const lista = document.getElementById(idLista);
     lista.replaceChildren(
       filaDato('Fecha', evento.fechaTexto, 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4'),
-      filaDato('Hora', evento.hora || 'Por confirmar', 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2'),
+      filaDato('Hora', evento.hora ? horaLegible(evento.hora) : 'Por confirmar', 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2'),
       filaDato('Lugar', evento.lugar, 'M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5')
     );
   }
@@ -335,6 +335,13 @@
 
   // ── Calendario (.ics) y mapa ──
   // "09:30 AM", "9:30 a. m." o "14:00" -> [horas, minutos]. null si no se entiende.
+  // "09:30 AM" (como lo guarda la app) -> "9:30 a. m.". Si no se entiende, igual.
+  function horaLegible(texto) {
+    const m = /^(\d{1,2}):(\d{2})\s*([ap])\.?\s*m\.?$/i.exec((texto || '').trim());
+    if (!m) return texto;
+    return Number(m[1]) + ':' + m[2] + (m[3].toLowerCase() === 'a' ? ' a. m.' : ' p. m.');
+  }
+
   function leerHora(texto) {
     const m = /(\d{1,2}):(\d{2})\s*([ap])?/i.exec(texto || '');
     if (!m) return null;

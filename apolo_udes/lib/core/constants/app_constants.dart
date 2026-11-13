@@ -79,6 +79,15 @@ class AppConstants {
       .toList()
     ..sort();
 
+  /// "08:30 AM" (como se guarda) -> "8:30 a. m." (como se muestra).
+  /// Si el texto no tiene ese formato, se devuelve igual.
+  static String horaLegible(String hora) {
+    final m = RegExp(r'^(\d{1,2}):(\d{2})\s*([AaPp])[Mm]$').firstMatch(hora.trim());
+    if (m == null) return hora;
+    final sufijo = m.group(3)!.toLowerCase() == 'a' ? 'a. m.' : 'p. m.';
+    return '${int.parse(m.group(1)!)}:${m.group(2)} $sufijo';
+  }
+
   // ── Horas de ceremonia (08:30 AM a 06:00 PM, cada 30 min) ──
   static const List<String> horasCeremonia = [
     '08:30 AM',

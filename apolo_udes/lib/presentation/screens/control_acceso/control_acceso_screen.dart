@@ -677,7 +677,7 @@ class _ResultadoGrande extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(child: _Dato(etiqueta: valido ? 'Documento' : 'Código leído', valor: _ocultar(registro!.documento))),
-                          Expanded(child: _Dato(etiqueta: 'Hora de lectura', valor: DateFormat('hh:mm a', 'es_CO').format(registro!.horaAcceso))),
+                          Expanded(child: _Dato(etiqueta: 'Hora de lectura', valor: DateFormat('h:mm a', 'es_CO').format(registro!.horaAcceso))),
                         ],
                       ),
                       if (valido) ...[
