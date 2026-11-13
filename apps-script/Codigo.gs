@@ -90,265 +90,276 @@ const PLANTILLA = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="x-apple-disable-message-reformatting">
   <title>Invitación · Ceremonia de Graduación · Universidad de Santander</title>
-  <!-- Apple Mail y algunos clientes cargan estas fuentes; Gmail y Outlook no,
-       y usan Georgia (alternativa de cada font-family). El diseño funciona con
-       ambas. -->
-  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&display=swap" rel="stylesheet">
-  <!-- Solo @media: todo lo demás va en línea porque Outlook ignora las clases. -->
-  <style>
-    @media only screen and (max-width: 520px) {
-      .apo-exterior { padding: 14px 6px !important; }
-      .apo-marco    { padding: 7px !important; }
-      .apo-bloque   { padding-left: 18px !important; padding-right: 18px !important; }
-      .apo-titulo   { font-size: 38px !important; line-height: 44px !important; }
-      .apo-nombre   { font-size: 24px !important; line-height: 30px !important; }
-      .apo-linea    { width: 60px !important; }
-      .apo-qr       { width: 150px !important; height: 150px !important; }
-    }
-    @media only screen and (max-width: 360px) {
-      .apo-titulo { font-size: 32px !important; line-height: 38px !important; }
-      .apo-col    { display: block !important; width: 100% !important;
-                    border-left: 0 !important; border-right: 0 !important;
-                    border-bottom: 1px solid #E2D6B8 !important; padding: 8px 0 !important; }
-    }
-  </style>
+  <!--
+    Tipografía del mockup aprobado (Pinyon Script / Cormorant Garamond /
+    Montserrat). Solo un <link>: Gmail lo descarta sin romper nada y los
+    clientes que sí lo aplican (Apple Mail, móviles) se llevan la tipografía
+    oficial. El resto cae en Georgia/Arial, que son las familias de respaldo
+    de cada trazo. Las reglas de estilo van ABAJO y solo con @media (así lo
+    exige Outlook, que ignora las clases).
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@500;600&display=swap" rel="stylesheet">
+  <meta name="x-apple-disable-message-reformatting">
 </head>
-<body style="margin:0;padding:0;background-color:#DFE3EA;">
+<body style="margin:0;padding:0;background-color:#dfe3ea;">
 
-  <!-- PREHEADER: la frase que Gmail muestra junto al asunto (oculta en el cuerpo). -->
-  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#DFE3EA;">
+  <!--
+    PREHEADER: la frase que Gmail y Outlook muestran junto al asunto. Se oculta
+    dentro del cuerpo (display:none) para que no se vea dentro del correo.
+  -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#dfe3ea;">
     Su código de acceso para la ceremonia del {{fecha}}.
   </div>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#DFE3EA;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:#dfe3ea;">
     <tr>
-      <td class="apo-exterior" align="center" style="padding:28px 12px;">
+      <td class="exterior" align="center" style="padding:32px 12px;">
 
-        <!-- ================= MARCO AZUL ================= -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-               style="max-width:580px;background-color:#003A7D;border-top:3px solid #B8975A;border-bottom:3px solid #B8975A;">
+        <!-- ================= MARCO AZUL (#1b3463, con filetes dorados
+             arriba y abajo, como en el mockup) ================= -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:100%;max-width:600px;background-color:#1b3463;border-top:3px solid #b8975a;border-bottom:3px solid #b8975a;">
           <tr>
-            <td class="apo-marco" style="padding:11px;">
+            <td class="marco" style="padding:12px;">
 
               <!-- ============ TARJETA CREMA ============ -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#FBF8F1;border:1px solid #C2A05A;">
-
-                <!-- Esquinas art déco superiores: doble línea fina, hecha con bordes
-                     (Gmail y Outlook no muestran SVG). -->
+                     style="background-color:#fbf8f1;border:1px solid #c2a05a;outline:4px solid #fbf8f1;outline-offset:-6px;">
                 <tr>
-                  <td style="padding:8px 8px 0 8px;">
+                  <td style="padding:0;">
+
+                    <!--
+                      Esquinas art déco (64px): PNG exportado del SVG del
+                      mockup (generar-birrete.js), con sus tres líneas y la
+                      diagonal. El SVG no sobrevive a Gmail/Outlook y por CSS
+                      no se puede dibujar la diagonal (habría que transformar
+                      el elemento, y Outlook lo ignora).
+                    -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td width="34" valign="top" style="width:34px;padding:0;line-height:0;font-size:0;">
-                          <div style="width:34px;height:34px;border-top:1px solid #B8975A;border-left:1px solid #B8975A;">
-                            <div style="width:24px;height:24px;margin:5px 0 0 5px;border-top:1px solid #B8975A;border-left:1px solid #B8975A;"></div>
-                          </div>
+                        <td align="left" style="padding:4px 0 0 4px;line-height:0;">
+                          <img src="{{esq_si_src}}" class="esq" width="64" height="64" alt=""
+                               style="display:block;width:64px;height:64px;border:0;">
                         </td>
                         <td style="font-size:0;line-height:0;">&nbsp;</td>
-                        <td width="34" valign="top" style="width:34px;padding:0;line-height:0;font-size:0;">
-                          <div style="width:34px;height:34px;border-top:1px solid #B8975A;border-right:1px solid #B8975A;">
-                            <div style="width:24px;height:24px;margin:5px 0 0 4px;border-top:1px solid #B8975A;border-right:1px solid #B8975A;"></div>
-                          </div>
+                        <td align="right" style="padding:4px 4px 0 0;line-height:0;">
+                          <img src="{{esq_sd_src}}" class="esq" width="64" height="64" alt=""
+                               style="display:block;width:64px;height:64px;border:0;">
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
 
-                <!-- CINTA "INVITACIÓN": degradado dorado con color plano de respaldo -->
-                <tr>
-                  <td align="center" style="padding:0 24px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                    <!-- CINTA "INVITACIÓN": degradado dorado del mockup; Outlook
+                         ignora el degradado y se queda con el color plano. -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
+                           style="margin:2px auto 0 auto;">
                       <tr>
-                        <td bgcolor="#C2A05A"
-                            style="background-color:#C2A05A;background-image:linear-gradient(100deg,#9C7A3C 0%,#E3C983 35%,#B8954F 60%,#ECD497 80%,#A8853F 100%);padding:6px 20px;">
-                          <span style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:4px;color:#2C2210;font-weight:bold;">INVITACIÓN</span>
+                        <td bgcolor="#c2a05a"
+                            style="background-color:#c2a05a;background-image:linear-gradient(100deg,#9c7a3c 0%,#e3c983 35%,#b8954f 60%,#ecd497 80%,#a8853f 100%);padding:6px 18px;text-align:center;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:4px;font-weight:600;color:#2c2210;">
+                            INVITACIÓN
+                          </span>
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
 
-                <!-- TÍTULO CALIGRÁFICO -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:10px 28px 0 28px;">
-                    <div class="apo-titulo"
-                         style="font-family:'Pinyon Script','Brush Script MT','Segoe Script',cursive;font-size:46px;line-height:52px;color:#004899;">
-                      Ceremonia de <span style="color:#A6833F;">Graduación</span>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- RECTORÍA -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:18px 34px 0 34px;">
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:19px;line-height:26px;color:#2A2A2A;font-weight:600;">
-                      El Rector General y el Consejo&nbsp;Académico de&nbsp;la Universidad de&nbsp;Santander
-                    </div>
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:16px;line-height:24px;color:#4A4A4A;margin-top:10px;">
-                      tienen el gusto de invitarle al acto académico mediante el cual se otorga
-                      el título de profesionales, especialistas y&nbsp;magísteres.
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- DESTINATARIO -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:26px 30px 0 30px;">
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:15px;color:#6B6B6B;font-style:italic;">
-                      {{titulo_beneficiario}}
-                    </div>
-                    <div class="apo-nombre"
-                         style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:28px;line-height:34px;color:#004899;font-weight:600;margin-top:2px;">
-                      {{invitado}}
-                    </div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#7D7D7D;margin-top:6px;">
-                      {{en_nombre_de}}
-                    </div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#7D7D7D;">
-                      {{cargo}}
-                    </div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#9A9A9A;">
-                      {{programa}}
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- SEPARADOR CON BIRRETE (PNG publicado; si no hay, un rombo dorado) -->
-                <tr>
-                  <td align="center" style="padding:22px 0 0 0;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-                      <tr>
-                        <td class="apo-linea" width="100" valign="middle" style="width:100px;">
-                          <div style="height:1px;line-height:1px;font-size:0;background-color:#D3BF93;">&nbsp;</div>
-                        </td>
-                        <td valign="middle" style="padding:0 12px;line-height:0;">
-                          <img src="{{birrete_src}}" width="34" height="26" alt=""
-                               style="display:block;width:34px;height:26px;border:0;">
-                        </td>
-                        <td class="apo-linea" width="100" valign="middle" style="width:100px;">
-                          <div style="height:1px;line-height:1px;font-size:0;background-color:#D3BF93;">&nbsp;</div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- CEREMONIA / FECHA / HORA (alineados arriba) -->
-                <tr>
-                  <td class="apo-bloque" style="padding:20px 24px 0 24px;">
+                    <!-- TÍTULO CALIGRÁFICO A DOS TONOS: "Ceremonia de" en el
+                         azul del marco (#1b3463) y "Graduación" en dorado
+                         (#a6833f), igual que el mockup aprobado. -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td class="apo-col" width="33%" align="center" valign="top"
-                            style="padding:2px 6px;border-right:1px solid #E2D6B8;">
-                          <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;color:#8A6D3B;font-weight:bold;">CEREMONIA</div>
-                          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;line-height:26px;color:#004899;margin-top:4px;white-space:nowrap;">{{ceremonia}}</div>
-                        </td>
-                        <td class="apo-col" width="34%" align="center" valign="top"
-                            style="padding:2px 6px;border-right:1px solid #E2D6B8;">
-                          <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;color:#8A6D3B;font-weight:bold;">FECHA</div>
-                          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;line-height:26px;color:#004899;margin-top:4px;white-space:nowrap;">{{fecha}}</div>
-                          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:14px;color:#6B6B6B;font-style:italic;">{{dia_semana}}</div>
-                        </td>
-                        <td class="apo-col" width="33%" align="center" valign="top" style="padding:2px 6px;">
-                          <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;color:#8A6D3B;font-weight:bold;">HORA</div>
-                          <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;line-height:26px;color:#004899;margin-top:4px;white-space:nowrap;">{{hora}}</div>
+                        <td align="center" style="padding:10px 24px 0 24px;">
+                          <span class="titulo" style="font-family:'Pinyon Script','Brush Script MT','Segoe Script',cursive;font-size:50px;line-height:1.15;color:#1b3463;">
+                            Ceremonia de <span style="color:#a6833f;">Graduación</span>
+                          </span>
                         </td>
                       </tr>
                     </table>
-                  </td>
-                </tr>
 
-                <!-- LUGAR (fila completa para que no se parta en muchos renglones) -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:16px 28px 0 28px;">
-                    <div style="width:60px;height:1px;line-height:1px;font-size:0;background-color:#E2D6B8;margin:0 auto 14px auto;">&nbsp;</div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;color:#8A6D3B;font-weight:bold;">LUGAR</div>
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:19px;line-height:25px;color:#004899;margin-top:4px;">
-                      {{lugar}}
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- NOTA EXTRA (solo el recordatorio la usa) -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:12px 30px 0 30px;">
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:16px;line-height:22px;color:#2A2A2A;font-style:italic;">
-                      {{nota_extra}}
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- QR CON MARCO DORADO DOBLE -->
-                <tr>
-                  <td align="center" style="padding:20px 24px 0 24px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
-                           style="border:1px solid #D9C597;">
+                    <!-- RECTORÍA -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td style="padding:4px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-                                 style="background-color:#FFFFFF;border:2px solid #B8975A;">
+                        <td class="bloque" align="center" style="padding:22px 28px 0 28px;">
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;line-height:1.35;color:#2a2a2a;font-weight:600;">
+                            El Rector General y el Consejo&nbsp;Académico de&nbsp;la Universidad de&nbsp;Santander
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="bloque" align="center" style="padding:10px 28px 0 28px;">
+                          <span style="display:inline-block;max-width:420px;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:16px;line-height:1.5;color:#4a4a4a;">
+                            tienen el gusto de invitarle al acto académico mediante el cual se otorga
+                            el título de profesionales, especialistas y&nbsp;magísteres.
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- NOMBRE DEL INVITADO -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td class="bloque" align="center" style="padding:28px 40px 0 40px;">
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#6b6b6b;">
+                            {{titulo_beneficiario}}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="bloque" align="center" style="padding:2px 24px 0 24px;">
+                          <span class="nombre" style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:28px;font-weight:500;color:#1b3463;letter-spacing:.5px;">
+                            {{invitado}}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="bloque" align="center" style="padding:6px 24px 0 24px;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;letter-spacing:.3px;color:#5f5f5f;">
+                            {{en_nombre_de}}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="bloque" align="center" style="padding:0 24px 0 24px;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;letter-spacing:.3px;color:#6b6b6b;">
+                            {{cargo}}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="bloque" align="center" style="padding:0 24px 0 24px;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;letter-spacing:.3px;color:#6b6b6b;">
+                            {{programa}}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- SEPARADOR CON BIRRETE: el adorno central del mockup,
+                         servido como PNG (generado por generar-birrete.js
+                         desde el SVG del mockup). Gmail y Outlook descartan
+                         el SVG y varios clientes NO dibujan el emoji 🎓 —
+                         salía como cajas con interrogación —, así que la
+                         imagen es lo único que se ve en todas partes. -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td class="linea" width="110" style="width:110px;font-size:0;line-height:0;">
+                          <div style="height:1px;line-height:1px;font-size:0;background:#d3bf93;">&nbsp;</div>
+                        </td>
+                        <td align="center" style="padding:0 12px;line-height:0;">
+                          <img src="{{birrete_src}}" width="34" height="26" alt="Birrete de graduación"
+                               style="display:block;width:34px;height:26px;border:0;margin:0 auto;">
+                        </td>
+                        <td class="linea" width="110" style="width:110px;font-size:0;line-height:0;">
+                          <div style="height:1px;line-height:1px;font-size:0;background:#d3bf93;">&nbsp;</div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- CEREMONIA / FECHA / HORA. valign="top" mantiene las
+                         etiquetas a la misma altura; en pantallas muy angostas
+                         las columnas se apilan (ver @media abajo). -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="margin-top:20px;">
+                      <tr>
+                        <td width="33%" class="col" valign="top" align="center"
+                            style="padding:2px 6px;border-right:1px solid #e2d6b8;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:1.5px;font-weight:600;color:#7a5f2f;">CEREMONIA</span><br>
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;color:#1b3463;">{{ceremonia}}</span>
+                        </td>
+                        <td width="34%" class="col" valign="top" align="center"
+                            style="padding:2px 6px;border-right:1px solid #e2d6b8;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:1.5px;font-weight:600;color:#7a5f2f;">FECHA</span><br>
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;color:#1b3463;">{{fecha}}</span><br>
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-style:italic;font-size:14px;color:#6b6b6b;">{{dia_semana}}</span>
+                        </td>
+                        <td width="33%" class="col" valign="top" align="center" style="padding:2px 6px;">
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:1.5px;font-weight:600;color:#7a5f2f;">HORA</span><br>
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:20px;color:#1b3463;">{{hora}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="3" align="center" style="padding:16px 6px 0 6px;">
+                          <div style="width:60px;height:1px;background:#e2d6b8;margin:0 auto 14px;font-size:0;line-height:0;">&nbsp;</div>
+                          <span style="font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:1.5px;font-weight:600;color:#7a5f2f;">LUGAR</span><br>
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:19px;line-height:1.3;color:#1b3463;">
+                            {{lugar}}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- NOTA EXTRA (recordatorio) -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="padding:10px 30px 0 30px;">
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:15px;line-height:1.45;color:#5d5d5d;font-style:italic;">
+                            {{nota_extra}}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- QR ENMARCADO EN DORADO (marco de 2px + doble filete
+                         claro, como en el mockup; Outlook se queda con el
+                         marco simple porque ignora box-shadow) -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td class="bloque" align="center" style="padding:22px 40px 0 40px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
+                                 style="background-color:#ffffff;border:2px solid #b8975a;box-shadow:0 0 0 4px #fbf8f1,0 0 0 5px #d9c597;">
                             <tr>
-                              <td style="padding:10px;line-height:0;">
-                                <img class="apo-qr" src="{{qr_src}}" width="170" height="170" alt="Código de acceso a la ceremonia"
-                                     style="display:block;width:170px;height:170px;border:0;">
+                              <td style="padding:12px;line-height:0;">
+                                <img src="{{qr_src}}" class="qr" width="148" height="148" alt="Código de acceso a la ceremonia"
+                                     style="display:block;width:148px;height:148px;border:0;">
                               </td>
                             </tr>
                           </table>
                         </td>
                       </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:10px 30px 0 30px;">
-                    <div style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:15px;line-height:21px;color:#5D5D5D;font-style:italic;">
-                      Presente este código al ingresar, impreso o desde su&nbsp;celular.<br>
-                      Es personal y válido para una sola&nbsp;entrada.
-                    </div>
-                  </td>
-                </tr>
-                <!--ENLACE-INICIO: "Mi invitación" en la web (si se borra el correo o el QR no carga) -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:14px 30px 0 30px;">
-                    <a href="{{enlace_invitacion}}" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;color:#004899;font-weight:bold;text-decoration:underline;">Ver mi invitación en línea</a>
-                  </td>
-                </tr>
-                <!--ENLACE-FIN-->
-
-                <!-- LOGOS OFICIALES -->
-                <tr>
-                  <td class="apo-bloque" align="center" style="padding:26px 30px 4px 30px;">
-                    <img src="{{logos_src}}" width="460"
-                         alt="Universidad de Santander · Acreditada Alta Calidad · Acreditación Internacional EQUAA"
-                         style="display:block;width:100%;max-width:460px;height:auto;border:0;margin:0 auto;">
-                  </td>
-                </tr>
-
-                <!-- Esquinas art déco inferiores -->
-                <tr>
-                  <td style="padding:0 8px 8px 8px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        <td width="34" valign="bottom" style="width:34px;padding:0;line-height:0;font-size:0;">
-                          <div style="width:34px;height:34px;border-bottom:1px solid #B8975A;border-left:1px solid #B8975A;">
-                            <div style="width:24px;height:24px;margin:4px 0 0 5px;border-bottom:1px solid #B8975A;border-left:1px solid #B8975A;"></div>
-                          </div>
-                        </td>
-                        <td style="font-size:0;line-height:0;">&nbsp;</td>
-                        <td width="34" valign="bottom" style="width:34px;padding:0;line-height:0;font-size:0;">
-                          <div style="width:34px;height:34px;border-bottom:1px solid #B8975A;border-right:1px solid #B8975A;">
-                            <div style="width:24px;height:24px;margin:4px 0 0 4px;border-bottom:1px solid #B8975A;border-right:1px solid #B8975A;"></div>
-                          </div>
+                        <td align="center" style="padding:10px 30px 0 30px;">
+                          <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:14px;line-height:1.45;color:#5d5d5d;font-style:italic;">
+                            Presente este código al ingresar, impreso o desde su celular.<br>
+                            Es personal y válido para una sola entrada.
+                          </span>
                         </td>
                       </tr>
                     </table>
+
+                    <!-- LOGOS OFICIALES: la tira de tres logos del evento
+                         (UDES + MEN + EQUAA). El mockup trae textos de
+                         marcador porque los PNG oficiales aún no se habían
+                         publicado; aquí va el archivo real. Si LOGOS_URL sigue
+                         vacía, el servidor borra esta <img> antes de enviar. -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="padding:22px 40px 0 40px;">
+                          <img src="{{logos_src}}" class="logos" width="460" height="auto"
+                               alt="Universidad de Santander · Acreditación Alta Calidad · EQUAA"
+                               style="display:block;width:100%;max-width:460px;height:auto;border:0;margin:0 auto;">
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Esquinas art déco (fila inferior), espejo de la superior -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="left" style="padding:0 0 4px 4px;line-height:0;">
+                          <img src="{{esq_ii_src}}" class="esq" width="64" height="64" alt=""
+                               style="display:block;width:64px;height:64px;border:0;">
+                        </td>
+                        <td style="font-size:0;line-height:0;">&nbsp;</td>
+                        <td align="right" style="padding:0 4px 4px 0;line-height:0;">
+                          <img src="{{esq_id_src}}" class="esq" width="64" height="64" alt=""
+                               style="display:block;width:64px;height:64px;border:0;">
+                        </td>
+                      </tr>
+                    </table>
+
                   </td>
                 </tr>
-
               </table>
               <!-- ========== FIN TARJETA CREMA ========== -->
 
@@ -358,13 +369,14 @@ const PLANTILLA = `<!DOCTYPE html>
         <!-- ================= FIN MARCO AZUL ================= -->
 
         <!-- ============ PIE (Ley 1581) ============ -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:100%;max-width:600px;">
           <tr>
             <td align="center" style="padding:16px 24px 0 24px;">
-              <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#6F7787;">
-                {{motivo}} Sus datos se tratan según la Ley 1581 de 2012 y se eliminan
-                al terminar el evento.
-                <a href="{{politica_url}}" style="color:#004899;text-decoration:underline;">Política de tratamiento de datos</a>
+              <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#6f7787;">
+                Recibe este mensaje porque {{graduando}} lo registró como invitado. Sus datos se
+                tratan según la Ley 1581 de 2012 y se eliminan al terminar el evento.
+                <a href="{{politica_url}}" style="color:#1b3463;text-decoration:underline;">Política de tratamiento de datos</a>
               </span>
             </td>
           </tr>
@@ -373,6 +385,29 @@ const PLANTILLA = `<!DOCTYPE html>
       </td>
     </tr>
   </table>
+
+  <!-- SÓLO @media: las reglas de estilo de este correo se usan únicamente
+       para el ajuste en pantallas pequeñas (520px y 360px). Todo lo demás va
+       en línea, porque Outlook ignora las reglas de clases. -->
+  <style>
+    @media only screen and (max-width: 520px) {
+      .exterior { padding: 12px 6px !important; }
+      .marco    { padding: 8px !important; }
+      .esq      { width: 40px !important; height: 40px !important; }
+      .titulo   { font-size: 38px !important; line-height: 1.2 !important; }
+      .bloque   { padding-left: 18px !important; padding-right: 18px !important; }
+      .nombre   { font-size: 24px !important; }
+      .linea    { width: 64px !important; }
+      .qr       { width: 132px !important; height: 132px !important; }
+    }
+    @media only screen and (max-width: 360px) {
+      .titulo   { font-size: 32px !important; }
+      /* En pantallas muy angostas los tres datos se apilan */
+      .col      { display: block !important; width: 100% !important; border-right: 0 !important;
+                  padding: 8px 0 !important; border-bottom: 1px solid #e2d6b8 !important; }
+      .logos    { width: 100% !important; max-width: 100% !important; }
+    }
+  </style>
 
 </body>
 </html>
