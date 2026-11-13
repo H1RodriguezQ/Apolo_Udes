@@ -275,19 +275,30 @@ class _TarjetaOcupacion extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           // Barra con marcas en el 75 % (aviso) y el 90 % (tope).
-          LayoutBuilder(builder: (context, c) {
-            return SizedBox(
-              height: 14,
-              child: Stack(
-                children: [
-                  Positioned.fill(child: Container(color: AppColors.pista)),
-                  Positioned(left: 0, top: 0, bottom: 0, width: c.maxWidth * f, child: Container(color: color)),
-                  for (final m in [0.75, 0.9])
-                    Positioned(left: c.maxWidth * m - 1, top: 0, bottom: 0, width: 2, child: Container(color: AppColors.errorText)),
-                ],
-              ),
-            );
-          }),
+          // Sin LayoutBuilder: la tarjeta va dentro de un IntrinsicHeight
+          // (fila de cifras) y LayoutBuilder no puede medirse ahí.
+          SizedBox(
+            height: 14,
+            child: Stack(
+              children: [
+                Positioned.fill(child: Container(color: AppColors.pista)),
+                Positioned.fill(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: f.clamp(0.0, 1.0),
+                    child: Container(color: color),
+                  ),
+                ),
+                for (final m in [0.75, 0.9])
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment(m * 2 - 1, 0),
+                      child: Container(width: 2, color: AppColors.errorText),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
           Text('${(aforo - adentro).clamp(0, aforo)} sillas libres', style: AppTextStyles.bodySmall),
           Text('Aviso 75 % · tope 90 %', style: AppTextStyles.bodySmall.copyWith(fontSize: 12)),
