@@ -289,11 +289,12 @@ class _TarjetaOcupacion extends StatelessWidget {
                     child: Container(color: color),
                   ),
                 ),
-                for (final m in [0.75, 0.9])
+                // 75 % = aviso (ámbar), 90 % = tope (rojo).
+                for (final (m, c) in [(0.75, AppColors.warningText), (0.9, AppColors.errorText)])
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment(m * 2 - 1, 0),
-                      child: Container(width: 2, color: AppColors.errorText),
+                      child: Container(width: 2, color: c),
                     ),
                   ),
               ],

@@ -228,8 +228,9 @@ class _TarjetaAtencion extends StatelessWidget {
                     width: 60,
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: f.$5, borderRadius: BorderRadius.circular(4)),
-                    child: Text('${f.$1}', style: AppTextStyles.mono(size: 15, peso: FontWeight.w500, color: f.$6)),
+                    // En 0 no hay nada que atender: color neutro en vez de alarma.
+                    decoration: BoxDecoration(color: f.$1 > 0 ? f.$5 : AppColors.pista, borderRadius: BorderRadius.circular(4)),
+                    child: Text('${f.$1}', style: AppTextStyles.mono(size: 15, peso: FontWeight.w500, color: f.$1 > 0 ? f.$6 : AppColors.textSecondary)),
                   ),
                   const SizedBox(width: 16),
                   Expanded(child: Text(f.$2, style: AppTextStyles.body.copyWith(fontSize: 15))),

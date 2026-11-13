@@ -13,7 +13,7 @@
     /* Paleta del diseño aprobado (azul institucional, dorado y crema). */
     :root{
       --azul:#004899; --azul-hondo:#003a7d;
-      --dorado:#b8975a; --dorado-claro:#e2d6b8; --dorado-texto:#8a6d3b;
+      --dorado:#b8975a; --dorado-claro:#e2d6b8; --dorado-texto:#7a5f2f;
       --crema:#fbf8f1; --fondo:#dfe3ea;
       --texto:#2a2a2a; --texto-suave:#6b6b6b; --error:#b42318;
       --serif:'Cormorant Garamond',Georgia,serif;
@@ -47,7 +47,7 @@
     .separador::before,.separador::after{content:"";width:96px;height:1px;background:#d3bf93}
     .separador svg{display:block}
 
-    .etiqueta{font-family:var(--sans);font-size:9px;letter-spacing:2px;font-weight:600;color:var(--dorado-texto);text-transform:uppercase}
+    .etiqueta{font-family:var(--sans);font-size:11px;letter-spacing:1.5px;font-weight:600;color:var(--dorado-texto);text-transform:uppercase}
     .graduando{font-size:26px;font-weight:500;color:var(--azul);margin-top:4px}
     .programa{font-family:var(--sans);font-size:11px;color:#7d7d7d;margin-top:4px}
 
@@ -74,7 +74,7 @@
     .campo label{display:block;margin-bottom:6px}
     .campo input{width:100%;font-family:var(--sans);font-size:14px;font-weight:500;color:var(--texto);
       background:#fff;border:1px solid var(--dorado-claro);border-radius:4px;padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s}
-    .campo input::placeholder{color:#b4b4b4;font-weight:500}
+    .campo input::placeholder{color:#8c8c8c;font-weight:400;font-style:italic}
     .campo input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,72,153,.12)}
     .campo .ayuda{font-family:var(--sans);font-size:11px;color:#8d8d8d;margin-top:5px}
     .campo.con-error input{border-color:var(--error)}
@@ -403,17 +403,17 @@
           <h2>Datos del invitado <small>${titulo}</small></h2>
           <div class="campo">
             <label class="etiqueta" for="nombre-${i}">Nombre completo</label>
-            <input id="nombre-${i}" maxlength="80" autocomplete="${ac}" placeholder="María García Rojas" aria-describedby="nombre-${i}-msj">
+            <input id="nombre-${i}" maxlength="80" autocomplete="${ac}" placeholder="Nombres y apellidos" aria-describedby="nombre-${i}-msj">
             <div class="msj" id="nombre-${i}-msj">Escriba solo letras, espacios, apóstrofes o guiones.</div>
           </div>
           <div class="campo">
             <label class="etiqueta" for="correo-${i}">Correo electrónico</label>
-            <input id="correo-${i}" type="email" maxlength="254" autocomplete="${acCorreo}" placeholder="correo@ejemplo.com" aria-describedby="correo-${i}-msj">
+            <input id="correo-${i}" type="email" maxlength="254" autocomplete="${acCorreo}" placeholder="Ej.: nombre@gmail.com" aria-describedby="correo-${i}-msj">
             <div class="msj" id="correo-${i}-msj">Revise el correo: allí llegará la invitación.</div>
           </div>
           <div class="campo">
             <label class="etiqueta" for="documento-${i}">Número de documento</label>
-            <input id="documento-${i}" maxlength="20" autocomplete="off" placeholder="1098765432" aria-describedby="documento-${i}-ayuda documento-${i}-msj">
+            <input id="documento-${i}" maxlength="20" autocomplete="off" placeholder="Solo números" aria-describedby="documento-${i}-ayuda documento-${i}-msj">
             <div class="ayuda" id="documento-${i}-ayuda">Cédula o pasaporte, sin puntos ni espacios.</div>
             <div class="msj" id="documento-${i}-msj">Entre 6 y 15 caracteres, sin empezar por 0 y sin valores de relleno.</div>
           </div>`;
