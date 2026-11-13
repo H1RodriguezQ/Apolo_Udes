@@ -767,28 +767,10 @@ class AppProvider extends ChangeNotifier {
   /// o un directivo, porque recién entonces se puede saber que un documento
   /// y un código QR pertenecen a la misma persona.
   void _reconstruirCodigosUsados() {
-    _codigosUsados.clear();
-    _codigosUsados.addAll(_codigosValidosDelDia);
-    _codigosUsados.addAll(_codigosValidadosLocalmente);
-
-    for (final c in _confirmaciones) {
-      final codigoUsado =
-          (c.codigoQr != null && _codigosUsados.contains(c.codigoQr)) ||
-              (c.documento.isNotEmpty && _codigosUsados.contains(c.documento));
-      if (!codigoUsado) continue;
-      if (c.codigoQr != null && c.codigoQr!.isNotEmpty) {
-        _codigosUsados.add(c.codigoQr!);
-      }
-      if (c.documento.isNotEmpty) _codigosUsados.add(c.documento);
-    }
-
-    for (final d in _directivos) {
-      if (d.codigoQr != null &&
-          d.codigoQr!.isNotEmpty &&
-          _codigosUsados.contains(d.codigoQr)) {
-        _codigosUsados.add(d.codigoQr!);
-      }
-    }
+    _codigosUsados
+      ..clear()
+      ..addAll(calcularCodigosUsados(
+          _codigosValidosDelDia, _codigosValidadosLocalmente, _confirmaciones));
   }
 
   /// Identifica a quién pertenece un código QR o un documento digitado.
@@ -1302,4 +1284,22 @@ class LecturaDia {
   });
 
   bool get valida => resultado == 'valido';
+}
+
+/// Códigos que ya no pueden entrar: los validados (en el servidor o en esta
+/// tablet) y, por cada invitado que ya usó su QR o su documento, también el
+/// otro identificador. Así una invitación da un solo ingreso, se lea como se
+/// lea. Los directivos solo entran por QR, por eso no necesitan este cruce.
+Set<String> calcularCodigosUsados(Iterable<String> validosDelDia,
+    Iterable<String> validadosLocalmente, Iterable<Confirmacion> confirmaciones) {
+  final usados = {...validosDelDia, ...validadosLocalmente};
+  for (final c in confirmaciones) {
+    final qr = c.codigoQr ?? '';
+    final usado = (qr.isNotEmpty && usados.contains(qr)) ||
+        (c.documento.isNotEmpty && usados.contains(c.documento));
+    if (!usado) continue;
+    if (qr.isNotEmpty) usados.add(qr);
+    if (c.documento.isNotEmpty) usados.add(c.documento);
+  }
+  return usados;
 }
